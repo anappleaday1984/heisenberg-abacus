@@ -1,0 +1,176 @@
+import type Anthropic from "@anthropic-ai/sdk";
+import { anthropic, MODEL } from "../anthropic";
+import { extractJson } from "./json-extractor";
+import type { PersonaResponse } from "./persona";
+import { LANG_RULE } from "./shared-rules";
+
+const SYSTEM = `${LANG_RULE}
+
+你是「海森堡的算盤」的彙總者（Summary Agent），負責把多位對話者收集到的受訪者回答**結構化**成可視化報告資料。
+
+**用語規定**：禁止使用「人設」一詞，請改用「受訪者」。
+
+## 輸出格式（嚴格 JSON，包在 \`\`\`json fenced block）
+
+\`\`\`json
+{
+  "headline": "12-25 字短標，總結這次調查的核心發現",
+  "keyTakeaway": "20-50 字行動建議，是整份報告最重要的一句話",
+  "metrics": [
+    {
+      "label": "指標短名（5-8 字）",
+      "value": "數字或範圍（如 '60'、'5000-8000'、'7.2'）",
+      "unit": "% / 元 / 位 / 分 / 其他單位（可空字串）",
+      "tone": "positive | neutral | negative",
+      "icon": "1 個 emoji（如 📈、💰、⚠️）"
+    }
+  ],
+  "groups": [
+    { "name": "族群名（5-12 字，例：高收入族群、單身學生）", "score": 75, "highlight": "1 句解讀，10-20 字" }
+  ],
+  "sections": {
+    "consensus": "共識洞察（80-150 字 markdown，可用 - 列點 / **粗體**）",
+    "divergence": "群體分歧（80-150 字 markdown）",
+    "metrics": "量化指標（80-150 字 markdown）",
+    "risks": "風險訊號（80-150 字 markdown）"
+  }
+}
+\`\`\`
+
+## 規則
+1. \`metrics\`：3-4 個關鍵 KPI；數字要從訪談中估算，要可信
+2. \`groups\`：3-5 個有意義的族群區隔；\`score\` 是 0-100 的支持度／興趣度
+3. \`tone\`：positive 對產品有利、negative 警訊、neutral 中性
+4. \`icon\`：用 emoji，配合該 metric 的意涵（如收入用 💰、風險用 ⚠️、興趣用 🎯）
+5. \`sections\` 四個 key 都必填，內容用繁體中文 markdown
+6. **必須回傳完整有效 JSON**；任何欄位都不可省略，否則前端會炸
+7. 全程繁體中文 + 台灣用語`;
+
+export type Tone = "positive" | "neutral" | "negative";
+
+export type SummaryData = {
+  headline: string;
+  keyTakeaway: string;
+  metrics: Array<{
+    label: string;
+    value: string;
+    unit: string;
+    tone: Tone;
+    icon: string;
+  }>;
+  groups: Array<{
+    name: string;
+    score: number;
+    highlight: string;
+  }>;
+  sections: {
+    consensus: string;
+    divergence: string;
+    metrics: string;
+    risks: string;
+  };
+};
+
+export async function summarize(
+  questions: string[],
+  responses: PersonaResponse[]
+): Promise<SummaryData> {
+  const userPrompt = `## 調查問題
+${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
+
+## 各受訪者原始回答（共 ${responses.length} 位）
+${responses
+  .map((r) => `### ${r.archetype}：${r.name}\n${r.text}`)
+  .join("\n\n")}
+
+請依規則輸出結構化 JSON。`;
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 8192, // 給 thinking + JSON 充足空間，避免被截斷
+    thinking: { type: "adaptive" },
+    system: [
+      {
+        type: "text",
+        text: SYSTEM,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const text = response.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+
+  if (response.stop_reason === "max_tokens") {
+    throw new Error(
+      "彙總者輸出被截斷（max_tokens 不夠）— 請縮短受訪者數量或重試"
+    );
+  }
+
+  const parsed = extractJson<SummaryData>(text, "彙總者");
+
+  // 補齊／驗證欄位
+  if (!parsed.headline) parsed.headline = "市場調查洞察";
+  if (!parsed.keyTakeaway) parsed.keyTakeaway = "";
+  if (!Array.isArray(parsed.metrics)) parsed.metrics = [];
+  if (!Array.isArray(parsed.groups)) parsed.groups = [];
+  parsed.metrics = parsed.metrics.slice(0, 4).map((m) => ({
+    label: String(m.label ?? ""),
+    value: String(m.value ?? ""),
+    unit: String(m.unit ?? ""),
+    tone: (["positive", "neutral", "negative"] as const).includes(m.tone)
+      ? m.tone
+      : "neutral",
+    icon: String(m.icon ?? "📊"),
+  }));
+  parsed.groups = parsed.groups.slice(0, 5).map((g) => ({
+    name: String(g.name ?? ""),
+    score: Math.max(0, Math.min(100, Math.round(Number(g.score) || 0))),
+    highlight: String(g.highlight ?? ""),
+  }));
+  parsed.sections = {
+    consensus: String(parsed.sections?.consensus ?? ""),
+    divergence: String(parsed.sections?.divergence ?? ""),
+    metrics: String(parsed.sections?.metrics ?? ""),
+    risks: String(parsed.sections?.risks ?? ""),
+  };
+
+  return parsed;
+}
+
+/** 把結構化 summary 轉成可讀文字，供 PM Agent 寫最終報告 */
+export function summaryToText(s: SummaryData): string {
+  const metricsBlock = s.metrics
+    .map((m) => `- **${m.label}**：${m.value}${m.unit} （${m.tone}）`)
+    .join("\n");
+  const groupsBlock = s.groups
+    .map((g) => `- ${g.name}：${g.score}/100 — ${g.highlight}`)
+    .join("\n");
+
+  return [
+    `# ${s.headline}`,
+    "",
+    `**行動建議**：${s.keyTakeaway}`,
+    "",
+    "## 關鍵指標",
+    metricsBlock,
+    "",
+    "## 族群支持度",
+    groupsBlock,
+    "",
+    "## 共識洞察",
+    s.sections.consensus,
+    "",
+    "## 群體分歧",
+    s.sections.divergence,
+    "",
+    "## 量化指標",
+    s.sections.metrics,
+    "",
+    "## 風險訊號",
+    s.sections.risks,
+  ].join("\n");
+}

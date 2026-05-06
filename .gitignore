@@ -1,0 +1,17 @@
+node_modules
+.next
+.env.local
+.env*.local
+.the_minimax_api.md
+.DS_Store
+*.log
+next-env.d.ts
+
+# Runtime state (含個資 / 登入歷史 / 對話紀錄，不放 git)
+data/
+z_wth_log.md
+
+# 開發工具的 local cache / 本機設定
+.claude/
+tsconfig.tsbuildinfo
+
