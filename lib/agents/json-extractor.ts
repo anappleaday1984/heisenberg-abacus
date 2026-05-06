@@ -75,6 +75,17 @@ export function extractJson<T = unknown>(text: string, agentName: string): T {
     `[json-extractor] ${agentName} JSON parse 失敗。完整原文：\n${text}\n---END---`
   );
 
+  // 偵測「JSON 被截斷」這個常見原因（沒有結尾 } 或 ]）
+  const trimmed = text.trim();
+  const looksLikeStartedJson = trimmed.includes("{") || trimmed.includes("[");
+  const endsWithCloseBrace =
+    trimmed.endsWith("}") || trimmed.endsWith("```") || trimmed.endsWith("]");
+  if (looksLikeStartedJson && !endsWithCloseBrace) {
+    throw new Error(
+      `${agentName} 的 JSON 輸出被截斷（max_tokens 用光、沒寫到結尾）。建議：減少受訪者數量、或調高 max_tokens。原始輸出最後 200 字：\n${text.slice(-200)}`
+    );
+  }
+
   throw new Error(
     `${agentName} 沒有回傳合法 JSON（試了 ${candidates.length} 個 candidate × 6 種修復）。原始輸出前 600 字：\n${text.slice(0, 600)}`
   );

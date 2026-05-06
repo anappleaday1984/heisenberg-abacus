@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Persona } from "@/lib/agents/personas-data";
+import { SLIDER_CONFIGS } from "@/lib/abacus-config";
 import {
   colorForPersona,
   computePurchaseIntent,
   computeRadarScores,
   detectProductType,
-  type ProductType,
 } from "@/lib/persona-scores";
 import { useProductParams } from "@/lib/product-params-context";
 
@@ -15,63 +15,17 @@ type Props = {
   personas: Persona[];
   /** 使用者問題 + PM 計畫 — 用來推斷產品類型 */
   productContext?: string;
+  /** 是否顯示內嵌算盤滑桿（模擬艙頁面會關掉用外部 AbacusBar） */
+  showSlider?: boolean;
 };
 
 const PADDING = { top: 18, right: 24, bottom: 38, left: 44 };
 
-type SliderConfig = {
-  type: ProductType;
-  label: string;
-  unit: string;
-  min: number;
-  max: number;
-  step: number;
-  default: number;
-  presets: number[];
-  icon: string;
-  desc: string;
-};
-
-const SLIDER_CONFIGS: Record<ProductType, SliderConfig> = {
-  loan: {
-    type: "loan",
-    label: "年利率",
-    unit: "%",
-    min: 0,
-    max: 20,
-    step: 0.01,
-    default: 6.88,
-    presets: [0.88, 6.88, 12.88, 18],
-    icon: "💰",
-    desc: "信貸 · 利率往上 → 客群放棄",
-  },
-  insurance: {
-    type: "insurance",
-    label: "月費",
-    unit: "元/月",
-    min: 0,
-    max: 1000,
-    step: 10,
-    default: 199,
-    presets: [99, 199, 399, 699],
-    icon: "🛡",
-    desc: "保險 · 保費調漲 → 弱勢族群退場",
-  },
-  creditcard: {
-    type: "creditcard",
-    label: "主要回饋率",
-    unit: "%",
-    min: 0,
-    max: 10,
-    step: 0.1,
-    default: 5,
-    presets: [1, 3, 5, 8],
-    icon: "💳",
-    desc: "信用卡 · 回饋拉高 → 觸發辦卡意願",
-  },
-};
-
-export function PhaseTransitionMap({ personas, productContext }: Props) {
+export function PhaseTransitionMap({
+  personas,
+  productContext,
+  showSlider = true,
+}: Props) {
   const { type: productType, paramValue, setType, setParamValue, buildParams } =
     useProductParams();
 
@@ -133,38 +87,6 @@ export function PhaseTransitionMap({ personas, productContext }: Props) {
         <span className="text-[10px] text-slate-500 whitespace-nowrap">
           ⌬ 不確定性可視化
         </span>
-      </div>
-
-      {/* === 產品類型 segmented control === */}
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
-          產品類型
-        </span>
-        <div className="inline-flex bg-slate-800/60 border border-slate-700 rounded-lg p-0.5">
-          {(Object.keys(SLIDER_CONFIGS) as ProductType[]).map((t) => {
-            const c = SLIDER_CONFIGS[t];
-            const active = t === productType;
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setType(t)}
-                className={`px-3 py-1 rounded-md text-[11px] font-medium transition ${
-                  active
-                    ? "bg-violet-500/30 text-violet-100 border border-violet-400/50"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {c.icon} {c.label.replace("年", "").replace("月費", "保險")}
-              </button>
-            );
-          })}
-        </div>
-        {detected === productType && (
-          <span className="text-[10px] text-emerald-400" title="從問題中自動辨識">
-            ✓ 自動辨識
-          </span>
-        )}
       </div>
 
       {/* === Stats row === */}
@@ -246,6 +168,7 @@ export function PhaseTransitionMap({ personas, productContext }: Props) {
       </div>
 
       {/* === 算盤滑桿（依產品類型動態 label） === */}
+      {showSlider && (
       <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3">
         <div className="flex items-center justify-between mb-2">
           <label className="text-[11px] uppercase tracking-wider text-violet-300 font-bold">
@@ -295,6 +218,7 @@ export function PhaseTransitionMap({ personas, productContext }: Props) {
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }

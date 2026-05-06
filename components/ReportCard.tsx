@@ -86,7 +86,6 @@ function demographicsSummary(personas: Persona[]) {
 
 export function ReportCard({ text, streaming }: Props) {
   const reportRef = useRef<HTMLDivElement>(null);
-  const [downloadingPng, setDownloadingPng] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const data = useMemo(() => tryParse(text), [text]);
@@ -130,22 +129,6 @@ export function ReportCard({ text, streaming }: Props) {
     });
   }
 
-  async function downloadPng() {
-    if (downloadingPng) return;
-    setDownloadingPng(true);
-    try {
-      const canvas = await captureCanvas();
-      if (!canvas) return;
-      const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
-      a.download = `report-${Date.now()}.png`;
-      a.click();
-    } catch (e) {
-      alert("PNG 下載失敗：" + (e instanceof Error ? e.message : String(e)));
-    } finally {
-      setDownloadingPng(false);
-    }
-  }
 
   async function downloadPdf() {
     if (downloadingPdf) return;
@@ -490,7 +473,7 @@ export function ReportCard({ text, streaming }: Props) {
       </div>
 
       {/* 下載按鈕 */}
-      <div className="flex justify-center gap-2">
+      <div className="flex justify-center">
         <button
           type="button"
           onClick={downloadPdf}
@@ -498,14 +481,6 @@ export function ReportCard({ text, streaming }: Props) {
           className="bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm px-4 py-2 rounded-lg font-medium"
         >
           {downloadingPdf ? "產生 PDF..." : "⬇ 下載完整報告 (PDF)"}
-        </button>
-        <button
-          type="button"
-          onClick={downloadPng}
-          disabled={downloadingPng || streaming}
-          className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm px-4 py-2 rounded-lg font-medium"
-        >
-          {downloadingPng ? "產生 PNG..." : "⬇ 下載為圖片 (PNG)"}
         </button>
       </div>
     </div>

@@ -158,13 +158,21 @@ export async function generateReport(
   personaResponses: { archetype: string; name: string; text: string }[],
   summaryText: string
 ): Promise<ReportData> {
+  // 受訪者答案做截斷 — 報告階段已有 summary 完整洞察，原文只需要片段做 quote
+  // 避免 25 受訪者 × 1500 token = 37500 token context 把 max_tokens 全吃光
+  const PER_PERSONA_LIMIT = 500;
   const personaSection = personaResponses
-    .map((r) => `### ${r.archetype}：${r.name}\n${r.text}`)
+    .map((r) => {
+      const t = r.text.length > PER_PERSONA_LIMIT
+        ? r.text.slice(0, PER_PERSONA_LIMIT) + "…(後略)"
+        : r.text;
+      return `### ${r.archetype}：${r.name}\n${t}`;
+    })
     .join("\n\n");
 
   const response = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 8192,
+    max_tokens: 16000, // 報告 JSON + adaptive thinking 都需要空間
     thinking: { type: "adaptive" },
     system: REPORT_SYSTEM,
     messages: [

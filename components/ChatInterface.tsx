@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { AgentName, ChatMessage, StreamEvent } from "@/lib/agents/types";
+import { usePersonaSession } from "@/lib/persona-session-context";
 import { LoginButton } from "./LoginButton";
 import { MessageBubble, type DisplayMessage } from "./MessageBubble";
-import { ProductParamsProvider } from "@/lib/product-params-context";
-import { DecisionSankey } from "./DecisionSankey";
 import { PersonaQAExplorer } from "./PersonaQAExplorer";
-import { PhaseTransitionMap } from "./PhaseTransitionMap";
 import { PipelineStatus, type PipelineStage } from "./PipelineStatus";
+import { QueryResponseBubble } from "./QueryResponseBubble";
 import { ReportCard } from "./ReportCard";
+import { SpectrumSwitcher } from "./SpectrumSwitcher";
 import { SummaryCard } from "./SummaryCard";
 
 let nextId = 0;
@@ -41,16 +41,120 @@ const PRODUCT_EXAMPLES = [
 ];
 
 export function ChatInterface() {
-  const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const session = usePersonaSession();
+  // Chat 訊息與「展開洞察」狀態交給 session context — 在 / 與 /simulation 之間切換時保留
+  const messages = session.messages;
+  const setMessages = session.setMessages;
+  const showInsights = session.showInsights;
+  const setShowInsights = session.setShowInsights;
+
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [personaCount, setPersonaCount] = useState(0);
   const [stage, setStage] = useState<PipelineStage>("idle");
   const [stageDetail, setStageDetail] = useState<string>("");
-  const [showInsights, setShowInsights] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<DisplayMessage[]>([]);
   messagesRef.current = messages;
+
+  // === 偵測「已完成調查」狀態 → bar 切到查詢模式 ===
+  // 條件：有任何 qa explorer 訊息（含完整問題 + 受訪者答案）+ 沒在跑流程中
+  const lastQa = [...messages]
+    .reverse()
+    .find((m) => m.role === "qa" && m.qaQuestions && m.qaEntries);
+  const isPostChat = !busy && !!lastQa;
+
+  // 提交查詢（不跑完整 pipeline，只問 LLM 從現有資料找答案）
+  async function handleQuery(query: string) {
+    if (!lastQa?.qaQuestions || !lastQa?.qaEntries) return;
+
+    const userMsg: DisplayMessage = { id: newId(), role: "user", text: query };
+    const queryMsgId = newId();
+    setMessages((m) => [
+      ...m,
+      userMsg,
+      { id: queryMsgId, role: "query", text: "", streaming: true },
+    ]);
+    setBusy(true);
+
+    try {
+      const res = await fetch("/api/chat/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          questions: lastQa.qaQuestions,
+          entries: lastQa.qaEntries,
+        }),
+      });
+      if (!res.ok || !res.body) throw new Error(`Query 失敗: HTTP ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const ev = JSON.parse(line.slice(6).trim());
+            if (ev.delta) {
+              setMessages((m) =>
+                m.map((msg) =>
+                  msg.id === queryMsgId
+                    ? { ...msg, text: msg.text + ev.delta }
+                    : msg
+                )
+              );
+            } else if (ev.error) {
+              setMessages((m) =>
+                m.map((msg) =>
+                  msg.id === queryMsgId
+                    ? { ...msg, text: `⚠️ ${ev.error}`, streaming: false }
+                    : msg
+                )
+              );
+            }
+          } catch {
+            /* skip malformed line */
+          }
+        }
+      }
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === queryMsgId ? { ...msg, streaming: false } : msg
+        )
+      );
+    } catch (err) {
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === queryMsgId
+            ? {
+                ...msg,
+                text: `⚠️ ${err instanceof Error ? err.message : String(err)}`,
+                streaming: false,
+              }
+            : msg
+        )
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // 重啟 — 清除所有訊息、重置 pipeline 狀態，回到初始空白頁
+  function restartSession() {
+    session.reset(); // 清 messages、showInsights、personas、qaEntries
+    setInput("");
+    setBusy(false);
+    setPersonaCount(0);
+    setStage("idle");
+    setStageDetail("");
+  }
 
   // 提供給 PersonaQAExplorer 的「跳到洞察報告」callback
   function jumpToSummary() {
@@ -105,6 +209,13 @@ export function ChatInterface() {
     e.preventDefault();
     const text = input.trim();
     if (!text || busy) return;
+
+    // 已完成調查 → 切到查詢模式（不跑完整 pipeline）
+    if (isPostChat) {
+      setInput("");
+      await handleQuery(text);
+      return;
+    }
 
     const userMsg: DisplayMessage = {
       id: newId(),
@@ -195,7 +306,8 @@ export function ChatInterface() {
               },
             ]);
           } else if (event.type === "personas_intro") {
-            // 「人格顯影」— 插入「行為相變散佈圖」（依產品類型動態切換滑桿）
+            // 「人格顯影」— 推到 session（給模擬艙用），訊息流插入「光譜指標切換」
+            session.setPersonas(event.personas, event.productContext);
             setMessages((m) => [
               ...m,
               {
@@ -206,15 +318,10 @@ export function ChatInterface() {
               },
             ]);
           } else if (event.type === "personas_qa") {
-            // 訪談完成 — 先插「決策路徑桑基圖」，再插 Q&A explorer
+            // 訪談完成 — 推到 session（讓桑基圖在模擬艙呈現），訊息流只留 Q&A explorer
+            session.setQA(event.questions, event.entries);
             setMessages((m) => [
               ...m,
-              {
-                id: newId(),
-                role: "sankey",
-                text: "",
-                qaEntries: event.entries,
-              },
               {
                 id: newId(),
                 role: "qa",
@@ -293,7 +400,6 @@ export function ChatInterface() {
   }
 
   return (
-    <ProductParamsProvider>
     <div className="flex flex-col h-full max-w-4xl w-full mx-auto">
       <header className="px-6 py-4 border-b border-slate-800 flex items-start justify-between gap-4">
         <div>
@@ -307,11 +413,26 @@ export function ChatInterface() {
         <div className="flex items-center gap-2">
           <LoginButton />
           <Link
+            href="/simulation"
+            title="模擬艙 — 行為相變散佈圖、外在變因下的意象變化"
+            className="text-sm text-violet-300 hover:text-violet-100 border border-violet-500/50 hover:border-violet-400 hover:bg-violet-500/10 rounded-md px-3 py-1.5 whitespace-nowrap font-medium transition"
+          >
+            🛰 模擬艙
+          </Link>
+          <Link
             href="/admin"
             className="text-sm text-slate-400 hover:text-slate-200 border border-slate-700 hover:border-slate-500 rounded-md px-3 py-1.5 whitespace-nowrap"
           >
-            ⚙ 後台設定
+            ⚙ 人物設定
           </Link>
+          <button
+            type="button"
+            onClick={restartSession}
+            title="清除所有訊息、重置 pipeline、回到初始狀態"
+            className="text-sm text-orange-300/90 hover:text-orange-200 border border-orange-500/40 hover:border-orange-400 hover:bg-orange-500/10 rounded-md px-3 py-1.5 whitespace-nowrap font-medium transition"
+          >
+            ↻ 重啟
+          </button>
         </div>
       </header>
 
@@ -361,15 +482,24 @@ export function ChatInterface() {
         )}
         {messages.map((msg) => {
           let content: React.ReactNode;
-          if (msg.role === "phase-map" && msg.personas) {
+          if (msg.role === "query") {
             content = (
-              <PhaseTransitionMap
+              <QueryResponseBubble
+                text={msg.text}
+                streaming={msg.streaming}
+                onPickOption={(opt) => {
+                  if (busy) return;
+                  handleQuery(opt);
+                }}
+              />
+            );
+          } else if (msg.role === "phase-map" && msg.personas) {
+            content = (
+              <SpectrumSwitcher
                 personas={msg.personas}
                 productContext={msg.text}
               />
             );
-          } else if (msg.role === "sankey" && msg.qaEntries) {
-            content = <DecisionSankey entries={msg.qaEntries} />;
           } else if (msg.role === "qa" && msg.qaQuestions && msg.qaEntries) {
             content = (
               <PersonaQAExplorer
@@ -417,7 +547,13 @@ export function ChatInterface() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={busy ? "Agents 處理中..." : "請描述你想做的市場調查"}
+          placeholder={
+            busy
+              ? "處理中..."
+              : isPostChat
+              ? "查詢調查結果（例：我想看老王對所有問題的回覆 / 大家對 Q3 怎麼看 / 誰最有興趣）"
+              : "請描述你想做的市場調查"
+          }
           disabled={busy}
           className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
         />
@@ -430,6 +566,5 @@ export function ChatInterface() {
         </button>
       </form>
     </div>
-    </ProductParamsProvider>
   );
 }

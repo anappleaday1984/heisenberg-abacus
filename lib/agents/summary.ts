@@ -87,7 +87,7 @@ ${responses
 
   const response = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 8192, // 給 thinking + JSON 充足空間，避免被截斷
+    max_tokens: 12000, // 給 thinking + JSON 充足空間（25+ 受訪者場景）
     thinking: { type: "adaptive" },
     system: [
       {

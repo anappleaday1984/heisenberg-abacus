@@ -148,7 +148,7 @@ function AdminContent() {
     <main className="min-h-screen px-6 py-8 max-w-6xl mx-auto">
       <header className="flex items-center justify-between mb-6 pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-xl font-semibold text-slate-100">後台設定</h1>
+          <h1 className="text-xl font-semibold text-slate-100">人物設定</h1>
           <p className="text-xs text-slate-400 mt-0.5">
             受訪者管理 — 編輯、新增、複製、刪除、從 HackMD 同步、匯出
           </p>

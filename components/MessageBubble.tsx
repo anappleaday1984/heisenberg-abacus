@@ -7,7 +7,7 @@ import { HighlightedText } from "./HighlightedText";
 
 export type DisplayMessage = {
   id: string;
-  role: "user" | "agent" | "phase-map" | "sankey" | "qa";
+  role: "user" | "agent" | "phase-map" | "qa" | "query";
   agent?: AgentName;
   label?: string;
   text: string;
@@ -30,7 +30,10 @@ export function MessageBubble({ msg }: { msg: DisplayMessage }) {
 
   // 對話者（persona）的回覆要把外送員術語標起來
   const cleanText = msg.text
-    .replace(/\[STATUS:(READY|CLARIFY)\]/gi, "")
+    // 把 sentinel 連同前後換行一起吃掉 — 避免 replace 後留下 3+ 連續換行
+    .replace(/\n*\[STATUS:(READY|CLARIFY)\]\n*/gi, "")
+    // 段落間最多保留一個空白行（LLM 偶爾會吐出 3+ \n）
+    .replace(/\n{3,}/g, "\n\n")
     .trimEnd();
   const isPersona = msg.agent === "persona";
 
