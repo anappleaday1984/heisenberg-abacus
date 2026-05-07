@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AuthGate } from "@/components/AuthGate";
+import { EntranceGate } from "@/components/EntranceGate";
 import { LoginButton } from "@/components/LoginButton";
 import { PersonaEditor } from "@/components/PersonaEditor";
 import { PersonaGenerator } from "@/components/PersonaGenerator";
@@ -26,9 +26,9 @@ const EMPTY_PERSONA: Omit<Persona, "id"> = {
 
 export default function AdminPage() {
   return (
-    <AuthGate>
+    <EntranceGate>
       <AdminContent />
-    </AuthGate>
+    </EntranceGate>
   );
 }
 

@@ -1,12 +1,12 @@
-import { AuthGate } from "@/components/AuthGate";
 import { ChatInterface } from "@/components/ChatInterface";
+import { EntranceGate } from "@/components/EntranceGate";
 
 export default function Home() {
   return (
-    <main className="h-screen flex">
-      <AuthGate>
+    <EntranceGate>
+      <main className="h-screen flex">
         <ChatInterface />
-      </AuthGate>
-    </main>
+      </main>
+    </EntranceGate>
   );
 }
