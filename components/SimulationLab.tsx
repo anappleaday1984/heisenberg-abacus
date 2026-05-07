@@ -81,7 +81,7 @@ export function SimulationLab() {
           <section>
             <SectionHeader
               tag="02 · Stress-Induced Sankey"
-              title="外在變因下的意象變化"
+              title="外在變因下的決策變化"
             />
             {effective.qaEntries.length > 0 ? (
               <DecisionSankey entries={effective.qaEntries} />

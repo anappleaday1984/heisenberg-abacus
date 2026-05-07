@@ -34,7 +34,8 @@ export function MessageBubble({ msg }: { msg: DisplayMessage }) {
     .replace(/\n*\[STATUS:(READY|CLARIFY)\]\n*/gi, "")
     // 段落間最多保留一個空白行（LLM 偶爾會吐出 3+ \n）
     .replace(/\n{3,}/g, "\n\n")
-    .trimEnd();
+    // 頭尾換行 / 空白都吃掉 — 避免 bubble 上下出現空白行
+    .trim();
   const isPersona = msg.agent === "persona";
 
   return (

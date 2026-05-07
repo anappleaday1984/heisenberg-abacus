@@ -12,6 +12,7 @@ import {
 import type { Persona } from "./agents/personas-data";
 import type { QAEntry } from "./agents/types";
 import type { DisplayMessage } from "@/components/MessageBubble";
+import type { PipelineStage } from "@/components/PipelineStatus";
 
 type SessionState = {
   personas: Persona[] | null;
@@ -20,6 +21,9 @@ type SessionState = {
   productContext: string | null;
   messages: DisplayMessage[];
   showInsights: boolean;
+  stage: PipelineStage;
+  stageDetail: string;
+  personaCount: number;
 };
 
 type Ctx = SessionState & {
@@ -29,12 +33,14 @@ type Ctx = SessionState & {
     updater: DisplayMessage[] | ((prev: DisplayMessage[]) => DisplayMessage[])
   ) => void;
   setShowInsights: (v: boolean) => void;
+  setStage: (stage: PipelineStage, detail?: string) => void;
+  setPersonaCount: (n: number) => void;
   reset: () => void;
 };
 
 const PersonaSessionContext = createContext<Ctx | null>(null);
 
-const STORAGE_KEY = "wth.persona-session.v2";
+const STORAGE_KEY = "wth.persona-session.v3";
 
 const EMPTY: SessionState = {
   personas: null,
@@ -43,6 +49,9 @@ const EMPTY: SessionState = {
   productContext: null,
   messages: [],
   showInsights: false,
+  stage: "idle",
+  stageDetail: "",
+  personaCount: 0,
 };
 
 export function PersonaSessionProvider({ children }: { children: ReactNode }) {
@@ -64,11 +73,23 @@ export function PersonaSessionProvider({ children }: { children: ReactNode }) {
         const cleanedMessages = (parsed.messages ?? []).map((m) =>
           m.streaming ? { ...m, streaming: false } : m
         );
+        // 若 stage 是 mid-pipeline (非 idle / complete) — 視為跑完了：
+        // 流程在 reload / 路由切換中被中斷，保留進度條為「完成」比較不誤導
+        const savedStage = parsed.stage ?? "idle";
+        const safeStage: PipelineStage =
+          cleanedMessages.length > 0 &&
+          savedStage !== "idle" &&
+          savedStage !== "complete"
+            ? "complete"
+            : savedStage;
         setState({
           ...EMPTY,
           ...parsed,
           messages: cleanedMessages,
           showInsights: parsed.showInsights ?? false,
+          stage: safeStage,
+          stageDetail: safeStage === "complete" ? "" : parsed.stageDetail ?? "",
+          personaCount: parsed.personaCount ?? 0,
         });
       }
     } catch {
@@ -130,6 +151,14 @@ export function PersonaSessionProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, showInsights: v }));
   }, []);
 
+  const setStage = useCallback((stage: PipelineStage, detail = "") => {
+    setState((s) => ({ ...s, stage, stageDetail: detail }));
+  }, []);
+
+  const setPersonaCount = useCallback((n: number) => {
+    setState((s) => ({ ...s, personaCount: n }));
+  }, []);
+
   const reset = useCallback(() => setState(EMPTY), []);
 
   const value = useMemo<Ctx>(
@@ -139,9 +168,20 @@ export function PersonaSessionProvider({ children }: { children: ReactNode }) {
       setQA,
       setMessages,
       setShowInsights,
+      setStage,
+      setPersonaCount,
       reset,
     }),
-    [state, setPersonas, setQA, setMessages, setShowInsights, reset]
+    [
+      state,
+      setPersonas,
+      setQA,
+      setMessages,
+      setShowInsights,
+      setStage,
+      setPersonaCount,
+      reset,
+    ]
   );
 
   return (

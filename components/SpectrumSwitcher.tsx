@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Persona } from "@/lib/agents/personas-data";
 import {
   colorForPersona,
   computeRadarScores,
   detectProductType,
+  isOpenContext,
   productLabel,
   type ProductType,
   type RadarScores,
@@ -175,6 +175,10 @@ function generateVoice(p: Persona, type: ProductType): string {
 export function SpectrumSwitcher({ personas, productContext }: Props) {
   const { type, setType } = useProductParams();
 
+  const isOpen = useMemo(
+    () => isOpenContext(productContext ?? ""),
+    [productContext]
+  );
   const detected = useMemo(
     () => detectProductType(productContext ?? ""),
     [productContext]
@@ -185,7 +189,20 @@ export function SpectrumSwitcher({ personas, productContext }: Props) {
     setType(detected);
   }, [detected, setType]);
 
-  const cfg = AXES[type];
+  // 開放式問題：不貼產品標籤，改用「整體經濟壓力」作為 Y 軸
+  const cfg: AxisCfg = isOpen
+    ? {
+        type,
+        icon: "🏛",
+        label: "整體光譜",
+        yKey: "economicPressure",
+        yLabel: "經濟壓力 →",
+        blurb: "誰承壓最大？誰最有餘裕？",
+      }
+    : AXES[type];
+  const headerLabel = isOpen ? "整體光譜" : `${cfg.icon} ${cfg.label}`;
+  const headerIcon = isOpen ? "🏛" : "🏛";
+  const dimensionLabel = isOpen ? "整體" : `「${productLabel(type)}」`;
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const points = useMemo(() => {
@@ -212,31 +229,21 @@ export function SpectrumSwitcher({ personas, productContext }: Props) {
   const xScale = (x: number) => PADDING.left + (x / 100) * innerW;
   const yScale = (y: number) => PADDING.top + innerH - (y / 100) * innerH;
 
-  // 從 personas 隨機 / 確定性抽 3 位顯示對話泡（用 hash 保持穩定）
-  const featured = useMemo(() => {
-    if (personas.length <= 3) return personas;
-    return [personas[0], personas[Math.floor(personas.length / 2)], personas[personas.length - 1]];
-  }, [personas]);
+  // 取前三位預設人設作為對話泡範例
+  const featured = useMemo(() => personas.slice(0, 3), [personas]);
 
   return (
     <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-5 max-w-4xl mx-auto">
       <div className="flex items-start justify-between mb-4 gap-3">
         <div>
           <div className="text-[10px] uppercase tracking-wider text-violet-400 font-bold">
-            🏛 受訪者顯影 · {cfg.icon} {cfg.label}
+            {headerIcon} 受訪者顯影 · {headerLabel}
           </div>
           <h3 className="text-base font-bold text-slate-100 leading-tight mt-0.5">
-            {personas.length} 位受訪者的「{productLabel(type)}」維度
+            {personas.length} 位受訪者的{dimensionLabel}維度
           </h3>
           <p className="text-[11px] text-slate-400 mt-0.5">{cfg.blurb}</p>
         </div>
-        <Link
-          href="/simulation"
-          className="text-[11px] text-violet-300 hover:text-violet-200 border border-violet-500/40 hover:border-violet-400 hover:bg-violet-500/10 rounded-md px-2.5 py-1 whitespace-nowrap transition shrink-0"
-          title="進入模擬艙"
-        >
-          🛰 進入模擬艙 →
-        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

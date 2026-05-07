@@ -1,11 +1,14 @@
 "use client";
 
-import { SLIDER_CONFIGS } from "@/lib/abacus-config";
+import { resolveOpenSliderConfig, SLIDER_CONFIGS } from "@/lib/abacus-config";
 import { useProductParams } from "@/lib/product-params-context";
 
 export function AbacusBar() {
-  const { type, paramValue, setParamValue } = useProductParams();
-  const config = SLIDER_CONFIGS[type];
+  const { type, paramValue, isOpen, openContext, setParamValue } =
+    useProductParams();
+  const config = isOpen
+    ? resolveOpenSliderConfig(openContext)
+    : SLIDER_CONFIGS[type];
 
   return (
     <div className="bg-slate-900/90 border border-slate-700 rounded-xl p-4 backdrop-blur">

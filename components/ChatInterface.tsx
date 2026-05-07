@@ -42,17 +42,19 @@ const PRODUCT_EXAMPLES = [
 
 export function ChatInterface() {
   const session = usePersonaSession();
-  // Chat 訊息與「展開洞察」狀態交給 session context — 在 / 與 /simulation 之間切換時保留
+  // 訊息、洞察展開、進度條狀態都交給 session context — 在 / 與 /simulation 之間切換 / reload 時保留
   const messages = session.messages;
   const setMessages = session.setMessages;
   const showInsights = session.showInsights;
   const setShowInsights = session.setShowInsights;
+  const stage = session.stage;
+  const stageDetail = session.stageDetail;
+  const personaCount = session.personaCount;
+  const setStage = (s: PipelineStage, detail = "") => session.setStage(s, detail);
+  const setPersonaCount = session.setPersonaCount;
 
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [personaCount, setPersonaCount] = useState(0);
-  const [stage, setStage] = useState<PipelineStage>("idle");
-  const [stageDetail, setStageDetail] = useState<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<DisplayMessage[]>([]);
   messagesRef.current = messages;
@@ -148,12 +150,9 @@ export function ChatInterface() {
 
   // 重啟 — 清除所有訊息、重置 pipeline 狀態，回到初始空白頁
   function restartSession() {
-    session.reset(); // 清 messages、showInsights、personas、qaEntries
+    session.reset(); // 清 messages、showInsights、personas、qaEntries、stage、personaCount
     setInput("");
     setBusy(false);
-    setPersonaCount(0);
-    setStage("idle");
-    setStageDetail("");
   }
 
   // 提供給 PersonaQAExplorer 的「跳到洞察報告」callback
@@ -225,8 +224,7 @@ export function ChatInterface() {
     setMessages((m) => [...m, userMsg]);
     setInput("");
     setBusy(true);
-    setStage("entry");
-    setStageDetail("解析需求中");
+    setStage("entry", "解析需求中");
     setShowInsights(false); // 新一輪 chat：重置「已展開洞察報告」狀態
 
     // Build history: include user messages + entry/pm replies so the entry
@@ -288,8 +286,7 @@ export function ChatInterface() {
             // Update pipeline stage indicator
             const next = eventToStage(event.agent, event.label);
             if (next) {
-              setStage(next.stage);
-              setStageDetail(next.detail);
+              setStage(next.stage, next.detail);
             }
             const key = activeKey(event.agent, event.label);
             const id = newId();
@@ -378,8 +375,7 @@ export function ChatInterface() {
               },
             ]);
           } else if (event.type === "complete") {
-            setStage("complete");
-            setStageDetail("");
+            setStage("complete", "");
           }
         }
       }
@@ -412,13 +408,6 @@ export function ChatInterface() {
         </div>
         <div className="flex items-center gap-2">
           <LoginButton />
-          <Link
-            href="/simulation"
-            title="模擬艙 — 行為相變散佈圖、外在變因下的意象變化"
-            className="text-sm text-violet-300 hover:text-violet-100 border border-violet-500/50 hover:border-violet-400 hover:bg-violet-500/10 rounded-md px-3 py-1.5 whitespace-nowrap font-medium transition"
-          >
-            🛰 模擬艙
-          </Link>
           <Link
             href="/admin"
             className="text-sm text-slate-400 hover:text-slate-200 border border-slate-700 hover:border-slate-500 rounded-md px-3 py-1.5 whitespace-nowrap"

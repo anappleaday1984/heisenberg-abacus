@@ -8,13 +8,18 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { resolveOpenSliderConfig } from "./abacus-config";
 import type { ProductParams, ProductType } from "./persona-scores";
 
 type Ctx = {
   type: ProductType;
   paramValue: number;
+  isOpen: boolean;
+  openContext: string;
   setType: (t: ProductType) => void;
   setParamValue: (v: number) => void;
+  setIsOpen: (open: boolean, context?: string) => void;
+  setOpenContext: (context: string) => void;
   buildParams: () => ProductParams;
 };
 
@@ -28,6 +33,8 @@ const TYPE_DEFAULTS: Record<ProductType, number> = {
 
 export function ProductParamsProvider({ children }: { children: ReactNode }) {
   const [type, setTypeRaw] = useState<ProductType>("loan");
+  const [isOpen, setIsOpenRaw] = useState(false);
+  const [openContext, setOpenContextRaw] = useState("");
   const [paramValue, setParamValue] = useState(TYPE_DEFAULTS.loan);
 
   // useCallback 確保函式 reference 穩定 — 避免下游 useEffect 因依賴變化而 re-fire
@@ -41,6 +48,29 @@ export function ProductParamsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setIsOpen = useCallback((next: boolean, context = "") => {
+    setIsOpenRaw((wasOpen) => {
+      // 進入開放模式 → 依語境決定算盤珠的 default 值
+      if (!wasOpen && next) {
+        const cfg = resolveOpenSliderConfig(context);
+        setParamValue(cfg.default);
+        setOpenContextRaw(context);
+      }
+      return next;
+    });
+  }, []);
+
+  const setOpenContext = useCallback((context: string) => {
+    setOpenContextRaw((prev) => {
+      // 已在開放模式但語境換了 → 重設算盤珠到新類別的 default
+      if (prev !== context) {
+        const cfg = resolveOpenSliderConfig(context);
+        setParamValue(cfg.default);
+      }
+      return context;
+    });
+  }, []);
+
   const buildParams = useCallback((): ProductParams => {
     if (type === "loan") return { type: "loan", interestRate: paramValue };
     if (type === "insurance")
@@ -50,8 +80,18 @@ export function ProductParamsProvider({ children }: { children: ReactNode }) {
 
   // 把 context value memoize，避免每次 render 都製造新物件導致 consumers 全部重 render
   const value = useMemo(
-    () => ({ type, paramValue, setType, setParamValue, buildParams }),
-    [type, paramValue, setType, buildParams]
+    () => ({
+      type,
+      paramValue,
+      isOpen,
+      openContext,
+      setType,
+      setParamValue,
+      setIsOpen,
+      setOpenContext,
+      buildParams,
+    }),
+    [type, paramValue, isOpen, openContext, setType, setIsOpen, setOpenContext, buildParams]
   );
 
   return (

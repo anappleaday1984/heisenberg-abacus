@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import type { FullReportPayload } from "@/lib/orchestrator";
 import type { Persona } from "@/lib/agents/personas-data";
@@ -472,8 +473,8 @@ export function ReportCard({ text, streaming }: Props) {
         </footer>
       </div>
 
-      {/* 下載按鈕 */}
-      <div className="flex justify-center">
+      {/* 下載 + 進入動態模擬 */}
+      <div className="flex flex-wrap justify-center gap-3">
         <button
           type="button"
           onClick={downloadPdf}
@@ -482,6 +483,13 @@ export function ReportCard({ text, streaming }: Props) {
         >
           {downloadingPdf ? "產生 PDF..." : "⬇ 下載完整報告 (PDF)"}
         </button>
+        <Link
+          href="/simulation"
+          title="動態模擬 — 行為相變散佈圖、外在變因下的決策變化"
+          className="inline-flex items-center bg-violet-600 hover:bg-violet-500 text-white text-sm px-4 py-2 rounded-lg font-medium transition"
+        >
+          🛰 進入動態模擬 →
+        </Link>
       </div>
     </div>
   );

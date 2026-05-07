@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Persona } from "@/lib/agents/personas-data";
-import { SLIDER_CONFIGS } from "@/lib/abacus-config";
+import { resolveOpenSliderConfig, SLIDER_CONFIGS } from "@/lib/abacus-config";
 import {
   colorForPersona,
+  computeOpenIntent,
   computePurchaseIntent,
   computeRadarScores,
   detectProductType,
+  isOpenContext,
 } from "@/lib/persona-scores";
 import { useProductParams } from "@/lib/product-params-context";
 
@@ -26,36 +28,62 @@ export function PhaseTransitionMap({
   productContext,
   showSlider = true,
 }: Props) {
-  const { type: productType, paramValue, setType, setParamValue, buildParams } =
-    useProductParams();
+  const {
+    type: productType,
+    paramValue,
+    isOpen,
+    openContext,
+    setType,
+    setParamValue,
+    setIsOpen,
+    setOpenContext,
+    buildParams,
+  } = useProductParams();
 
-  const detected = useMemo(
-    () => detectProductType(productContext ?? ""),
-    [productContext]
-  );
+  const ctxText = productContext ?? "";
+  const detectedOpen = useMemo(() => isOpenContext(ctxText), [ctxText]);
+  const detected = useMemo(() => detectProductType(ctxText), [ctxText]);
 
-  // 第一次掛載 + productContext 改變時，把 context 切到偵測到的類型
+  // 第一次掛載 + productContext 改變時，同步開放/產品狀態
   useEffect(() => {
-    setType(detected);
-  }, [detected, setType]);
+    if (detectedOpen) {
+      setIsOpen(true, ctxText);
+      setOpenContext(ctxText);
+    } else {
+      setIsOpen(false);
+      setType(detected);
+    }
+  }, [detectedOpen, detected, ctxText, setType, setIsOpen, setOpenContext]);
 
-  const config = SLIDER_CONFIGS[productType];
+  const config = isOpen
+    ? resolveOpenSliderConfig(openContext)
+    : SLIDER_CONFIGS[productType];
+  const headerTitle = `${config.label}臨界點`;
+  const yAxisLabel = isOpen ? "客群行為傾向 →" : "購買意願度 →";
+  const zoneLabels = isOpen
+    ? { high: "行動區", mid: "猶豫區", low: "退出區" }
+    : { high: "購買區", mid: "觀望區", low: "放棄區" };
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
-  // 計算每個點 (x = 經濟壓力, y = 購買意願)
+  // 計算每個點 (x = 經濟壓力, y = 購買意願 / 客群行為傾向)
   const points = useMemo(() => {
     const params = buildParams();
+    // 把元/% 等不同單位的滑桿值正規化為 0-100 的「外在壓力」
+    const range = config.max - config.min || 1;
+    const stress = ((paramValue - config.min) / range) * 100;
     return personas.map((p, i) => {
       const scores = computeRadarScores(p);
       return {
         persona: p,
         x: scores.economicPressure,
-        y: computePurchaseIntent(scores, params),
+        y: isOpen
+          ? computeOpenIntent(scores, stress)
+          : computePurchaseIntent(scores, params),
         color: colorForPersona(p.id, i),
         idx: i,
       };
     });
-  }, [personas, productType, paramValue, buildParams]);
+  }, [personas, productType, paramValue, isOpen, config.min, config.max, buildParams]);
 
   const willBuy = points.filter((p) => p.y >= 60).length;
   const watching = points.filter((p) => p.y >= 40 && p.y < 60).length;
@@ -80,7 +108,7 @@ export function PhaseTransitionMap({
             行為相變散佈圖 · Behavioral Phase Transition Map
           </div>
           <h3 className="text-base font-bold text-slate-100 leading-tight mt-0.5">
-            {personas.length} 位受訪者的「{config.label}臨界點」
+            {personas.length} 位受訪者的「{headerTitle}」
           </h3>
           <p className="text-[11px] text-slate-400 mt-0.5">{config.desc}</p>
         </div>
@@ -91,9 +119,9 @@ export function PhaseTransitionMap({
 
       {/* === Stats row === */}
       <div className="grid grid-cols-3 gap-2 mb-3">
-        <Stat color="emerald" label="會購買" value={willBuy} total={total} />
-        <Stat color="amber" label="觀望中" value={watching} total={total} />
-        <Stat color="rose" label="放棄" value={reject} total={total} />
+        <Stat color="emerald" label={isOpen ? "會行動" : "會購買"} value={willBuy} total={total} />
+        <Stat color="amber" label={isOpen ? "猶豫中" : "觀望中"} value={watching} total={total} />
+        <Stat color="rose" label={isOpen ? "退出" : "放棄"} value={reject} total={total} />
       </div>
 
       {/* === SVG Scatter === */}
@@ -128,11 +156,11 @@ export function PhaseTransitionMap({
           ))}
 
           <text x={PADDING.left + innerW / 2} y={H - 4} fontSize={11} fontWeight={600} fill="#cbd5e1" textAnchor="middle">經濟壓力值 →</text>
-          <text x={-(PADDING.top + innerH / 2)} y={12} fontSize={11} fontWeight={600} fill="#cbd5e1" textAnchor="middle" transform="rotate(-90)">購買意願度 →</text>
+          <text x={-(PADDING.top + innerH / 2)} y={12} fontSize={11} fontWeight={600} fill="#cbd5e1" textAnchor="middle" transform="rotate(-90)">{yAxisLabel}</text>
 
-          <text x={W - PADDING.right - 4} y={yScale(82)} fontSize={9} fill="#34d39990" textAnchor="end" fontWeight={700}>購買區</text>
-          <text x={W - PADDING.right - 4} y={yScale(50)} fontSize={9} fill="#fbbf2490" textAnchor="end" fontWeight={700}>觀望區</text>
-          <text x={W - PADDING.right - 4} y={yScale(20)} fontSize={9} fill="#fb718590" textAnchor="end" fontWeight={700}>放棄區</text>
+          <text x={W - PADDING.right - 4} y={yScale(82)} fontSize={9} fill="#34d39990" textAnchor="end" fontWeight={700}>{zoneLabels.high}</text>
+          <text x={W - PADDING.right - 4} y={yScale(50)} fontSize={9} fill="#fbbf2490" textAnchor="end" fontWeight={700}>{zoneLabels.mid}</text>
+          <text x={W - PADDING.right - 4} y={yScale(20)} fontSize={9} fill="#fb718590" textAnchor="end" fontWeight={700}>{zoneLabels.low}</text>
 
           {/* 散點 */}
           {points.map((pt) => {
@@ -161,7 +189,7 @@ export function PhaseTransitionMap({
             <g style={{ pointerEvents: "none" }} transform={`translate(${xScale(points[hoverIdx].x) + 10}, ${yScale(points[hoverIdx].y) - 10})`}>
               <rect x={0} y={-30} width={170} height={36} rx={4} fill="#0f172a" stroke="#475569" />
               <text x={6} y={-16} fontSize={10} fill="#cbd5e1">{points[hoverIdx].persona.archetype}：{points[hoverIdx].persona.name}</text>
-              <text x={6} y={-2} fontSize={9} fill="#94a3b8">壓力 {points[hoverIdx].x} · 意願 {points[hoverIdx].y}</text>
+              <text x={6} y={-2} fontSize={9} fill="#94a3b8">壓力 {points[hoverIdx].x} · {isOpen ? "傾向" : "意願"} {points[hoverIdx].y}</text>
             </g>
           )}
         </svg>

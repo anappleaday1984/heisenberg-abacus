@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "diagrams": "npx --yes @mermaid-js/mermaid-cli@latest -i docs/architecture.md -o docs/diagrams/arch.png -t dark -b \"#0b1020\" && npx --yes @mermaid-js/mermaid-cli@latest -i docs/qa-support.md -o docs/diagrams/qa.png -t dark -b \"#0b1020\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",

@@ -139,6 +139,18 @@ export function detectProductType(context: string): ProductType {
   return "loan";
 }
 
+/**
+ * 判斷是否為「開放式問題」— 沒有明確金融產品關鍵字。
+ * 這類問題不該被貼上「信貸 / 信用卡 / 保險」標籤。
+ */
+export function isOpenContext(context: string): boolean {
+  const c = context?.trim() ?? "";
+  if (!c) return true;
+  const productHints =
+    /信用卡|聯名卡|刷卡|現金回饋|哩程|簽帳|回饋|油錢|保險|意外險|醫療險|理賠|保費|住院|車險|人身險|信貸|貸款|房貸|車貸|學貸|借錢|周轉|融資|利率|聯徵|信用評分|循環利息|卡費/;
+  return !productHints.test(c);
+}
+
 const PRODUCT_LABEL: Record<ProductType, string> = {
   loan: "信貸",
   insurance: "保險",
@@ -190,6 +202,27 @@ export function computePurchaseIntent(
     if (scores.economicPressure > 75) intent -= 12;
   }
 
+  return Math.max(0, Math.min(100, Math.round(intent)));
+}
+
+/**
+ * 開放式問題的通用「行為傾向」計算。
+ * stress (0-100) 代表外在變因強度；高壓力族群更早被推離「會購買區」。
+ * 基底 60 確保 50% 中性壓力時平均落在「觀望」與「會購買」邊界，方便看出相變。
+ */
+export function computeOpenIntent(
+  scores: RadarScores,
+  stress: number
+): number {
+  let intent = 60;
+  // 壓力 > 50 = 客群開始猶豫；< 50 = 行動傾向上升
+  intent -= (stress - 50) * 0.6;
+  // 風險偏好高 → 對外在變因鈍感
+  intent += (scores.riskPreference - 50) * 0.18;
+  // 經濟壓力大的人在高情境壓力時更快放棄（交互作用）
+  intent -= ((scores.economicPressure - 50) * (stress - 50)) / 110;
+  // 數位熟練度小幅推升（接觸到變因更快做決定）
+  intent += (scores.digitalFluency - 50) * 0.05;
   return Math.max(0, Math.min(100, Math.round(intent)));
 }
 
