@@ -38,15 +38,19 @@ export function savePersonas(personas: Persona[]): void {
 }
 
 /**
- * 解析 HackMD 「人設設定」章節，回傳 Persona 陣列。
- * 支援任意數量的人設（容易擴充）— 只要符合下列格式：
+ * 解析 HackMD 文件，回傳 Persona 陣列。
+ * 支援任意數量的人設 — 只要符合下列格式：
  *
- *   ### N. {archetype}：{name}
- *   * **性別/年齡：** 男 / 42 歲
- *   * **年收入：** 約 70~80 萬
- *   * **人格特質：** ...
- *   * **家庭狀況：** ...
- *   * **資產與變故：** ...
+ *   ## N. {archetype}：{name}
+ *   - **ID：** `xxx`（選填）
+ *   - **性別 / 年齡：** 男 / 42 歲
+ *   - **年收入：** NT$ 750,000（補充說明）
+ *   - **人格特質：** ...
+ *   - **家庭狀況：** ...
+ *   - **資產與變故：** ...
+ *
+ * 標題層級（##/###）與欄位 key 內空白都容許，
+ * 既支援目前 HackMD（## 同階）也支援早期版本（### 子標題）。
  *
  * 第二參數 existingPersonas 用來在重新匯入時保留 ID（若 archetype:name 相同）。
  */
@@ -54,29 +58,27 @@ export function parseHackmdMarkdown(
   markdown: string,
   existingPersonas: Persona[] = []
 ): Persona[] {
-  // 鎖定「人設設定」章節（## 人設設定 直到下一個 ## 為止）
-  const sectionMatch = markdown.match(
-    /##\s*人設設定[\s\S]*?(?=\n##\s|$)/
-  );
-  const section = sectionMatch ? sectionMatch[0] : markdown;
-
-  // 抓每一筆 ### N. archetype：name 直到下一筆或檔尾
+  // 不再鎖章節 — HackMD 上每個人設用「## N.」與「## 人設設定」同階，
+  // 鎖章節反而會把人設切掉。直接掃整份文件抓「##+ 數字. archetype：name」區塊，
+  // 區塊邊界落在下一個任意 ##+ 標題或檔尾。
   const blockRegex =
-    /^###\s+\d+\.\s*(.+?)：(.+?)\s*$([\s\S]*?)(?=^###\s+\d+\.|^##\s|$(?![\s\S]))/gm;
+    /^#{2,}\s+\d+\.\s*(.+?)：(.+?)\s*$([\s\S]*?)(?=^#{2,}\s|$(?![\s\S]))/gm;
   const personas: Persona[] = [];
   let m: RegExpExecArray | null;
 
-  while ((m = blockRegex.exec(section)) !== null) {
+  while ((m = blockRegex.exec(markdown)) !== null) {
     const archetype = m[1].trim();
     const name = m[2].trim();
     const body = m[3];
 
     // 抓每個 bullet：  - **欄位：** 值   或  * **欄位：** 值
     const fields: Record<string, string> = {};
-    const bulletRegex = /^\s*[-*]\s+\*\*(.+?)：\*\*\s*(.+?)\s*$/gm;
+    const bulletRegex = /^\s*[-*]\s+\*\*([^*]+?)：\*\*\s*(.+?)\s*$/gm;
     let bm: RegExpExecArray | null;
     while ((bm = bulletRegex.exec(body)) !== null) {
-      fields[bm[1].trim()] = bm[2].trim();
+      // 標準化 key：把「性別 / 年齡」與「性別/年齡」視為同一欄位
+      const key = bm[1].replace(/\s+/g, "");
+      fields[key] = bm[2].trim();
     }
 
     // 性別 + 年齡：例 "男 / 42 歲"
@@ -84,22 +86,30 @@ export function parseHackmdMarkdown(
     const gender: "男" | "女" = ga ? (ga[1] as "男" | "女") : "男";
     const age = ga ? Number(ga[2]) : 0;
 
-    // 年收入 — 取最後一個「N 萬」或「N~M 萬」當作總額
+    // 年收入 — 優先抓「NT$ N」總額（任何級距都通用，含 18,000、30 億這種沒「萬」的）；
+    // 退而求其次抓最後一個「N 萬」或「N~M 萬」當作總額。
     const incomeStr = fields["年收入"] ?? "";
-    const incomeMatches = [...incomeStr.matchAll(/(\d+)(?:~(\d+))?\s*萬/g)];
     let yearlyIncomeTWD = 0;
-    if (incomeMatches.length > 0) {
-      const last = incomeMatches[incomeMatches.length - 1];
-      const lo = Number(last[1]);
-      const hi = last[2] ? Number(last[2]) : lo;
-      yearlyIncomeTWD = Math.round((lo + hi) / 2) * 10000;
+    const ntMatch = incomeStr.match(/NT\$\s*([\d,]+)/i);
+    if (ntMatch) {
+      yearlyIncomeTWD = Number(ntMatch[1].replace(/,/g, ""));
+    } else {
+      const incomeMatches = [...incomeStr.matchAll(/(\d+)(?:~(\d+))?\s*萬/g)];
+      if (incomeMatches.length > 0) {
+        const last = incomeMatches[incomeMatches.length - 1];
+        const lo = Number(last[1]);
+        const hi = last[2] ? Number(last[2]) : lo;
+        yearlyIncomeTWD = Math.round((lo + hi) / 2) * 10000;
+      }
     }
 
-    // 保留原 ID（如果 archetype:name 相符）— 方便重複匯入時不打亂引用
+    // ID：HackMD 上每個人設都直接寫 `- **ID：** \`xxx\``，優先沿用以保證引用一致。
+    // 若沒寫，再退回用 archetype+name 對既有資料找 ID，最後才生成新 ID。
+    const idField = (fields["ID"] ?? "").replace(/`/g, "").trim();
     const existing = existingPersonas.find(
       (p) => p.archetype === archetype && p.name === name
     );
-    const id = existing?.id ?? `hackmd_${personas.length + 1}`;
+    const id = idField || existing?.id || `hackmd_${personas.length + 1}`;
 
     personas.push({
       id,
