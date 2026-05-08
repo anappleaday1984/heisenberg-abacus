@@ -1,4 +1,4 @@
-import { anthropic, MODEL } from "../anthropic";
+import { acquireLLMSlot, anthropic, MODEL } from "../anthropic";
 import { LANG_RULE } from "./shared-rules";
 import type { ChatMessage } from "./types";
 
@@ -41,28 +41,36 @@ export async function* runEntryAgent(
     { role: "user" as const, content: userMessage },
   ];
 
-  const stream = anthropic.messages.stream({
-    model: MODEL,
-    max_tokens: 1024,
-    system: [
-      {
-        type: "text",
-        text: SYSTEM,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages,
-  });
-
+  // generator 不能在 yield 中間 await callLLM 包整段，所以用低階 semaphore
+  // 控制 slot；entry 是使用者首訊，不做 retry 以免 429 時 30 秒沒回應，
+  // 改讓使用者看到錯誤訊息。
+  const release = await acquireLLMSlot();
   let fullText = "";
-  for await (const event of stream) {
-    if (
-      event.type === "content_block_delta" &&
-      event.delta.type === "text_delta"
-    ) {
-      fullText += event.delta.text;
-      yield event.delta.text;
+  try {
+    const stream = anthropic.messages.stream({
+      model: MODEL,
+      max_tokens: 1024,
+      system: [
+        {
+          type: "text",
+          text: SYSTEM,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages,
+    });
+
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        fullText += event.delta.text;
+        yield event.delta.text;
+      }
     }
+  } finally {
+    release();
   }
 
   const ready = /\[STATUS:READY\]/i.test(fullText);

@@ -1,6 +1,6 @@
 import { runEntryAgent } from "./agents/entry";
 import { generateReport, planSurvey, type PMPlan, type ReportData } from "./agents/pm";
-import { askPersona, parseQAAnswers, type PersonaResponse } from "./agents/persona";
+import { askPersona, type PersonaResponse } from "./agents/persona";
 import type { Persona } from "./agents/personas-data";
 import { summarize, summaryToText, type SummaryData } from "./agents/summary";
 import type { ChatMessage, StreamEvent } from "./agents/types";
@@ -46,7 +46,9 @@ export async function* orchestrate(
 
     // 2. PM agent plans the survey (questions only — all personas always interviewed)
     yield { type: "agent_start", agent: "pm", label: "規劃調查" };
-    const plan = await planSurvey(history, entryResult.brief);
+    // 把原始 userMessage 一併送進去，讓 PM 在規劃問題時保留產品的原始規格
+    // （年利率/月利率、額度、期限等數字），避免被「啟動者」摘要時失真。
+    const plan = await planSurvey(history, entryResult.brief, userMessage);
     yield {
       type: "agent_text",
       agent: "pm",
@@ -82,26 +84,38 @@ export async function* orchestrate(
       productContext: `${userMessage}\n${plan.summary}`,
     };
 
-    // Concurrency limit — 避免同時打太多 LLM request 觸發 MiniMax 的 rate limit
-    const MAX_PARALLEL = 6;
+    // Persona-level worker 數量 — 真正的速率限制由 lib/anthropic.ts 的全域
+    // semaphore 控制（見 LLM_MAX_CONCURRENCY），這層只是 fan-out 多少 worker
+    // 進入排隊。設大於 LLM_MAX_CONCURRENCY 沒關係，semaphore 會讓多餘的 worker
+    // 排隊等候。預設拉到等同 personas.length，讓 LLM 限流是唯一節流點。
+    const MAX_PARALLEL = Number(
+      process.env.PERSONA_MAX_PARALLEL ?? personas.length
+    );
     const results: PersonaResponse[] = new Array(personas.length);
     let nextIdx = 0;
+    // 把 userMessage（原始產品規格）+ plan.summary 一併傳給每位受訪者，
+    // 讓他們答題時知道是針對「這個年利率 6.88% 的微貸方案」回答，
+    // 而不是憑印象猜常識（過去曾出現「年利率 6.88%」答成「月利率 1.5%」的飄移）。
+    const productContext = `${userMessage}\n\n調查目標：${plan.summary}`;
     async function worker() {
       while (true) {
         const i = nextIdx++;
         if (i >= personas.length) return;
-        results[i] = await askPersona(personas[i], plan.questions);
+        results[i] = await askPersona(personas[i], plan.questions, productContext);
       }
     }
     await Promise.all(
-      Array.from({ length: Math.min(MAX_PARALLEL, personas.length) }, worker)
+      Array.from(
+        { length: Math.min(Math.max(1, MAX_PARALLEL), personas.length) },
+        worker
+      )
     );
     personaResponses.push(...results);
 
-    // 把每位受訪者的整段回答拆成 per-question answers，組成 explorer 用結構
+    // 每位受訪者已經逐題回答，answers 直接 index 對齊 plan.questions
     const qaEntries = results.map((r, i) => ({
       persona: personas[i],
-      answers: parseQAAnswers(r.text, plan.questions.length),
+      answers: r.answers,
     }));
     yield {
       type: "personas_qa",
@@ -116,7 +130,9 @@ export async function* orchestrate(
 
     // 4. Summary agent — output structured JSON for the visual SummaryCard
     yield { type: "agent_start", agent: "summary", label: "彙總洞察" };
-    const summaryData = await summarize(plan.questions, personaResponses);
+    // 同樣把 productContext 傳進去，summary 才能在報告裡正確引用本方案的
+    // 「年利率 6.88%」「5 萬額度」這些原始規格，而不是抽象寫一個「月利率 1.5%」。
+    const summaryData = await summarize(plan.questions, personaResponses, productContext);
     yield {
       type: "agent_text",
       agent: "summary",
@@ -128,7 +144,12 @@ export async function* orchestrate(
 
     // 5. PM final report — structured JSON, bundled with all upstream data
     yield { type: "agent_start", agent: "pm", label: "回報結果" };
-    const report = await generateReport(plan, personaResponses, summaryText);
+    const report = await generateReport(
+      plan,
+      personaResponses,
+      summaryText,
+      productContext
+    );
     const payload: FullReportPayload = {
       report,
       summary: summaryData,

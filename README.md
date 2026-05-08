@@ -32,8 +32,9 @@
        (人格顯影：散佈圖)
              ↓
 ┌─ 對話者 ×N (persona) ────┐
-│  每位 N 位受訪者並行回答  │  ← LLM Agent #3 ×N
-│  (concurrency limit 6)   │
+│  每位 N 位受訪者 1 通     │  ← LLM Agent #3 ×N
+│  bundled JSON 一通 N 題   │  (concurrency = LLM_MAX_CONCURRENCY，預設 6)
+│  失敗自動退回逐題模式      │
 └────────────┬────────────┘
              ↓
        (決策路徑：桑基圖)
@@ -94,8 +95,10 @@ npm install
 
 cp .env.local.example .env.local
 # 編輯 .env.local，設定：
-#   - MINIMAX_API_KEY  你的 MiniMax 金鑰
-#   - AUTH_USERS       登入帳號 JSON array（包含密碼）
+#   - MINIMAX_API_KEY        你的 MiniMax 金鑰
+#   - AUTH_USERS             登入帳號 JSON array（包含密碼）
+#   - LLM_MAX_CONCURRENCY    （選填，預設 6）全域 LLM 並行上限
+#   - PERSONA_MAX_PARALLEL   （選填，預設 = personas.length）persona worker 數
 
 npm run dev
 # http://localhost:3000
@@ -140,8 +143,8 @@ npm run dev
 │   ├── HighlightedText.tsx + AgentBadge.tsx + MessageBubble.tsx
 │
 ├── lib/
-│   ├── orchestrator.ts                # Pipeline 主排程
-│   ├── anthropic.ts                   # SDK client (指向 MiniMax)
+│   ├── orchestrator.ts                # Pipeline 主排程，串 productContext 到下游
+│   ├── anthropic.ts                   # SDK client + 全域 semaphore + 429 retry
 │   ├── auth.ts                        # 帳號 + 同時上線追蹤
 │   ├── logger.ts                      # 寫 z_wth_log.md
 │   ├── personas-store.ts              # JSON 檔讀寫 + HackMD parser + Markdown 匯出
@@ -155,10 +158,14 @@ npm run dev
 │       ├── zh-convert.ts              # 簡→繁兜底
 │       ├── entry.ts                   # 啟動者 agent
 │       ├── pm.ts                      # 觀測者 agent (規劃 + 報告)
-│       ├── persona.ts                 # 對話者 agent + Q&A 拆分
+│       ├── persona.ts                 # 對話者 agent — bundled JSON / sequential fallback
 │       ├── persona-generator.ts       # AI 生成新受訪者
 │       ├── summary.ts                 # 彙總者 agent (JSON output)
 │       └── personas-data.ts           # 預設 10 位種子受訪者
+│
+├── app/api/benchmark/route.ts         # 速率限制 benchmark API
+├── scripts/benchmark-rate.mts         # 速率限制 benchmark CLI
+├── docs/benchmark-rate-2026-05-08.md  # 30×5 並行度實測報告
 │
 └── data/                              # ⚠️ runtime state，不上 git
     ├── personas.json                  # 受訪者池
@@ -186,11 +193,23 @@ npm run dev
 
 `lib/auth.ts` 用 `data/active-sessions.json` 追蹤；超過 3 人不同帳號回 HTTP 429；inactivity 1 小時自動釋放 slot；同帳號重登只 refresh 不算多人。
 
-### 4. **Concurrency limit = 6**
+### 4. **全域 LLM 限流 + 429 retry**
 
-對話者訪談 50 位受訪者時，worker pool 一次最多 6 個並行 LLM 請求 — 避免觸發 MiniMax 個人 plan 的 rate limit。**測試成功**（之前 50 並發必 429，加 limit 後零失敗）。
+[lib/anthropic.ts](lib/anthropic.ts) 蓋一層全域 semaphore（`LLM_MAX_CONCURRENCY`，預設 6），所有 6 位 agent 共用，**這是唯一的節流點**。429 / 5xx 自動 exp-backoff + jitter retry（base 2s、最多 8 次）。
 
-### 5. **三層繁體中文保險**
+實測（30 受訪者 × 5 題、bundled 模式、c=6）：**0 個 429、wall time 79s**（之前逐題模式同條件 35 個 429、wall time 196s 還只 90% 完成）。詳見 [docs/benchmark-rate-2026-05-08.md](docs/benchmark-rate-2026-05-08.md)。
+
+### 5. **對話者 bundled JSON 輸出**
+
+每位受訪者只打 **1 通 LLM call**（不是 5 通），LLM 一次吐出 `{"answers":[...]}` 陣列回 N 題。30 受訪者場景的 LLM call 從 150 砍到 30，端到端時間從 **4.7 min 縮到 2.3 min**。
+
+JSON parse 失敗或答案數量不對自動 fallback 到逐題模式（[lib/agents/persona.ts](lib/agents/persona.ts) `askPersonaSequential`）— bundle + fallback 雙保險，demo 100% 完成率。
+
+### 6. **產品規格 productContext 注入**
+
+使用者原始 prompt（含「年利率 6.88%」這類具體規格）會被 [orchestrator.ts](lib/orchestrator.ts) 串給 plan / persona / summarize / report 四個 agent；prompt 加「規格保真規則」明令禁止換單位（年利率 ≠ 月利率），避免 LLM 憑印象答常識數字、報告引用錯誤的規格。
+
+### 7. **三層繁體中文保險**
 
 1. 每個 agent 的 system prompt 開頭引用 `LANG_RULE`，明列禁用字 + 台灣用語
 2. `opencc-js` 在 server SSE 出口做 `cn → tw` 轉換（包含台灣慣用詞）
@@ -202,7 +221,7 @@ npm run dev
 
 | 項目 | 說明 |
 |---|---|
-| **MiniMax 個人 plan rate limit** | 太多並發會 429。已用 concurrency limit 規避，但不可同時太多人 demo |
+| **MiniMax 個人 plan rate limit** | 已用全域 semaphore + bundled JSON + retry 規避（30 受訪者場景實測 0 個 429）；但若同時多訪客啟動分析，後續排隊會延長等候時間，需付費方案才能正面解決 |
 | **JSON 檔案 storage** | `data/*.json` 用 `fs.writeFileSync`，serverless 平台（Vercel）不可用，需 SQLite/PostgreSQL/KV |
 | **Cookie + 帳號 = session** | 無 JWT 簽章，任何人改 cookie 就能假冒帳號（demo 用 OK） |
 | **同一個 chat 過程改受訪者** | 不會即時生效，下個 chat 才用新版 |

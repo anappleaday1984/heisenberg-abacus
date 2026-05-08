@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<title>海森堡的算盤 · AIA × Claude Code Showcase</title>
+<style>
+  :root {
+    --bg: #0b1736;          /* tech deep blue base */
+    --bg-2: #142244;        /* slightly lifted */
+    --bg-deep: #06112a;     /* darker than bg, for inset surfaces */
+    --ink: #eaf2ff;
+    --muted: #8aa0c2;
+    --dim: #5a708f;
+    --green: #3cf07a;
+    --cyan: #00e5ff;
+    --red: #ff5670;
+    --amber: #ffc857;
+    --line: rgba(0, 229, 255, 0.20);
+  }
+
+  @page { size: A4 landscape; margin: 0; }
+  html, body { margin: 0; padding: 0; background: #000; }
+  body {
+    font-family: "Helvetica Neue", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, ui-monospace, monospace; }
+
+  .slide {
+    width: 297mm;
+    height: 210mm;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 50% 38%, rgba(0,229,255,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse at 92% 92%, rgba(60,240,122,0.06) 0%, transparent 50%),
+      linear-gradient(180deg, #0d1c40 0%, #0a1632 60%, #07112a 100%),
+      repeating-linear-gradient(0deg, rgba(0,229,255,0.035) 0px, rgba(0,229,255,0.035) 1px, transparent 1px, transparent 4px);
+    page-break-after: always;
+    box-sizing: border-box;
+    padding: 14mm 16mm;
+  }
+  .slide:last-child { page-break-after: auto; }
+
+  /* corner brackets */
+  .slide::before, .slide::after {
+    content: "";
+    position: absolute;
+    width: 22px; height: 22px;
+    border-color: var(--cyan);
+    border-style: solid;
+    opacity: 0.7;
+  }
+  .slide::before { top: 8mm; left: 8mm; border-width: 1.5px 0 0 1.5px; }
+  .slide::after  { bottom: 8mm; right: 8mm; border-width: 0 1.5px 1.5px 0; }
+
+  /* corners — top label / page number */
+  .top-label {
+    position: absolute; top: 8mm; left: 16mm; right: 16mm;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 9pt; letter-spacing: 0.32em; color: var(--dim);
+    text-transform: uppercase;
+  }
+  .top-label .right { color: var(--cyan); }
+  .pageno {
+    position: absolute; bottom: 8mm; left: 16mm;
+    font-size: 9pt; letter-spacing: 0.3em; color: var(--dim);
+  }
+  .pageno b { color: var(--cyan); font-weight: 600; }
+
+  /* common pieces */
+  h1.kicker {
+    font-size: 11pt; letter-spacing: 0.4em; color: var(--cyan);
+    margin: 0 0 6mm 0; font-weight: 500; text-transform: uppercase;
+  }
+  h2.headline {
+    font-size: 32pt; line-height: 1.1; font-weight: 800; margin: 0 0 4mm 0;
+    color: var(--ink); letter-spacing: -0.01em;
+  }
+  h2.headline .accent { color: var(--cyan); }
+  .subtitle {
+    font-size: 12pt; color: var(--muted); margin: 0 0 8mm 0;
+    line-height: 1.55; max-width: 240mm;
+  }
+  .pill {
+    display: inline-block; font-size: 8.5pt; letter-spacing: 0.18em;
+    border: 1px solid var(--line); color: var(--cyan);
+    padding: 2px 8px; border-radius: 999px;
+    text-transform: uppercase;
+  }
+
+  /* === SLIDE 1 — WOW === */
+  .s1-hero {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 10mm;
+    margin-top: 4mm;
+  }
+  .s1-left .formula {
+    color: var(--cyan); opacity: 0.85;
+    font-size: 11pt; letter-spacing: 0.05em;
+    margin: 4mm 0 6mm; line-height: 1.6;
+  }
+  .s1-left .formula b { color: var(--ink); }
+  .wow-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4mm 6mm;
+    margin-top: 5mm;
+  }
+  .wow {
+    border: 1px solid rgba(0,229,255,0.20);
+    background: rgba(6, 17, 42, 0.78);
+    padding: 4mm 5mm; border-radius: 4px;
+  }
+  .wow .icon { font-size: 16pt; margin-bottom: 2mm; display: block; }
+  .wow .title {
+    font-size: 11.5pt; font-weight: 700; color: var(--cyan);
+    letter-spacing: 0.06em; margin-bottom: 1.5mm;
+  }
+  .wow .desc { font-size: 9.5pt; color: var(--ink); line-height: 1.5; opacity: 0.92; }
+
+  /* terminal mock + chart on the right */
+  .s1-stage {
+    background: linear-gradient(180deg, #03091a, #050f24);
+    border: 1px solid rgba(0,229,255,0.35);
+    border-radius: 6px; height: 100%;
+    position: relative; overflow: hidden;
+    font-size: 9pt;
+    box-shadow: inset 0 0 60px rgba(0,229,255,0.04);
+  }
+  .s1-stage .term {
+    padding: 5mm 6mm 4mm; color: var(--green);
+    font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+    line-height: 1.65;
+  }
+  .s1-stage .term .top {
+    display: flex; justify-content: space-between; color: var(--dim);
+    font-size: 8pt; letter-spacing: 0.18em; margin-bottom: 3mm;
+  }
+  .s1-stage .term .w { color: var(--ink); }
+  .s1-stage .term .c { color: var(--cyan); }
+  .s1-stage .term .pulse {
+    color: var(--cyan); font-weight: 600; letter-spacing: 0.18em;
+  }
+  .s1-stage .scatter {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 56mm;
+    background:
+      linear-gradient(180deg, transparent, rgba(0,229,255,0.06)),
+      linear-gradient(0deg, var(--cyan) 1px, transparent 1px) 0 100% / 12mm 12mm,
+      linear-gradient(90deg, var(--cyan) 1px, transparent 1px) 0 100% / 12mm 12mm;
+    opacity: 1;
+    border-top: 1px solid rgba(0,229,255,0.25);
+  }
+  .s1-stage .scatter::before {
+    content: "PHASE TRANSITION · ΔxΔp ≥ ℏ/2";
+    position: absolute; top: 3mm; left: 4mm;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7.5pt; letter-spacing: 0.22em; color: var(--cyan); opacity: 0.7;
+  }
+  .s1-stage .dot {
+    position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    box-shadow: 0 0 8px currentColor;
+  }
+  /* === SLIDE 2 — HOW === */
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4mm; margin-top: 6mm;
+  }
+  .stage {
+    border: 1px solid rgba(0,229,255,0.22);
+    background: rgba(6, 17, 42, 0.78);
+    border-radius: 4px; padding: 4mm 4mm 5mm; position: relative;
+    min-height: 50mm;
+  }
+  .stage .num {
+    color: var(--cyan); font-family: "JetBrains Mono", monospace;
+    font-size: 9pt; letter-spacing: 0.25em;
+  }
+  .stage .name {
+    color: var(--ink); font-weight: 700; font-size: 12.5pt;
+    letter-spacing: 0.04em; margin: 1.5mm 0 1mm;
+  }
+  .stage .role {
+    color: var(--muted); font-size: 8.5pt; line-height: 1.45;
+    margin-bottom: 2.5mm;
+  }
+  .stage .meta {
+    color: var(--green); font-family: "JetBrains Mono", monospace;
+    font-size: 7.8pt; letter-spacing: 0.06em; line-height: 1.55;
+  }
+  .stage.fan {
+    background:
+      linear-gradient(135deg, rgba(60,240,122,0.10), rgba(0,229,255,0.05)),
+      rgba(10,24,40,0.55);
+    border-color: rgba(60,240,122,0.35);
+  }
+  .stage.fan .name { color: var(--green); }
+  .stage::after {
+    content: "→"; position: absolute; right: -3.5mm; top: 50%;
+    transform: translateY(-50%); color: var(--cyan); font-size: 11pt;
+    text-shadow: 0 0 6px var(--cyan);
+  }
+  .stage:last-child::after { content: ""; }
+
+  .s2-grid {
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 8mm;
+    margin-top: 8mm;
+  }
+  .feat-list { list-style: none; padding: 0; margin: 0; }
+  .feat-list li {
+    padding: 3mm 0; border-bottom: 1px dashed rgba(255,255,255,0.07);
+    font-size: 10pt; color: var(--ink); line-height: 1.55;
+  }
+  .feat-list li:last-child { border: 0; }
+  .feat-list code {
+    color: var(--green); font-family: "JetBrains Mono", monospace;
+    font-size: 9pt; background: rgba(60,240,122,0.08);
+    padding: 0 4px; border-radius: 3px;
+  }
+  .feat-list b { color: var(--cyan); font-weight: 600; }
+
+  .stack-card {
+    border: 1px solid rgba(0,229,255,0.25);
+    background: rgba(3, 10, 26, 0.75);
+    padding: 5mm 6mm; border-radius: 4px;
+  }
+  .stack-card h3 {
+    margin: 0 0 3mm; font-size: 9.5pt; letter-spacing: 0.3em;
+    color: var(--cyan); font-weight: 500; text-transform: uppercase;
+  }
+  .badges { display: flex; flex-wrap: wrap; gap: 2mm 2mm; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 8.5pt;
+    border: 1px solid rgba(255,255,255,0.20); padding: 1.4mm 3mm;
+    color: var(--ink); border-radius: 3px;
+    background: rgba(255,255,255,0.02);
+  }
+  .badge.hot { border-color: var(--cyan); color: var(--cyan); }
+  .scale-callout {
+    margin-top: 4mm; padding: 4mm 5mm;
+    border-left: 3px solid var(--green); color: var(--ink);
+    font-size: 10pt; line-height: 1.55;
+    background: rgba(60,240,122,0.06);
+  }
+  .scale-callout b { color: var(--green); font-family: "JetBrains Mono", monospace; }
+
+  /* === SLIDE 3 — IMPACT === */
+  .ba-table {
+    display: grid;
+    grid-template-columns: 28% 36% 36%;
+    border: 1px solid rgba(0,229,255,0.20);
+    border-radius: 4px; overflow: hidden;
+    margin-top: 6mm;
+  }
+  .ba-table .row { display: contents; }
+  .ba-table .cell {
+    padding: 4mm 5mm;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    font-size: 9.8pt; line-height: 1.55;
+  }
+  .ba-table .cell:nth-child(3n) { border-right: 0; }
+  .ba-table .row:last-child .cell { border-bottom: 0; }
+  .ba-table .head {
+    background: rgba(0,229,255,0.08);
+    color: var(--cyan); font-weight: 600;
+    letter-spacing: 0.2em; font-size: 9pt; text-transform: uppercase;
+  }
+  .ba-table .axis {
+    color: var(--ink); font-weight: 600;
+    background: rgba(3, 10, 26, 0.65);
+  }
+  .ba-table .before {
+    color: var(--muted);
+    background: rgba(255, 86, 112, 0.05);
+    border-left: 2px solid rgba(255, 86, 112, 0.3);
+  }
+  .ba-table .after {
+    color: var(--ink);
+    background: rgba(60, 240, 122, 0.05);
+    border-left: 2px solid var(--green);
+  }
+
+  .impact-foot {
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 8mm;
+    margin-top: 7mm;
+  }
+  .scenario h3, .closing h3 {
+    margin: 0 0 3mm; font-size: 9.5pt; letter-spacing: 0.3em;
+    color: var(--cyan); font-weight: 500; text-transform: uppercase;
+  }
+  .scenario p, .closing p {
+    margin: 0 0 2mm; font-size: 10pt; color: var(--ink);
+    line-height: 1.6;
+  }
+  .scenario .tags { margin-top: 3mm; }
+  .scenario .tags .badge { margin-right: 1.5mm; }
+
+  .closing {
+    border: 1px solid var(--cyan);
+    background: linear-gradient(135deg, rgba(0,229,255,0.10), rgba(60,240,122,0.05));
+    padding: 6mm 7mm; border-radius: 4px;
+  }
+  .closing .quote {
+    font-size: 18pt; font-weight: 800; color: var(--ink);
+    line-height: 1.25; margin: 0 0 3mm; letter-spacing: -0.01em;
+  }
+  .closing .quote .accent { color: var(--cyan); }
+  .closing .meta {
+    color: var(--muted); font-size: 9pt; line-height: 1.6;
+    margin-top: 3mm; padding-top: 3mm;
+    border-top: 1px dashed rgba(255,255,255,0.15);
+    font-family: "JetBrains Mono", monospace;
+  }
+  .closing .meta a { color: var(--cyan); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- =================== SLIDE 1 — WOW =================== -->
+<section class="slide">
+  <div class="top-label">
+    <span>AIA × Claude Code · Demo Showcase</span>
+    <span class="right">海森堡的算盤 · 人類行為觀測站</span>
+  </div>
+
+  <div class="s1-hero">
+    <div class="s1-left">
+      <h1 class="kicker">作品展示 — Demo</h1>
+      <h2 class="headline">觀測即塌縮，<br/>決策即<span class="accent">確定</span>。</h2>
+      <p class="subtitle">
+        把 <b style="color:var(--ink)">14 天</b>的市場調查，壓縮成 <b style="color:var(--green)">90 秒</b>。
+        N 位受訪者並行作答，光譜參數一撥，整片購買意願像粒子在 phase map 上重新塌縮 —
+        一台會把消費者當機率雲觀測的<b style="color:var(--cyan)">海森堡實驗室</b>。
+      </p>
+      <p class="formula mono">
+        ψ(x,t) → <b>觀測</b> → 決策 ｜ ΔxΔp ≥ ℏ/2 ｜ entry → pm·plan → persona × N → summary → report
+      </p>
+
+      <div class="wow-grid">
+        <div class="wow">
+          <span class="icon">🧪</span>
+          <div class="title">量子實驗室入場</div>
+          <div class="desc">Terminal 開機、薛丁格方程逐行打印，輸入帳密才解鎖 — 開場就把使用者拉進「觀測者」的角色。</div>
+        </div>
+        <div class="wow">
+          <span class="icon">🧠</span>
+          <div class="title">N 位受訪者</div>
+          <div class="desc">每位 persona 有家庭、收入、人格五維、台灣口語；可手刻、AI 生成、HackMD 同步擴充到 50+。</div>
+        </div>
+        <div class="wow">
+          <span class="icon">🧮</span>
+          <div class="title">算盤珠光譜</div>
+          <div class="desc">拖一下利率 / 保額 / 回饋率，N 顆人物粒子在相變圖上即時重新塌縮，purchase / watch / reject 三區動態切換。</div>
+        </div>
+        <div class="wow">
+          <span class="icon">🌊</span>
+          <div class="title">三重視覺化</div>
+          <div class="desc">Phase Map 散布、Sankey 決策流、決策報告卡片一鍵下載 PDF / PNG — 不用做簡報，直接交付。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="s1-stage">
+      <div class="term">
+        <div class="top"><span>LAB-OS v4.1.7 · TTY-01</span><span>SESSION #A82F-99C1</span></div>
+        <div class="w">&gt; initiating secure shell…</div>
+        <div class="w">&gt; calibrating observer reference frame</div>
+        <div class="w">&gt; solving Schrödinger equation: iℏ∂ψ/∂t = Ĥψ</div>
+        <div class="w">&gt; evaluating commutator [x̂,p̂] = iℏ</div>
+        <div>[AUTH] secure channel established</div>
+        <div>username: <span class="c">observer_07</span></div>
+        <div>password: <span class="c">••••••••••••</span></div>
+        <div>&gt; verifying credentials… <span class="c">OK</span></div>
+        <div class="pulse" style="margin-top:2mm">* IDENTITY CONFIRMED *</div>
+        <div class="pulse">PRESS [ENTER] TO ENTER LABORATORY</div>
+      </div>
+
+      <div class="scatter">
+        <!-- 8 colored persona dots scattered like phase-map -->
+        <div class="dot" style="left:14%; bottom:62%; color:#34d399"></div>
+        <div class="dot" style="left:22%; bottom:48%; color:#fbbf24"></div>
+        <div class="dot" style="left:31%; bottom:74%; color:#60a5fa"></div>
+        <div class="dot" style="left:42%; bottom:38%; color:#f472b6"></div>
+        <div class="dot" style="left:48%; bottom:64%; color:#a78bfa"></div>
+        <div class="dot" style="left:56%; bottom:24%; color:#ff5670"></div>
+        <div class="dot" style="left:66%; bottom:54%; color:#22d3ee"></div>
+        <div class="dot" style="left:74%; bottom:30%; color:#fde047"></div>
+        <div class="dot" style="left:82%; bottom:70%; color:#3cf07a"></div>
+        <div class="dot" style="left:88%; bottom:42%; color:#f87171"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pageno">SLIDE <b>01</b> / 03 · 作品展示</div>
+</section>
+
+<!-- =================== SLIDE 2 — HOW =================== -->
+<section class="slide">
+  <div class="top-label">
+    <span>AIA × Claude Code · Demo Showcase</span>
+    <span class="right">應用方案 — Built with Claude Code</span>
+  </div>
+
+  <h1 class="kicker">應用方案 — How</h1>
+  <h2 class="headline">一句話下達，<span class="accent">六個 Agent</span> 接力。</h2>
+  <p class="subtitle">
+    Claude API 串成五段管線、每段 streaming 回前端；N 位 persona 並行作答（worker pool concurrency = 6），
+    PM Plan / Summary / Report 全部開 <code class="mono" style="color:var(--green)">thinking: adaptive</code>，
+    system prompt 一律 <code class="mono" style="color:var(--green)">cache_control: ephemeral</code>。
+  </p>
+
+  <div class="pipeline">
+    <div class="stage">
+      <div class="num mono">01 / ENTRY</div>
+      <div class="name">需求驗證</div>
+      <div class="role">把使用者一句話的 Brief 結構化，輸出 [STATUS:READY] 或追問。</div>
+      <div class="meta">stream · 1k tokens</div>
+    </div>
+    <div class="stage">
+      <div class="num mono">02 / PM·PLAN</div>
+      <div class="name">研究問題</div>
+      <div class="role">產 4–6 題訪談題目 + 範圍與摘要。</div>
+      <div class="meta">adaptive · 4k · JSON</div>
+    </div>
+    <div class="stage fan">
+      <div class="num mono">03 / PERSONA × N</div>
+      <div class="name">並行訪談</div>
+      <div class="role">N 位 AI 受訪者各自 streaming 第一人稱回答；五維人格分數即時計算。</div>
+      <div class="meta">parallel·6 · 1.5k each</div>
+    </div>
+    <div class="stage">
+      <div class="num mono">04 / SUMMARY</div>
+      <div class="name">洞察萃取</div>
+      <div class="role">共識 / 分歧 / 風險 / metric 結構化萃取，含族群比較。</div>
+      <div class="meta">adaptive · 12k · JSON</div>
+    </div>
+    <div class="stage">
+      <div class="num mono">05 / PM·REPORT</div>
+      <div class="name">決策報告</div>
+      <div class="role">關鍵發現、行動建議、優先序，前端可直接下載 PDF。</div>
+      <div class="meta">adaptive · 16k · JSON</div>
+    </div>
+  </div>
+
+  <div class="s2-grid">
+    <ul class="feat-list">
+      <li><b>串流到底</b> — 每個 agent 都用 <code>messages.stream()</code>；前端用 SSE 同步看到打字動畫，不用等整段。</li>
+      <li><b>並行 persona</b> — Promise pool 控制併發 6，N 位 persona 在 60–90 秒內全部問完。</li>
+      <li><b>JSON 安全網</b> — <code>json-extractor.ts</code> 4 種候選擷取 × 6 種修補 × 24 次重試，模型偶爾回髒 JSON 也能自救。</li>
+      <li><b>繁中口語護欄</b> — <code>LANG_RULE</code> 共享 prompt 焊進每支 agent；<code>opencc-js</code> 二次保險把簡轉繁，撥款 / 申辦等台灣詞鎖死。</li>
+      <li><b>產品光譜可拖</b> — 算盤珠 slider 即時改變 persona 評分權重，UI 不重 fetch、純前端 reduce 重算 phase map。</li>
+      <li><b>從零到 Demo</b> — Claude Code 直接寫元件、寫 prompt、寫 SVG、寫 PDF 匯出 — 一個人就能跑完前後端。</li>
+    </ul>
+
+    <div>
+      <div class="stack-card">
+        <h3>Stack</h3>
+        <div class="badges">
+          <span class="badge hot">Anthropic SDK</span>
+          <span class="badge hot">Adaptive Thinking</span>
+          <span class="badge hot">Prompt Caching</span>
+          <span class="badge">Next.js 14</span>
+          <span class="badge">TypeScript</span>
+          <span class="badge">Tailwind</span>
+          <span class="badge">SSE Streaming</span>
+          <span class="badge">jsPDF · html2canvas</span>
+          <span class="badge">opencc-js</span>
+        </div>
+      </div>
+
+      <div class="scale-callout">
+        <b>61</b> TS files · <b>~8.7K</b> LOC · <b>5</b> 段管線 · <b>6</b> 個 Claude 並行<br/>
+        從 commit #1 到 Demo-ready，全程用 <span style="color:var(--cyan)">Claude Code</span> 配對寫成。
+      </div>
+    </div>
+  </div>
+
+  <div class="pageno">SLIDE <b>02</b> / 03 · 應用方案</div>
+</section>
+
+<!-- =================== SLIDE 3 — IMPACT =================== -->
+<section class="slide">
+  <div class="top-label">
+    <span>AIA × Claude Code · Demo Showcase</span>
+    <span class="right">應用價值 — What Fundamentally Changes</span>
+  </div>
+
+  <h1 class="kicker">應用價值 — Impact</h1>
+  <h2 class="headline">把市場調查，<br/>從<span style="color:var(--red)">瓶頸</span> 變成 <span class="accent">滑桿</span>。</h2>
+  <p class="subtitle">
+    產品經理一個假設，過去要排兩週、燒 30–50 萬預算才驗得了；現在一句話、90 秒、無真人 PII。
+    PM、設計、行銷、信用模型團隊在同一個畫面上拉算盤珠，
+    看 N 顆人物粒子在三個決策區之間跳，當場決策。
+  </p>
+
+  <div class="ba-table">
+    <div class="row">
+      <div class="cell head axis">維度</div>
+      <div class="cell head" style="color:var(--red); background:rgba(255,86,112,0.08)">傳統市場調查 — Before</div>
+      <div class="cell head" style="color:var(--green); background:rgba(60,240,122,0.08)">海森堡的算盤 — After</div>
+    </div>
+    <div class="row">
+      <div class="cell axis">驗證一個假設</div>
+      <div class="cell before">14 天問卷 + 焦點訪談，30–50 萬預算</div>
+      <div class="cell after">90 秒並行訪談，N 位 persona 同步作答</div>
+    </div>
+    <div class="row">
+      <div class="cell axis">參數調整</div>
+      <div class="cell before">每換一次利率 / 保額，整輪重招募</div>
+      <div class="cell after">拖算盤珠，phase map 即時重新塌縮</div>
+    </div>
+    <div class="row">
+      <div class="cell axis">樣本與隱私</div>
+      <div class="cell before">問得到的人 ≠ 你要懂的人；同意流程繁瑣</div>
+      <div class="cell after">完全合成資料、零真人 PII；persona 可手刻 / AI 生成</div>
+    </div>
+    <div class="row">
+      <div class="cell axis">交付物</div>
+      <div class="cell before">逐字稿 + 摘要簡報，跨團隊傳遞失真</div>
+      <div class="cell after">決策報告卡 + Sankey + Phase Map，直接下載 PDF / PNG</div>
+    </div>
+  </div>
+
+  <div class="impact-foot">
+    <div class="scenario">
+      <h3>Scenarios</h3>
+      <p>金融商品概念驗證：小額信貸、機車險、聯名卡回饋；新產品定價敏感度；行銷文案 A/B 預演；風險族群放款條件壓力測試。</p>
+      <div class="tags">
+        <span class="badge">小額信貸</span>
+        <span class="badge">機車保險</span>
+        <span class="badge">信用卡回饋</span>
+        <span class="badge">定價敏感度</span>
+        <span class="badge">壓力測試</span>
+      </div>
+    </div>
+
+    <div class="closing">
+      <h3 style="color:var(--cyan)">The Quote</h3>
+      <div class="quote">不再訪問消費者，<br/><span class="accent">召喚機率雲。</span></div>
+      <div class="meta mono">
+        Team _______________ · Live Demo: <a href="#">______________</a><br/>
+        Repo: github.com/anappleaday1984/heisenberg-abacus
+      </div>
+    </div>
+  </div>
+
+  <div class="pageno">SLIDE <b>03</b> / 03 · 應用價值</div>
+</section>
+
+</body>
+</html>

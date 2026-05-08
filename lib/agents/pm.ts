@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { anthropic, MODEL } from "../anthropic";
+import { anthropic, callLLM, MODEL } from "../anthropic";
 import { getPersonas } from "../personas-store";
 import { extractJson } from "./json-extractor";
 import { LANG_RULE } from "./shared-rules";
@@ -16,6 +16,20 @@ const PLAN_SYSTEM = `${LANG_RULE}
    - 測試決策動機（為什麼會選 / 不選這個產品）
    - 揭露隱藏顧慮（怕什麼？什麼會讓他們放棄？）
 3. 系統會把這些問題**並行訪談所有受訪者**（你不需要挑選），所以問題要設計成對所有族群都有意義（高/低收入、單身/家庭、各年齡）。
+
+## 🚨 嚴格規則：問題必須引用使用者原始 prompt 的產品規格
+
+設計問題時，**所有與產品相關的數字、單位、條件**都**必須照原 prompt 寫死進問題本文**，不要抽象化、不要改單位。常見錯誤是：
+
+- ❌ 使用者寫「年利率 6.88%」，問題卻問「你能接受多少**月利率**？」（單位被偷換）
+- ❌ 使用者寫「5 萬額度」，問題卻問「你需要多少借貸金額？」（規格被丟掉）
+- ❌ 使用者寫「30 秒線上審核」，問題卻問「你重視審核速度嗎？」（具體數字被抹掉）
+
+✅ 正確做法：
+- 「**本方案年利率 6.88%、5 萬元額度、6 個月還款**，你願意申辦嗎？什麼條件會讓你放棄？」
+- 「跟你目前用的信貸產品比，**6.88% 年利率**算高還是低？」
+
+問題本文要**逐字**保留產品規格，受訪者才能針對這個方案回答，而不是憑印象答常識數字。
 
 **用語規定**：禁止使用「人設」一詞，請改用「受訪者」。
 
@@ -115,32 +129,42 @@ export type ReportData = {
 
 export async function planSurvey(
   history: ChatMessage[],
-  brief: string
+  brief: string,
+  /** 使用者原始 prompt 全文 — 含產品規格數字，避免 entry agent 摘要時失真 */
+  userMessage: string
 ): Promise<PMPlan> {
   const personaList = getPersonas().map(
     (p) =>
       `- \`${p.id}\`: ${p.name}（${p.archetype}，${p.gender} ${p.age} 歲，年收入 NT$ ${p.yearlyIncomeTWD.toLocaleString()}）— ${p.family.split("，")[0]}`
   ).join("\n");
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 4096,
-    thinking: { type: "adaptive" },
-    system: [
-      {
-        type: "text",
-        text: PLAN_SYSTEM + "\n\n可用受訪者池：\n" + personaList,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [
-      ...history.map((m) => ({ role: m.role, content: m.content })),
-      {
-        role: "user",
-        content: `啟動者的接待結果：\n${brief}\n\n請規劃這次的調查。`,
-      },
-    ],
-  });
+  const response = await callLLM(() =>
+    anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 4096,
+      thinking: { type: "adaptive" },
+      system: [
+        {
+          type: "text",
+          text: PLAN_SYSTEM + "\n\n可用受訪者池：\n" + personaList,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [
+        ...history.map((m) => ({ role: m.role, content: m.content })),
+        {
+          role: "user",
+          content: `## 使用者原始需求（請逐字參照產品規格）
+${userMessage}
+
+## 啟動者整理過的接待結果（僅供參考，產品規格以上方原始需求為準）
+${brief}
+
+請規劃這次的調查 — 問題本文必須引用上面原始需求中的產品規格（年利率/額度/期限/審核條件等具體數字），不要改單位或抽象化。`,
+        },
+      ],
+    })
+  );
 
   const text = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
@@ -156,7 +180,9 @@ export async function planSurvey(
 export async function generateReport(
   plan: PMPlan,
   personaResponses: { archetype: string; name: string; text: string }[],
-  summaryText: string
+  summaryText: string,
+  /** 使用者原始 prompt 全文 — 報告必須引用本方案的具體規格（年利率/額度等） */
+  productContext: string
 ): Promise<ReportData> {
   // 受訪者答案做截斷 — 報告階段已有 summary 完整洞察，原文只需要片段做 quote
   // 避免 25 受訪者 × 1500 token = 37500 token context 把 max_tokens 全吃光
@@ -170,15 +196,19 @@ export async function generateReport(
     })
     .join("\n\n");
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 16000, // 報告 JSON + adaptive thinking 都需要空間
-    thinking: { type: "adaptive" },
-    system: REPORT_SYSTEM,
-    messages: [
-      {
-        role: "user",
-        content: `## 調查計畫
+  const response = await callLLM(() =>
+    anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 16000, // 報告 JSON + adaptive thinking 都需要空間
+      thinking: { type: "adaptive" },
+      system: REPORT_SYSTEM,
+      messages: [
+        {
+          role: "user",
+          content: `## 本次調查的產品（report 必須引用這裡的具體規格）
+${productContext}
+
+## 調查計畫
 ${plan.summary}
 
 問題：
@@ -190,10 +220,11 @@ ${personaSection}
 ## 已歸納的洞察
 ${summaryText}
 
-請依規則輸出結構化 JSON 決策報告。`,
-      },
-    ],
-  });
+請依規則輸出結構化 JSON 決策報告。報告中提到利率/額度/期限/審核條件等數字時，**必須對齊上方產品的原始規格**，不要改單位（例：原 prompt 是年利率 6.88% 就不要寫成月利率），不要捏造受訪者沒提到的具體數字。`,
+        },
+      ],
+    })
+  );
 
   const text = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")

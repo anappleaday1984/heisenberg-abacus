@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { anthropic, MODEL } from "../anthropic";
+import { anthropic, callLLM, MODEL } from "../anthropic";
 import { extractJson } from "./json-extractor";
 import type { PersonaResponse } from "./persona";
 import { LANG_RULE } from "./shared-rules";
@@ -44,7 +44,13 @@ const SYSTEM = `${LANG_RULE}
 4. \`icon\`：用 emoji，配合該 metric 的意涵（如收入用 💰、風險用 ⚠️、興趣用 🎯）
 5. \`sections\` 四個 key 都必填，內容用繁體中文 markdown
 6. **必須回傳完整有效 JSON**；任何欄位都不可省略，否則前端會炸
-7. 全程繁體中文 + 台灣用語`;
+7. 全程繁體中文 + 台灣用語
+
+## 🚨 規格保真規則（避免「年利率→月利率」這類飄移）
+報告中提到產品規格時**必須對齊使用者原始 prompt**：
+- 原 prompt 是「年利率 6.88%」，summary 就**不能寫「月利率 1.5%」** — 即使受訪者答案說了月利率，也要在 \`metrics\` / \`sections\` 中對照本方案的「年利率 6.88%」說明（例：「本方案年利率 6.88% vs 受訪者期望年利率 5% 以下」）。
+- 額度、期限、審核條件等具體規格同理：受訪者可以表達他們的期望，但 summary 必須**用本方案的規格作為比較基準**，不要用受訪者期望取代產品本身。
+- 不要捏造受訪者沒提到的具體數字（避免「7 成受訪者放棄」這類沒實證的數字 — 若有依據就引用，沒就用「多數」「半數」這類語氣）。`;
 
 export type Tone = "positive" | "neutral" | "negative";
 
@@ -73,9 +79,14 @@ export type SummaryData = {
 
 export async function summarize(
   questions: string[],
-  responses: PersonaResponse[]
+  responses: PersonaResponse[],
+  /** 使用者原始 prompt + 調查目標 — summary 報告必須對齊本方案的具體規格 */
+  productContext: string
 ): Promise<SummaryData> {
-  const userPrompt = `## 調查問題
+  const userPrompt = `## 本次調查的產品（summary 必須對齊這裡的具體規格）
+${productContext}
+
+## 調查問題
 ${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
 
 ## 各受訪者原始回答（共 ${responses.length} 位）
@@ -83,21 +94,23 @@ ${responses
   .map((r) => `### ${r.archetype}：${r.name}\n${r.text}`)
   .join("\n\n")}
 
-請依規則輸出結構化 JSON。`;
+請依規則輸出結構化 JSON。**注意**：報告中所有提到產品規格（利率、額度、期限、審核條件等）都必須引用上方產品的原始數字與單位（如「年利率 6.88%」就不能寫成「月利率」），否則就是 bug。`;
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 12000, // 給 thinking + JSON 充足空間（25+ 受訪者場景）
-    thinking: { type: "adaptive" },
-    system: [
-      {
-        type: "text",
-        text: SYSTEM,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [{ role: "user", content: userPrompt }],
-  });
+  const response = await callLLM(() =>
+    anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 12000, // 給 thinking + JSON 充足空間（25+ 受訪者場景）
+      thinking: { type: "adaptive" },
+      system: [
+        {
+          type: "text",
+          text: SYSTEM,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [{ role: "user", content: userPrompt }],
+    })
+  );
 
   const text = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")

@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { anthropic, MODEL } from "../anthropic";
+import { anthropic, callLLM, MODEL } from "../anthropic";
 import { extractJson } from "./json-extractor";
 import type { Persona } from "./personas-data";
 import { LANG_RULE } from "./shared-rules";
@@ -62,19 +62,21 @@ ${userPrompt}
 
 請依規則生成 JSON array。`;
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 4096,
-    thinking: { type: "adaptive" },
-    system: [
-      {
-        type: "text",
-        text: SYSTEM,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [{ role: "user", content: fullPrompt }],
-  });
+  const response = await callLLM(() =>
+    anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 4096,
+      thinking: { type: "adaptive" },
+      system: [
+        {
+          type: "text",
+          text: SYSTEM,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [{ role: "user", content: fullPrompt }],
+    })
+  );
 
   const text = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")

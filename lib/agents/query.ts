@@ -1,4 +1,4 @@
-import { anthropic, MODEL } from "../anthropic";
+import { acquireLLMSlot, anthropic, MODEL } from "../anthropic";
 import { LANG_RULE } from "./shared-rules";
 
 const SYSTEM = `${LANG_RULE}
@@ -109,25 +109,30 @@ ${query}
 
 請依規則用美編 Markdown 格式回答。`;
 
-  const stream = anthropic.messages.stream({
-    model: MODEL,
-    max_tokens: 4096,
-    system: [
-      {
-        type: "text",
-        text: SYSTEM,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [{ role: "user", content: userPrompt }],
-  });
+  const release = await acquireLLMSlot();
+  try {
+    const stream = anthropic.messages.stream({
+      model: MODEL,
+      max_tokens: 4096,
+      system: [
+        {
+          type: "text",
+          text: SYSTEM,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [{ role: "user", content: userPrompt }],
+    });
 
-  for await (const event of stream) {
-    if (
-      event.type === "content_block_delta" &&
-      event.delta.type === "text_delta"
-    ) {
-      yield event.delta.text;
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        yield event.delta.text;
+      }
     }
+  } finally {
+    release();
   }
 }
