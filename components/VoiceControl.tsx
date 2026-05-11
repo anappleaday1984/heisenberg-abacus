@@ -70,16 +70,19 @@ declare global {
 //   組合 = 5×5×8×3 = 600 種變體，包含 海森堡/嘿森博/黑森伯/嗨生伯格/哈森伯爵…
 //
 // 不用 ^ 錨定 — 允許 newPart 內任何位置匹配，SR 前段含「嗯/ah/喔」雜訊也照觸發。
+// 三條 OR 分支:英文拆解 / 英文完整 / 中文 — 為了提高觸發率,中文「第三字(堡/伯/博...)」
+// 改成可選,因為 zh-TW SR 常常把「Heisenberg」末尾的 -berg 轉不出來,只留「嘿森」「海森」。
+// 同時加更多英文前綴(ay/eh/oh)與中段(sam/zhen)變體吸收常見 SR 雜訊。
 const WAKE_RE = new RegExp(
   "(" +
-    // 英文：拆解前綴 + 中段 + 可選 berg/burg
-    "(?:hey|hai|hei|hy|high|hi|ha)[\\s-]?(?:sen|zen|son)(?:[\\s-]?(?:berg|burg|burgh))?" +
+    // 英文:拆解前綴 + 中段 + 可選 berg/burg
+    "(?:hey|hai|hei|hy|high|hi|ha|ay|eh|oh)[\\s-]?(?:sen|zen|son|sam|zhen)(?:[\\s-]?(?:berg|burg|burgh|bird|burgur))?" +
     "|" +
-    // 英文：完整 heisen(berg|burg)
+    // 英文:完整 heisen(berg|burg)
     "heise?n(?:[\\s-]?(?:berg|burg|burgh))?" +
     "|" +
-    // 中文同音三字 + 可選格/爵後綴
-    "[海嗨嘿黑哈]\\s*[,，.。!！?？]*\\s*[森生新星心]\\s*[,，.。!！?？]*\\s*[堡伯博保包抱勃柏]\\s*[格爵]?" +
+    // 中文同音 — 第三字(堡/伯/博...)改成可選,只要 [首][中] 兩字命中就觸發
+    "[海嗨嘿黑哈]\\s*[,，.。!！?？]*\\s*[森生新星心](?:\\s*[,，.。!！?？]*\\s*[堡伯博保包抱勃柏寶][格爵]?)?" +
   ")",
   "i"
 );
@@ -545,6 +548,19 @@ export function VoiceControl() {
     };
   }, []);
 
+  // 鍵盤捷徑 Cmd/Ctrl + . — 一鍵跳過喚醒詞直接進 awake,當「Hey Heisenberg」沒被
+  // SR 認出來時的最後 fallback。選 `.` 是因為瀏覽器 / 多數 web app 都沒占用。
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === ".") {
+        e.preventDefault();
+        handlePillClickRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // 點擊肥皂的統一進入點：
   //   1) SR 還沒跑（user gesture 沒給、permission 沒授權）→ 嘗試 start，不直接進
   //      awake，因為 SR 沒接通前 onresult 不會 fire、講話也沒人聽。
@@ -571,6 +587,10 @@ export function VoiceControl() {
       enterAwake();
     }
   }, [enterAwake]);
+  // 給鍵盤捷徑用的 ref — 不必把 handlePillClick 加進 keydown effect deps,
+  // 否則每次 render 都會 re-bind window listener。
+  const handlePillClickRef = useRef(handlePillClick);
+  handlePillClickRef.current = handlePillClick;
 
   // 不支援 → 不渲染（必須放在所有 Hook 之後，否則違反 Rules of Hooks）
   if (supported === false) return null;
@@ -613,10 +633,11 @@ function VoicePanel({
     status !== "processing";
 
   // dot tooltip — idle 時是唯一的口語提示（按鈕本身已縮成純色點）
+  // 順帶帶出 Cmd+. 鍵盤捷徑,讓使用者知道有三種觸發路徑(說 / 按鍵 / 點)
   const dotTooltip =
     status === "idle"
       ? srRunning
-        ? "Hey Heisenberg… 點此手動喚醒"
+        ? "說 Hey Heisenberg · 按 ⌘+. · 或點此手動喚醒"
         : "點此啟用麥克風"
       : status === "awake"
         ? "聆聽指令中…"
@@ -700,7 +721,7 @@ function VoicePanel({
 
       {/* 底部恆顯示橫排：[● dot 圓鈕] [↑ 回到入口] */}
       <div className="flex items-center gap-2">
-        {/* Hey Heisenberg dot 圓鈕 — 顏色傳達狀態，文字提示走 title */}
+        {/* Hey Heisenberg dot 圓鈕 — 顏色傳達狀態，文字提示走 title (含 Cmd+. 捷徑說明) */}
         <button
           type="button"
           onClick={clickable ? onPillClick : undefined}
