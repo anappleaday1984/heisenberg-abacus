@@ -96,6 +96,38 @@ const VOICE: Record<string, Partial<Record<ProductType, string>>> = {
   },
 };
 
+// 「整體光譜」開放模式 — 沒明確金融商品時用,給每位 persona 一句不綁產品、
+// 純粹描述自己「人生壓力 / 心理底氣 / 對任何方案的反應姿態」的話。
+// 用既有的人設屬性推導,讓不同 persona 在同一(無產品)情境下仍有可辨識的差異。
+function generateOpenVoice(p: Persona): string {
+  const text = `${p.archetype} ${p.personality} ${p.family} ${p.assetsAndEvents}`;
+  const income = p.yearlyIncomeTWD;
+  const hasDependents =
+    /撫養|扶養|贍養|養.*孩|養.*家|負擔|支柱|單親|媽媽|爸爸|父親|母親/.test(text);
+  const isPoor = income < 400_000;
+  const isWealthy = income > 1_000_000;
+  const badCredit = /破產|卡債|信用瑕疵|遲繳|被拒|信用空白/.test(text);
+  const tech = /工程師|新創|APP|軟體|科技|遊牧|電腦|剪輯/.test(text);
+  const conservative = /保守|穩定|定存|謹慎|細心|認真|傳統|樂活|不搶快/.test(text);
+  const risky = /創業|投資|股市|加密|斜槓|追求|夢想|改裝|叛逆/.test(text);
+  const sick = /心血管|疾病|長期服藥|健康|憂鬱/.test(text);
+  const old = p.age >= 55;
+  const young = p.age <= 25;
+
+  if (badCredit) return "我先看條件清不清楚 — 過去踩過雷,容易先設防。";
+  if (sick) return "我會先想到健康跟家人,任何方案先考慮會不會撐住。";
+  if (hasDependents && isPoor) return "我手頭緊 — 任何要花錢的事都得算清楚負擔。";
+  if (hasDependents) return "家裡靠我撐著,我看的是穩定不是噱頭。";
+  if (isWealthy) return "我有餘裕 — 但 CP 值不到位的東西我也不買單。";
+  if (old) return "這年紀我求穩,新東西要先看看別人用得怎樣。";
+  if (young && isPoor) return "我預算很有限,但只要值得我會試試看。";
+  if (young) return "我願意嘗試新東西,前提是流程要簡單。";
+  if (tech) return "我看設計跟體驗,複雜流程我直接放棄。";
+  if (risky) return "我願意承擔風險,前提是潛在報酬講得清楚。";
+  if (conservative) return "我先觀望、看別人用過再說。";
+  return `${p.age} 歲我有自己的步調 — 划算 + 透明我才會動。`;
+}
+
 // 自訂人設沒有手刻台詞時，依 persona 屬性挑句 — 同一人在不同產品也會講不同話
 function generateVoice(p: Persona, type: ProductType): string {
   const text = `${p.archetype} ${p.personality} ${p.family} ${p.assetsAndEvents}`;
@@ -271,11 +303,15 @@ export function SpectrumSwitcher({ personas, productContext }: Props) {
           {visiblePersonas.map((p) => {
             const idxInAll = personas.indexOf(p);
             const color = colorForPersona(p.id, idxInAll);
-            const line = VOICE[p.id]?.[type] ?? generateVoice(p, type);
+            // 開放模式(沒明確金融商品)用 generateOpenVoice 給中性整體口吻;
+            // 明確產品(信貸/保險/信用卡)才用 VOICE 手刻或 generateVoice 的產品口吻。
+            const line = isOpen
+              ? generateOpenVoice(p)
+              : (VOICE[p.id]?.[type] ?? generateVoice(p, type));
             const isHovered = hoverIdx === idxInAll;
             return (
               <PersonaCard
-                key={`${p.id}-${type}`}
+                key={`${p.id}-${isOpen ? "open" : type}`}
                 persona={p}
                 quote={line}
                 color={color}
