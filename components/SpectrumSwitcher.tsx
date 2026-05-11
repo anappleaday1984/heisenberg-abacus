@@ -2,14 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Persona } from "@/lib/agents/personas-data";
+import { isCelebrity } from "@/lib/celebrity-ids";
 import {
   colorForPersona,
-  computeRadarScores,
   detectProductType,
   isOpenContext,
   productLabel,
   type ProductType,
-  type RadarScores,
 } from "@/lib/persona-scores";
 import { useProductParams } from "@/lib/product-params-context";
 
@@ -18,40 +17,26 @@ type Props = {
   productContext?: string;
 };
 
-const PADDING = { top: 18, right: 24, bottom: 36, left: 44 };
-
 type AxisCfg = {
-  type: ProductType;
   icon: string;
   label: string; // 按鈕標籤
-  yKey: keyof RadarScores;
-  yLabel: string; // 軸標籤
   blurb: string;
 };
 
 const AXES: Record<ProductType, AxisCfg> = {
   creditcard: {
-    type: "creditcard",
     icon: "💳",
     label: "信用卡",
-    yKey: "digitalFluency",
-    yLabel: "數位熟練度 →",
     blurb: "誰會用 APP 線上消費領回饋？",
   },
   loan: {
-    type: "loan",
     icon: "💰",
     label: "信貸",
-    yKey: "loanNeed",
-    yLabel: "借貸需求度 →",
     blurb: "誰急需短期周轉現金？",
   },
   insurance: {
-    type: "insurance",
     icon: "🛡",
     label: "保險",
-    yKey: "economicPressure",
-    yLabel: "經濟壓力（需求安全網）→",
     blurb: "誰最在意意外造成的家計斷層？",
   },
 };
@@ -172,6 +157,50 @@ function generateVoice(p: Persona, type: ProductType): string {
   return `${p.age} 歲了，年費 0 + 加油回饋我才考慮辦。`;
 }
 
+// ---------- 頭像 emoji 對應 ----------
+//
+// 從 archetype + name + personality + family + assetsAndEvents 抓關鍵字推斷
+// 最能代表這位 persona 形象的 emoji。順序很重要：先 specific 角色（樂手、
+// YouTuber、工程師），再退到大類（媽媽、學生、退休），最後依年齡 + 性別
+// fallback。同一位 persona 跑多次都會得到相同 emoji（純 deterministic）。
+function getEmojiForPersona(p: Persona): string {
+  const text = `${p.archetype} ${p.name} ${p.personality} ${p.family} ${p.assetsAndEvents}`;
+  const isF = p.gender === "女";
+
+  // 高辨識度的職業 / 形象（先 specific → 再 general）
+  if (/搖滾|樂團|樂手|歌手|主唱|教父/.test(text)) return isF ? "🎤" : "🎸";
+  if (/啦啦隊|舞者|主播|女神|偶像|代言/.test(text)) return "💃";
+  if (/YouTube|YouTuber|創作者|拍片|頻道|實況/i.test(text)) return "🎬";
+  if (/工程師|新創|軟體|科技|碼農|演算法|程式|App.*開發/.test(text))
+    return isF ? "👩‍💻" : "🧑‍💻";
+  if (/學生|大學|研究所|高中生/.test(text)) return isF ? "👩‍🎓" : "🧑‍🎓";
+  if (/海歸|留學|跨國|海外/.test(text)) return "✈️";
+  if (/包租|房東|地主|多套房產/.test(text)) return "🏘️";
+  if (/富二代|世家|家裡有工廠|繼承/.test(text)) return "🤫";
+  if (/黑手|修車|機械|汽修|機車師傅/.test(text)) return "🔧";
+  if (/清潔|打掃|阿桑|家管|傳統女性/.test(text)) return "🧹";
+  if (/工廠|產線|作業員/.test(text)) return isF ? "👷‍♀️" : "👷";
+  if (/奶爸|帶小孩|顧小孩|準時收工煮飯/.test(text)) return "👨‍🍼";
+  if (/單親|二度就業|媽媽|母親/.test(text) && isF) return "👩";
+  if (/支柱.*父|爸爸|父親/.test(text) && !isF) return "👨";
+  if (/更生|出獄|前科|刑滿/.test(text)) return "🪨";
+  if (/暴躁|怒哥|火爆|滿口粗字|脾氣/.test(text)) return "😤";
+  if (/夢想|追夢|藝人|演員/.test(text)) return "✨";
+  if (/包租|投資|股市|理財/.test(text)) return "💼";
+  if (/退休|樂活|阿伯|阿嬤/.test(text)) return isF ? "👵" : "👴";
+  if (/數位遊牧|遊牧|自由工作|平衡/.test(text)) return "🌴";
+
+  // 中年大叔 / 大哥（沒對到上述職業）
+  if (/教父|大叔|大哥|衝刺|耐勞/.test(text) && !isF) return "🧔";
+  if (/小資|斜槓|兼職/.test(text) && isF) return "👩‍💼";
+
+  // 年齡 + 性別 fallback
+  if (p.age <= 22) return isF ? "👧" : "👦";
+  if (p.age >= 60) return isF ? "👵" : "👴";
+  if (p.age >= 45) return isF ? "👩‍🦳" : "🧔";
+  return isF ? "👩" : "👨";
+}
+
 export function SpectrumSwitcher({ personas, productContext }: Props) {
   const { type, setType } = useProductParams();
 
@@ -189,48 +218,27 @@ export function SpectrumSwitcher({ personas, productContext }: Props) {
     setType(detected);
   }, [detected, setType]);
 
-  // 開放式問題：不貼產品標籤，改用「整體經濟壓力」作為 Y 軸
+  // 開放式問題：不貼產品標籤，改用「整體口吻」介紹
   const cfg: AxisCfg = isOpen
     ? {
-        type,
         icon: "🏛",
         label: "整體光譜",
-        yKey: "economicPressure",
-        yLabel: "經濟壓力 →",
         blurb: "誰承壓最大？誰最有餘裕？",
       }
     : AXES[type];
   const headerLabel = isOpen ? "整體光譜" : `${cfg.icon} ${cfg.label}`;
-  const headerIcon = isOpen ? "🏛" : "🏛";
+  const headerIcon = "🏛";
   const dimensionLabel = isOpen ? "整體" : `「${productLabel(type)}」`;
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
-  const points = useMemo(() => {
-    return personas.map((p, i) => {
-      const scores = computeRadarScores(p);
-      // X 固定：財務健康度 = 100 - 經濟壓力
-      const x = 100 - scores.economicPressure;
-      // Y 依產品換軸
-      const y = scores[cfg.yKey];
-      return {
-        persona: p,
-        x,
-        y,
-        color: colorForPersona(p.id, i),
-        idx: i,
-      };
-    });
-  }, [personas, cfg.yKey]);
-
-  const W = 460;
-  const H = 320;
-  const innerW = W - PADDING.left - PADDING.right;
-  const innerH = H - PADDING.top - PADDING.bottom;
-  const xScale = (x: number) => PADDING.left + (x / 100) * innerW;
-  const yScale = (y: number) => PADDING.top + innerH - (y / 100) * innerH;
-
-  // 取前三位預設人設作為對話泡範例
-  const featured = useMemo(() => personas.slice(0, 3), [personas]);
+  // 預設展示 8 位（橫向卡片），按「查看全部」可展開全部 30 位。
+  // 6-8 位足以展現受訪者多樣性，30 位橫向滾動會稀釋焦點。
+  const DEFAULT_FEATURED_COUNT = 8;
+  const [expandAll, setExpandAll] = useState(false);
+  const visiblePersonas = useMemo(
+    () => (expandAll ? personas : personas.slice(0, DEFAULT_FEATURED_COUNT)),
+    [personas, expandAll]
+  );
 
   return (
     <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-5 max-w-4xl mx-auto">
@@ -240,126 +248,41 @@ export function SpectrumSwitcher({ personas, productContext }: Props) {
             {headerIcon} 受訪者顯影 · {headerLabel}
           </div>
           <h3 className="text-base font-bold text-slate-100 leading-tight mt-0.5">
-            {personas.length} 位受訪者的{dimensionLabel}維度
+            {personas.length} 位受訪者的{dimensionLabel}口吻
           </h3>
           <p className="text-[11px] text-slate-400 mt-0.5">{cfg.blurb}</p>
         </div>
+        {personas.length > DEFAULT_FEATURED_COUNT && (
+          <button
+            type="button"
+            onClick={() => setExpandAll((v) => !v)}
+            className="text-[10px] px-2 py-1 rounded-md bg-slate-800/60 border border-slate-700 text-slate-300 hover:text-slate-100 hover:border-violet-500/60 transition-colors whitespace-nowrap"
+          >
+            {expandAll
+              ? `收起（顯示 ${DEFAULT_FEATURED_COUNT} 位）`
+              : `查看全部 ${personas.length} 位 →`}
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* === 左：光譜 === */}
-        <div className="bg-slate-950/40 rounded-xl border border-slate-800 p-2">
-          <svg
-            viewBox={`0 0 ${W} ${H}`}
-            className="w-full h-auto"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            {/* 四象限淡底 */}
-            <rect x={xScale(50)} y={yScale(100)} width={xScale(100) - xScale(50)} height={yScale(50) - yScale(100)} fill="#10b98112" />
-            <rect x={xScale(0)} y={yScale(100)} width={xScale(50) - xScale(0)} height={yScale(50) - yScale(100)} fill="#fbbf2410" />
-            <rect x={xScale(50)} y={yScale(50)} width={xScale(100) - xScale(50)} height={yScale(0) - yScale(50)} fill="#60a5fa10" />
-            <rect x={xScale(0)} y={yScale(50)} width={xScale(50) - xScale(0)} height={yScale(0) - yScale(50)} fill="#fb718512" />
-
-            {/* 軸線 */}
-            <line x1={PADDING.left} y1={PADDING.top} x2={PADDING.left} y2={H - PADDING.bottom} stroke="#475569" strokeWidth={0.8} />
-            <line x1={PADDING.left} y1={H - PADDING.bottom} x2={W - PADDING.right} y2={H - PADDING.bottom} stroke="#475569" strokeWidth={0.8} />
-            {/* 中線 */}
-            <line x1={xScale(50)} x2={xScale(50)} y1={PADDING.top} y2={H - PADDING.bottom} stroke="#334155" strokeWidth={0.5} strokeDasharray="2 3" />
-            <line x1={PADDING.left} x2={W - PADDING.right} y1={yScale(50)} y2={yScale(50)} stroke="#334155" strokeWidth={0.5} strokeDasharray="2 3" />
-
-            {/* 刻度 */}
-            {[0, 50, 100].map((v) => (
-              <g key={`xt-${v}`}>
-                <text x={xScale(v)} y={H - PADDING.bottom + 14} fontSize={9} fill="#64748b" textAnchor="middle">{v}</text>
-              </g>
-            ))}
-            {[0, 50, 100].map((v) => (
-              <g key={`yt-${v}`}>
-                <text x={PADDING.left - 6} y={yScale(v) + 3} fontSize={9} fill="#64748b" textAnchor="end">{v}</text>
-              </g>
-            ))}
-
-            {/* 軸標籤 */}
-            <text x={PADDING.left + innerW / 2} y={H - 4} fontSize={10} fontWeight={600} fill="#cbd5e1" textAnchor="middle">
-              財務健康度 →
-            </text>
-            <text x={-(PADDING.top + innerH / 2)} y={11} fontSize={10} fontWeight={600} fill="#cbd5e1" textAnchor="middle" transform="rotate(-90)">
-              {cfg.yLabel}
-            </text>
-
-            {/* 散點 — Y 換軸時 cy 平滑過渡 */}
-            {points.map((pt) => {
-              const isHover = hoverIdx === pt.idx;
-              return (
-                <circle
-                  key={pt.persona.id}
-                  cx={xScale(pt.x)}
-                  cy={yScale(pt.y)}
-                  r={isHover ? 7 : 5}
-                  fill={pt.color}
-                  fillOpacity={isHover ? 0.95 : 0.78}
-                  stroke="#0b1020"
-                  strokeWidth={1}
-                  style={{
-                    transition:
-                      "cx 700ms cubic-bezier(0.34, 1.56, 0.64, 1), cy 700ms cubic-bezier(0.34, 1.56, 0.64, 1), r 150ms ease",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={() => setHoverIdx(pt.idx)}
-                  onMouseLeave={() => setHoverIdx(null)}
-                />
-              );
-            })}
-
-            {hoverIdx !== null && (
-              <g
-                style={{ pointerEvents: "none" }}
-                transform={`translate(${xScale(points[hoverIdx].x) + 10}, ${yScale(points[hoverIdx].y) - 10})`}
-              >
-                <rect x={0} y={-30} width={170} height={36} rx={4} fill="#0f172a" stroke="#475569" />
-                <text x={6} y={-16} fontSize={10} fill="#cbd5e1">
-                  {points[hoverIdx].persona.archetype}：{points[hoverIdx].persona.name}
-                </text>
-                <text x={6} y={-2} fontSize={9} fill="#94a3b8">
-                  健康度 {points[hoverIdx].x} · {cfg.yLabel.replace(" →", "")} {points[hoverIdx].y}
-                </text>
-              </g>
-            )}
-          </svg>
-        </div>
-
-        {/* === 右：對話顯影 === */}
-        <div className="space-y-2">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">
-            顯影 · 受訪者口吻
-          </div>
-          {featured.map((p, i) => {
-            const color = colorForPersona(p.id, personas.indexOf(p));
+      {/* 橫向滾動卡片容器 — overflow-x-auto + min-w-max 讓 flex 子元素不被壓縮 */}
+      <div className="overflow-x-auto pb-8 pt-3 -mx-2 px-2">
+        <div className="flex gap-3 min-w-max">
+          {visiblePersonas.map((p) => {
+            const idxInAll = personas.indexOf(p);
+            const color = colorForPersona(p.id, idxInAll);
             const line = VOICE[p.id]?.[type] ?? generateVoice(p, type);
+            const isHovered = hoverIdx === idxInAll;
             return (
-              <div
+              <PersonaCard
                 key={`${p.id}-${type}`}
-                className="bg-slate-800/60 border border-slate-700 rounded-xl px-3 py-2.5 flex gap-2.5"
-                style={{
-                  animation: "spectrum-fade 360ms ease",
-                }}
-              >
-                <span
-                  className="w-2 h-2 rounded-full mt-1.5 shrink-0"
-                  style={{ background: color }}
-                />
-                <div className="min-w-0">
-                  <div className="text-[11px] text-slate-300 font-semibold leading-tight">
-                    {p.archetype} · {p.name}
-                    <span className="text-slate-500 font-normal ml-1.5">
-                      {p.age}/{p.gender}
-                    </span>
-                  </div>
-                  <div className="text-[12px] text-slate-100 leading-snug mt-1">
-                    「{line}」
-                  </div>
-                </div>
-              </div>
+                persona={p}
+                quote={line}
+                color={color}
+                isHovered={isHovered}
+                onHover={() => setHoverIdx(idxInAll)}
+                onLeave={() => setHoverIdx(null)}
+              />
             );
           })}
         </div>
@@ -377,6 +300,155 @@ export function SpectrumSwitcher({ personas, productContext }: Props) {
           }
         }
       `}</style>
+    </div>
+  );
+}
+
+// ---------- PersonaCard ----------
+//
+// 漫畫風人設卡 — 直立卡片：emoji 大頭像（依 archetype/personality 推斷）+ 原型 +
+// 名字 + 一句口吻。emoji 用顏色漸層底搭出「人設氛圍」，比隨機生成的頭像更貼近
+// 該 persona 的形象。
+//
+// hover 時整張卡上彈 -12px，色帶亮起。共用上層 hoverIdx 確保「滑到下一位、上
+// 一位歸位」的 CSS 自然行為。
+//
+// PORTRAIT_STYLE 控制頭像來源資料夾：
+//   "flat"     → /personas/            扁平企業插畫
+//   "cyber"    → /personas-cyber/      賽博龐克霓虹
+//   "silver"   → /personas-silver/     白銀極簡科技
+//   "techlife" → /personas-techlife/   科技生活感
+// 切換只需改這一行；找不到圖時自動 fallback 到 emoji 漸層底。
+type PortraitStyle = "flat" | "cyber" | "silver" | "techlife";
+const PORTRAIT_STYLE: PortraitStyle = "techlife";
+const PORTRAIT_DIRS: Record<PortraitStyle, string> = {
+  flat: "/personas",
+  cyber: "/personas-cyber",
+  silver: "/personas-silver",
+  techlife: "/personas-techlife",
+};
+
+type CardProps = {
+  persona: Persona;
+  quote: string;
+  color: string;
+  isHovered: boolean;
+  onHover: () => void;
+  onLeave: () => void;
+};
+
+function PersonaCard({
+  persona,
+  quote,
+  color,
+  isHovered,
+  onHover,
+  onLeave,
+}: CardProps) {
+  const emoji = getEmojiForPersona(persona);
+  // 圖檔預期路徑：public${PORTRAIT_DIRS[PORTRAIT_STYLE]}/{id}.png
+  // 圖檔不存在時用 onError 切回 emoji 漸層底，確保 demo 不會出現破圖。
+  const [imgFailed, setImgFailed] = useState(false);
+  const imageSrc = `${PORTRAIT_DIRS[PORTRAIT_STYLE]}/${persona.id}.png`;
+  // 名人 portrait 用 blur filter 處理 — 6 位真人不應該清楚顯示長相,只保留輪廓 / 色調。
+  const celeb = isCelebrity(persona.id);
+
+  // 收入字串：取百萬 → "150 萬"，沒到 → "75 萬"，避免太多 0 干擾閱讀
+  const incomeWan = (persona.yearlyIncomeTWD / 10_000).toFixed(0);
+
+  return (
+    <div
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+      className={`
+        relative w-36 shrink-0 cursor-pointer rounded-xl overflow-hidden
+        bg-slate-800/80 border transition-all duration-300 ease-out
+        ${
+          isHovered
+            ? "-translate-y-3 border-violet-500/70 shadow-2xl shadow-violet-500/20"
+            : "border-slate-700/80 hover:border-slate-600"
+        }
+      `}
+      style={{
+        animation: "spectrum-fade 360ms ease",
+      }}
+    >
+      {/* 頭像區（正方形）— 優先用 AI 生成的 PNG，失敗 fallback 到 emoji 漸層底 */}
+      <div className="relative aspect-square overflow-hidden bg-slate-900">
+        {!imgFailed ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageSrc}
+            alt={`${persona.archetype}：${persona.name}`}
+            loading="lazy"
+            className="w-full h-full object-cover"
+            style={
+              celeb
+                ? { filter: "blur(8px) saturate(0.85)", transform: "scale(1.08)" }
+                : undefined
+            }
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{
+              background: `linear-gradient(135deg, ${color}cc 0%, ${color}55 60%, #0f172a 100%)`,
+            }}
+          >
+            <span
+              className="select-none drop-shadow-md"
+              style={{ fontSize: "72px", lineHeight: 1 }}
+              aria-label={persona.archetype}
+            >
+              {emoji}
+            </span>
+          </div>
+        )}
+
+        {/* 性別 / 年齡 徽章 — 永遠在左上 */}
+        <span className="absolute top-1.5 left-1.5 text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-slate-950/70 text-slate-100 backdrop-blur-sm z-10">
+          {persona.gender}/{persona.age}
+        </span>
+
+        {/* 收入結構 overlay — hover 時淡入蓋在頭像上（B2）*/}
+        <div
+          className={`absolute inset-0 flex flex-col justify-center px-3 py-2 bg-slate-950/85 backdrop-blur-sm transition-opacity duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        >
+          <div className="text-[10px] uppercase tracking-wider text-amber-400 font-bold mb-1">
+            💰 年收入
+          </div>
+          <div className="text-base font-bold text-amber-300 leading-tight">
+            NT$ {incomeWan} 萬
+          </div>
+          <div className="text-[10px] text-slate-300 mt-1.5 leading-snug">
+            {persona.incomeBreakdown}
+          </div>
+        </div>
+      </div>
+
+      {/* 文字區 */}
+      <div className="px-2.5 pt-2 pb-2.5">
+        <div className="text-[10px] text-violet-300/80 font-medium truncate">
+          {persona.archetype}
+        </div>
+        <div className="text-[13px] font-bold text-slate-100 leading-tight mb-1.5 truncate">
+          {persona.name}
+        </div>
+        <div className="text-[11px] text-slate-300 italic leading-snug line-clamp-3 min-h-[2.8em]">
+          「{quote}」
+        </div>
+      </div>
+
+      {/* hover 時底部加上一條色帶 */}
+      <div
+        className={`absolute bottom-0 left-0 right-0 h-1 transition-opacity duration-300 ${
+          isHovered ? "opacity-100" : "opacity-0"
+        }`}
+        style={{ background: color }}
+      />
     </div>
   );
 }

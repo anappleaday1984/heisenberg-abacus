@@ -10,16 +10,21 @@ import {
 } from "react";
 import { resolveOpenSliderConfig } from "./abacus-config";
 import type { ProductParams, ProductType } from "./persona-scores";
+import { DEFAULT_SHOCKS, type ShockState } from "./persona-projections";
 
 type Ctx = {
   type: ProductType;
   paramValue: number;
   isOpen: boolean;
   openContext: string;
+  // 共用外部衝擊 — 通膨 / 失業 / 疫情。所有面板都從這裡讀,
+  // 確保「臨界點」隨同一份 shocks 一致移動。
+  shocks: ShockState;
   setType: (t: ProductType) => void;
   setParamValue: (v: number) => void;
   setIsOpen: (open: boolean, context?: string) => void;
   setOpenContext: (context: string) => void;
+  setShocks: (s: ShockState | ((prev: ShockState) => ShockState)) => void;
   buildParams: () => ProductParams;
 };
 
@@ -36,6 +41,13 @@ export function ProductParamsProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpenRaw] = useState(false);
   const [openContext, setOpenContextRaw] = useState("");
   const [paramValue, setParamValue] = useState(TYPE_DEFAULTS.loan);
+  const [shocks, setShocksRaw] = useState<ShockState>(DEFAULT_SHOCKS);
+  const setShocks = useCallback(
+    (s: ShockState | ((prev: ShockState) => ShockState)) => {
+      setShocksRaw((prev) => (typeof s === "function" ? s(prev) : s));
+    },
+    []
+  );
 
   // useCallback 確保函式 reference 穩定 — 避免下游 useEffect 因依賴變化而 re-fire
   const setType = useCallback((next: ProductType) => {
@@ -85,13 +97,26 @@ export function ProductParamsProvider({ children }: { children: ReactNode }) {
       paramValue,
       isOpen,
       openContext,
+      shocks,
       setType,
       setParamValue,
       setIsOpen,
       setOpenContext,
+      setShocks,
       buildParams,
     }),
-    [type, paramValue, isOpen, openContext, setType, setIsOpen, setOpenContext, buildParams]
+    [
+      type,
+      paramValue,
+      isOpen,
+      openContext,
+      shocks,
+      setType,
+      setIsOpen,
+      setOpenContext,
+      setShocks,
+      buildParams,
+    ]
   );
 
   return (

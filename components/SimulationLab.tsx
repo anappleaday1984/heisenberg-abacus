@@ -6,6 +6,7 @@ import { AbacusBar } from "./AbacusBar";
 import { DecisionSankey } from "./DecisionSankey";
 import { PhaseTransitionMap } from "./PhaseTransitionMap";
 import { usePersonaSession } from "@/lib/persona-session-context";
+import { VoiceControl } from "./VoiceControl";
 import {
   DEMO_PERSONAS,
   DEMO_QA_ENTRIES,
@@ -52,45 +53,54 @@ export function SimulationLab() {
             </p>
           </div>
         </div>
-        <span
-          className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-md border ${
-            isLive
-              ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10"
-              : "text-amber-300 border-amber-500/40 bg-amber-500/10"
-          }`}
-        >
-          {isLive ? "● 連線中｜當前 session 資料" : "○ 示範資料｜尚未進行調查"}
-        </span>
+        <div className="flex items-center gap-3">
+          {/* 語音肥皂 + 回到入口 — 跟主畫面一致放在 header 右側群組 */}
+          <VoiceControl />
+          <span
+            className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-md border ${
+              isLive
+                ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10"
+                : "text-amber-300 border-amber-500/40 bg-amber-500/10"
+            }`}
+          >
+            {isLive ? "● 連線中｜當前 session 資料" : "○ 示範資料｜尚未進行調查"}
+          </span>
+        </div>
       </header>
 
-      {/* === 主體：左相變散佈 / 右桑基流向 === */}
+      {/* === 主體 === */}
+      {/* 上半:既有的「行為相變」+「桑基決策」雙欄
+          下半:新增的「收益甜蜜點 + CLV + 壓力測試」業務 / 風控 / 行銷三決策層 */}
       <main className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <section>
-            <SectionHeader
-              tag="01 · Behavioral Phase Transition"
-              title="行為相變散佈圖"
-            />
-            <PhaseTransitionMap
-              personas={effective.personas}
-              productContext={effective.productContext}
-              showSlider={false}
-            />
-          </section>
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <section>
+              <SectionHeader
+                tag="01 · Behavioral Phase Transition"
+                title="行為相變散佈圖"
+              />
+              <PhaseTransitionMap
+                personas={effective.personas}
+                productContext={effective.productContext}
+                showSlider={false}
+              />
+            </section>
 
-          <section>
-            <SectionHeader
-              tag="02 · Stress-Induced Sankey"
-              title="外在變因下的決策變化"
-            />
-            {effective.qaEntries.length > 0 ? (
-              <DecisionSankey entries={effective.qaEntries} />
-            ) : (
-              <div className="text-center text-sm text-slate-400 border border-dashed border-slate-700 rounded-2xl p-10">
-                尚無 Q&A 資料 — 請先回到觀測站完成一輪調查。
-              </div>
-            )}
-          </section>
+            <section>
+              <SectionHeader
+                tag="02 · Stress-Induced Sankey"
+                title="外在變因下的決策變化"
+              />
+              {effective.qaEntries.length > 0 ? (
+                <DecisionSankey entries={effective.qaEntries} />
+              ) : (
+                <div className="text-center text-sm text-slate-400 border border-dashed border-slate-700 rounded-2xl p-10">
+                  尚無 Q&A 資料 — 請先回到觀測站完成一輪調查。
+                </div>
+              )}
+            </section>
+          </div>
+
         </div>
       </main>
 

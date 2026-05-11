@@ -9,6 +9,12 @@ export type Persona = {
   personality: string;
   family: string;
   assetsAndEvents: string;
+  /**
+   * 招牌講話風格 — 名人或強個性角色用，提供慣用語 / 語助詞 / 反射式自誇 / 比喻
+   * 來源等具體口氣特徵。persona system prompt 會把這欄獨立拉出來、要求每題回答
+   * 都要強烈體現。一般虛擬受訪者留空即可，由 personality 帶過。
+   */
+  signatureStyle?: string;
 };
 
 // Seed data — used to initialise data/personas.json on first run.

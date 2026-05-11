@@ -12,6 +12,11 @@ import { QueryResponseBubble } from "./QueryResponseBubble";
 import { ReportCard } from "./ReportCard";
 import { SpectrumSwitcher } from "./SpectrumSwitcher";
 import { SummaryCard } from "./SummaryCard";
+import {
+  APP_SCROLL_TOP_EVENT,
+  VOICE_RESTART_EVENT,
+  VoiceControl,
+} from "./VoiceControl";
 
 let nextId = 0;
 const newId = () => `msg-${++nextId}`;
@@ -155,6 +160,23 @@ export function ChatInterface() {
     setBusy(false);
   }
 
+  // 語音指令「重啟」— VoiceControl dispatch VOICE_RESTART_EVENT 後觸發
+  useEffect(() => {
+    const handler = () => restartSession();
+    window.addEventListener(VOICE_RESTART_EVENT, handler);
+    return () => window.removeEventListener(VOICE_RESTART_EVENT, handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 語音肥皂上的「回到入口」按鈕 — 把聊天滾動容器捲到最上方
+  useEffect(() => {
+    const handler = () => {
+      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    window.addEventListener(APP_SCROLL_TOP_EVENT, handler);
+    return () => window.removeEventListener(APP_SCROLL_TOP_EVENT, handler);
+  }, []);
+
   // 提供給 PersonaQAExplorer 的「跳到洞察報告」callback
   function jumpToSummary() {
     setShowInsights(true);
@@ -197,11 +219,18 @@ export function ChatInterface() {
     return null;
   }
 
+  // Sticky-bottom: 只在使用者已經在底部附近時才自動跟捲。
+  // 一旦使用者主動往上滑去看舊訊息（agent 回覆 / 受訪者答案 / 報告），就不再
+  // 把視窗強拉到底，避免漸進式訪談 / 報告生成過程中視窗被反覆推下去。
+  // 想再回到追新訊息只要手動捲到底即可。
+  const STICKY_THRESHOLD_PX = 120;
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom <= STICKY_THRESHOLD_PX) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
   }, [messages]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -314,19 +343,64 @@ export function ChatInterface() {
                 personas: event.personas,
               },
             ]);
+          } else if (event.type === "persona_partial") {
+            // 漸進式訪談 — 每位完成就 push 進 qa 訊息，PersonaQAExplorer 會即時 re-render
+            // 第一次出現時建立 qa 訊息（qaStreaming=true），之後 append entry。
+            setMessages((m) => {
+              const idx = m.findIndex((msg) => msg.role === "qa");
+              if (idx >= 0) {
+                const next = [...m];
+                const cur = next[idx];
+                next[idx] = {
+                  ...cur,
+                  qaEntries: [...(cur.qaEntries ?? []), event.entry],
+                  qaTotal: event.total,
+                  qaStreaming: event.completed < event.total,
+                };
+                return next;
+              }
+              return [
+                ...m,
+                {
+                  id: newId(),
+                  role: "qa",
+                  text: "",
+                  qaQuestions: event.questions,
+                  qaEntries: [event.entry],
+                  qaTotal: event.total,
+                  qaStreaming: event.completed < event.total,
+                },
+              ];
+            });
           } else if (event.type === "personas_qa") {
-            // 訪談完成 — 推到 session（讓桑基圖在模擬艙呈現），訊息流只留 Q&A explorer
+            // 全部完成 — 補完整 entries（順序 index 對齊）並推到 session
             session.setQA(event.questions, event.entries);
-            setMessages((m) => [
-              ...m,
-              {
-                id: newId(),
-                role: "qa",
-                text: "",
-                qaQuestions: event.questions,
-                qaEntries: event.entries,
-              },
-            ]);
+            setMessages((m) => {
+              const idx = m.findIndex((msg) => msg.role === "qa");
+              if (idx >= 0) {
+                const next = [...m];
+                next[idx] = {
+                  ...next[idx],
+                  qaQuestions: event.questions,
+                  qaEntries: event.entries,
+                  qaStreaming: false,
+                };
+                return next;
+              }
+              // fallback：partial 沒走到（保險），直接建一筆完整 qa
+              return [
+                ...m,
+                {
+                  id: newId(),
+                  role: "qa",
+                  text: "",
+                  qaQuestions: event.questions,
+                  qaEntries: event.entries,
+                  qaTotal: event.entries.length,
+                  qaStreaming: false,
+                },
+              ];
+            });
           } else if (event.type === "agent_text") {
             const key = activeKey(event.agent, event.label);
             const id = activeMap.get(key);
@@ -407,6 +481,8 @@ export function ChatInterface() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* 語音肥皂 + 回到入口 — 對齊在登入按鈕左側 */}
+          <VoiceControl />
           <LoginButton />
           <Link
             href="/admin"
@@ -495,6 +571,8 @@ export function ChatInterface() {
                 questions={msg.qaQuestions}
                 entries={msg.qaEntries}
                 onJumpToSummary={jumpToSummary}
+                total={msg.qaTotal}
+                streaming={msg.qaStreaming}
               />
             );
           } else if (msg.role === "agent" && msg.agent === "summary") {

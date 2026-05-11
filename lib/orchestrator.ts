@@ -84,32 +84,82 @@ export async function* orchestrate(
       productContext: `${userMessage}\n${plan.summary}`,
     };
 
-    // Persona-level worker 數量 — 真正的速率限制由 lib/anthropic.ts 的全域
-    // semaphore 控制（見 LLM_MAX_CONCURRENCY），這層只是 fan-out 多少 worker
-    // 進入排隊。設大於 LLM_MAX_CONCURRENCY 沒關係，semaphore 會讓多餘的 worker
-    // 排隊等候。預設拉到等同 personas.length，讓 LLM 限流是唯一節流點。
-    const MAX_PARALLEL = Number(
-      process.env.PERSONA_MAX_PARALLEL ?? personas.length
-    );
-    const results: PersonaResponse[] = new Array(personas.length);
-    let nextIdx = 0;
     // 把 userMessage（原始產品規格）+ plan.summary 一併傳給每位受訪者，
     // 讓他們答題時知道是針對「這個年利率 6.88% 的微貸方案」回答，
     // 而不是憑印象猜常識（過去曾出現「年利率 6.88%」答成「月利率 1.5%」的飄移）。
     const productContext = `${userMessage}\n\n調查目標：${plan.summary}`;
-    async function worker() {
-      while (true) {
-        const i = nextIdx++;
-        if (i >= personas.length) return;
-        results[i] = await askPersona(personas[i], plan.questions, productContext);
-      }
-    }
-    await Promise.all(
-      Array.from(
-        { length: Math.min(Math.max(1, MAX_PARALLEL), personas.length) },
-        worker
-      )
+
+    // ---------- 漸進式訪談 ----------
+    // 30 位受訪者並行訪談、每位完成時即時 yield 一個 persona_partial 給前端。
+    // 真正的速率限制由 lib/anthropic.ts 的全域 semaphore 控制（LLM_MAX_CONCURRENCY），
+    // 這裡的 fan-out 只是把所有 task 一次推下去、由 semaphore 排隊處理。
+    //
+    // pattern：把 task push 到 partials 陣列；consumer (此 generator) 用 promise
+    // 等候 partials 增加 → drain → yield。partials 順序 = 完成順序（不必對齊 index）。
+    type Done = { index: number; result: PersonaResponse };
+    const partials: Done[] = [];
+    let resolveNext: (() => void) | null = null;
+    const notifyConsumer = () => {
+      const fn = resolveNext;
+      resolveNext = null;
+      fn?.();
+    };
+
+    const fanout = personas.map((p, i) =>
+      (async () => {
+        try {
+          const result = await askPersona(p, plan.questions, productContext);
+          partials.push({ index: i, result });
+        } catch (err) {
+          // 個別受訪者失敗也要讓 consumer 進度推進；填空答案維持 index 對齊
+          // eslint-disable-next-line no-console
+          console.error(
+            `[orchestrator] persona ${p.id} 失敗:`,
+            err instanceof Error ? err.message : err
+          );
+          partials.push({
+            index: i,
+            result: {
+              id: p.id,
+              name: p.name,
+              archetype: p.archetype,
+              answers: new Array(plan.questions.length).fill(
+                "（此受訪者暫時無回應）"
+              ),
+              text: "",
+            },
+          });
+        }
+        notifyConsumer();
+      })()
     );
+
+    const results: PersonaResponse[] = new Array(personas.length);
+    let received = 0;
+    while (received < personas.length) {
+      if (partials.length === 0) {
+        // 等下一位完成；JS 單執行緒，executor 同步執行，不會錯過 notify
+        await new Promise<void>((resolve) => {
+          resolveNext = resolve;
+        });
+      }
+      const done = partials.shift()!;
+      received++;
+      results[done.index] = done.result;
+      yield {
+        type: "persona_partial",
+        questions: plan.questions,
+        entry: {
+          persona: personas[done.index],
+          answers: done.result.answers,
+        },
+        completed: received,
+        total: personas.length,
+      };
+    }
+
+    // 所有 task 都已 settle（內部已 try/catch），await 只是收尾保險
+    await Promise.all(fanout);
     personaResponses.push(...results);
 
     // 每位受訪者已經逐題回答，answers 直接 index 對齊 plan.questions

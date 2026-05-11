@@ -15,6 +15,10 @@ export type DisplayMessage = {
   personas?: Persona[]; // for phase-map (受訪者點陣)
   qaQuestions?: string[]; // for qa-explorer messages
   qaEntries?: QAEntry[]; // for qa-explorer & sankey messages
+  /** 訪談總人數（漸進式 qa 訊息用，前端可顯示「X / N 完成」） */
+  qaTotal?: number;
+  /** 訪談是否仍在進行中 — true 表示還有人未完成 */
+  qaStreaming?: boolean;
 };
 
 export function MessageBubble({ msg }: { msg: DisplayMessage }) {

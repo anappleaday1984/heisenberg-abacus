@@ -11,6 +11,7 @@ import {
   detectProductType,
   isOpenContext,
 } from "@/lib/persona-scores";
+import { applyShocks } from "@/lib/persona-projections";
 import { useProductParams } from "@/lib/product-params-context";
 
 type Props = {
@@ -21,7 +22,7 @@ type Props = {
   showSlider?: boolean;
 };
 
-const PADDING = { top: 18, right: 24, bottom: 38, left: 44 };
+const PADDING = { top: 22, right: 28, bottom: 52, left: 60 };
 
 export function PhaseTransitionMap({
   personas,
@@ -33,6 +34,7 @@ export function PhaseTransitionMap({
     paramValue,
     isOpen,
     openContext,
+    shocks,
     setType,
     setParamValue,
     setIsOpen,
@@ -73,17 +75,21 @@ export function PhaseTransitionMap({
     const stress = ((paramValue - config.min) / range) * 100;
     return personas.map((p, i) => {
       const scores = computeRadarScores(p);
+      // 先算原始意願,再套通膨/失業/疫情扣分(shared shocks),
+      // 這樣三個 shock slider 一拉,散佈圖每個點同步往「放棄區」漂移。
+      const baseIntent = isOpen
+        ? computeOpenIntent(scores, stress)
+        : computePurchaseIntent(scores, params);
+      const y = applyShocks(baseIntent, scores, shocks);
       return {
         persona: p,
         x: scores.economicPressure,
-        y: isOpen
-          ? computeOpenIntent(scores, stress)
-          : computePurchaseIntent(scores, params),
+        y,
         color: colorForPersona(p.id, i),
         idx: i,
       };
     });
-  }, [personas, productType, paramValue, isOpen, config.min, config.max, buildParams]);
+  }, [personas, productType, paramValue, isOpen, config.min, config.max, buildParams, shocks]);
 
   const willBuy = points.filter((p) => p.y >= 60).length;
   const watching = points.filter((p) => p.y >= 40 && p.y < 60).length;
@@ -144,23 +150,34 @@ export function PhaseTransitionMap({
           {[0, 25, 50, 75, 100].map((v) => (
             <g key={`xt-${v}`}>
               <line x1={xScale(v)} x2={xScale(v)} y1={H - PADDING.bottom} y2={H - PADDING.bottom + 4} stroke="#475569" strokeWidth={0.6} />
-              <text x={xScale(v)} y={H - PADDING.bottom + 16} fontSize={9} fill="#64748b" textAnchor="middle">{v}</text>
+              <text x={xScale(v)} y={H - PADDING.bottom + 18} fontSize={13} fill="#64748b" textAnchor="middle">{v}</text>
             </g>
           ))}
           {/* Y 刻度 */}
           {[0, 25, 50, 75, 100].map((v) => (
             <g key={`yt-${v}`}>
               <line x1={PADDING.left - 4} x2={PADDING.left} y1={yScale(v)} y2={yScale(v)} stroke="#475569" strokeWidth={0.6} />
-              <text x={PADDING.left - 8} y={yScale(v) + 3} fontSize={9} fill="#64748b" textAnchor="end">{v}</text>
+              <text x={PADDING.left - 8} y={yScale(v) + 4} fontSize={13} fill="#64748b" textAnchor="end">{v}</text>
             </g>
           ))}
 
-          <text x={PADDING.left + innerW / 2} y={H - 4} fontSize={11} fontWeight={600} fill="#cbd5e1" textAnchor="middle">經濟壓力值 →</text>
-          <text x={-(PADDING.top + innerH / 2)} y={12} fontSize={11} fontWeight={600} fill="#cbd5e1" textAnchor="middle" transform="rotate(-90)">{yAxisLabel}</text>
+          <text x={PADDING.left + innerW / 2} y={H - 6} fontSize={15} fontWeight={700} fill="#cbd5e1" textAnchor="middle">經濟壓力值 →</text>
+          {/* Y 軸標題 — 水平排列,釘在左上角(x=8, y=14)。不旋轉,直接讀。
+              y=14 在 PADDING.top=22 之上,水平位元組 100 刻度標籤(x≈42-52)左側,不擋作圖區。 */}
+          <text
+            x={8}
+            y={14}
+            fontSize={13}
+            fontWeight={700}
+            fill="#cbd5e1"
+            textAnchor="start"
+          >
+            ↑ {yAxisLabel.replace(" →", "")}
+          </text>
 
-          <text x={W - PADDING.right - 4} y={yScale(82)} fontSize={9} fill="#34d39990" textAnchor="end" fontWeight={700}>{zoneLabels.high}</text>
-          <text x={W - PADDING.right - 4} y={yScale(50)} fontSize={9} fill="#fbbf2490" textAnchor="end" fontWeight={700}>{zoneLabels.mid}</text>
-          <text x={W - PADDING.right - 4} y={yScale(20)} fontSize={9} fill="#fb718590" textAnchor="end" fontWeight={700}>{zoneLabels.low}</text>
+          <text x={W - PADDING.right - 6} y={yScale(82)} fontSize={14} fill="#34d399" textAnchor="end" fontWeight={700}>{zoneLabels.high}</text>
+          <text x={W - PADDING.right - 6} y={yScale(50)} fontSize={14} fill="#fbbf24" textAnchor="end" fontWeight={700}>{zoneLabels.mid}</text>
+          <text x={W - PADDING.right - 6} y={yScale(20)} fontSize={14} fill="#fb7185" textAnchor="end" fontWeight={700}>{zoneLabels.low}</text>
 
           {/* 散點 */}
           {points.map((pt) => {
@@ -187,9 +204,9 @@ export function PhaseTransitionMap({
 
           {hoverIdx !== null && (
             <g style={{ pointerEvents: "none" }} transform={`translate(${xScale(points[hoverIdx].x) + 10}, ${yScale(points[hoverIdx].y) - 10})`}>
-              <rect x={0} y={-30} width={170} height={36} rx={4} fill="#0f172a" stroke="#475569" />
-              <text x={6} y={-16} fontSize={10} fill="#cbd5e1">{points[hoverIdx].persona.archetype}：{points[hoverIdx].persona.name}</text>
-              <text x={6} y={-2} fontSize={9} fill="#94a3b8">壓力 {points[hoverIdx].x} · {isOpen ? "傾向" : "意願"} {points[hoverIdx].y}</text>
+              <rect x={0} y={-36} width={210} height={44} rx={4} fill="#0f172a" stroke="#475569" />
+              <text x={8} y={-19} fontSize={13} fill="#cbd5e1">{points[hoverIdx].persona.archetype}：{points[hoverIdx].persona.name}</text>
+              <text x={8} y={-3} fontSize={11} fill="#94a3b8">壓力 {points[hoverIdx].x} · {isOpen ? "傾向" : "意願"} {points[hoverIdx].y}</text>
             </g>
           )}
         </svg>

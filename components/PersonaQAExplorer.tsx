@@ -11,6 +11,10 @@ type Props = {
   pageSize?: number;
   /** 點「看洞察報告」時呼叫 — 由 ChatInterface 提供 scroll 行為 */
   onJumpToSummary?: () => void;
+  /** 預期受訪者總數（漸進式訪談用） */
+  total?: number;
+  /** 是否仍有受訪者尚未完成（漸進式訪談用） */
+  streaming?: boolean;
 };
 
 export function PersonaQAExplorer({
@@ -18,6 +22,8 @@ export function PersonaQAExplorer({
   entries,
   pageSize = 3,
   onJumpToSummary,
+  total,
+  streaming,
 }: Props) {
   const [qIdx, setQIdx] = useState(0);
   const [pageIdx, setPageIdx] = useState(0);
@@ -48,6 +54,16 @@ export function PersonaQAExplorer({
         <div className="absolute -top-2.5 left-4 bg-blue-500 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md">
           觀測者提問
         </div>
+        {/* 漸進式訪談進度條 — streaming 中時顯示「X / N 已回答」+ 脈動點 */}
+        {streaming && total != null && (
+          <div className="absolute -top-2.5 right-4 bg-emerald-500/90 text-white text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-200 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+            </span>
+            訪談中 {entries.length} / {total}
+          </div>
+        )}
         <div className="flex items-start gap-3 pt-1">
           <div className="bg-blue-600 text-white text-sm font-bold rounded-lg px-2.5 py-1.5 tabular-nums whitespace-nowrap shrink-0">
             Q{qIdx + 1} / {questions.length}

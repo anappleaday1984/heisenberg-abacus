@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FullReportPayload } from "@/lib/orchestrator";
 import type { Persona } from "@/lib/agents/personas-data";
+import {
+  VOICE_DOWNLOAD_PDF_EVENT,
+  VOICE_EMAIL_REPORT_EVENT,
+} from "./VoiceControl";
 
 type Props = {
   text: string;
@@ -85,9 +89,19 @@ function demographicsSummary(personas: Persona[]) {
   };
 }
 
+const DEFAULT_EMAIL_TO = "the.ai.hack.project@gmail.com";
+
 export function ReportCard({ text, streaming }: Props) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [emailing, setEmailing] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{
+    kind: "ok" | "err";
+    msg: string;
+  } | null>(null);
+  // 點「寄信」會打開這個 popup，使用者確認 / 修改收件人後才真送
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState(DEFAULT_EMAIL_TO);
 
   const data = useMemo(() => tryParse(text), [text]);
 
@@ -100,7 +114,47 @@ export function ReportCard({ text, streaming }: Props) {
     });
   }, [data?.generatedAt]);
 
+  // 語音指令 — 監聽 VoiceControl 派發的 CustomEvent，依動作自動寄信 / 下載 PDF。
+  // 這些 ref 在「報告 ready」的 render 路徑會被指派最新 callback / 條件；
+  // 沒 ready 時保留上一輪值或初始 null/false，handler 會因 canActRef=false 直接 bail out。
+  const emailReportRef = useRef<((to?: string) => Promise<void>) | null>(null);
+  const downloadPdfRef = useRef<(() => Promise<void>) | null>(null);
+  const openEmailModalRef = useRef<((prefill?: string) => void) | null>(null);
+  const canActRef = useRef(false);
+  useEffect(() => {
+    async function emailHandler() {
+      if (!canActRef.current) return;
+      // 收件人決策：udo 帳號用預設信箱直送；其他帳號開 modal 讓使用者填收件人。
+      // User type 沒有 email 欄位，所以只能用 account 名稱判斷；其他帳號的 email
+      // 沒地方推得出來。fetch 失敗就 fallback 開 modal — 寧可多一步確認也不要
+      // 把報告寄錯地方。
+      try {
+        const res = await fetch("/api/auth/me");
+        const body: { user?: { account?: string } | null } = await res.json();
+        if (body.user?.account === "udo") {
+          void emailReportRef.current?.(DEFAULT_EMAIL_TO);
+        } else {
+          // 非 udo：開 modal 並把欄位清空，強迫使用者自填要寄到的信箱
+          openEmailModalRef.current?.("");
+        }
+      } catch {
+        openEmailModalRef.current?.("");
+      }
+    }
+    function downloadHandler() {
+      if (!canActRef.current) return;
+      void downloadPdfRef.current?.();
+    }
+    window.addEventListener(VOICE_EMAIL_REPORT_EVENT, emailHandler);
+    window.addEventListener(VOICE_DOWNLOAD_PDF_EVENT, downloadHandler);
+    return () => {
+      window.removeEventListener(VOICE_EMAIL_REPORT_EVENT, emailHandler);
+      window.removeEventListener(VOICE_DOWNLOAD_PDF_EVENT, downloadHandler);
+    };
+  }, []);
+
   if (!data) {
+    canActRef.current = false;
     return (
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-6 max-w-3xl mx-auto">
         <div className="flex items-center gap-3 text-slate-400">
@@ -119,40 +173,58 @@ export function ReportCard({ text, streaming }: Props) {
   const { report, summary, plan, personas } = data;
   const demo = demographicsSummary(personas);
 
-  async function captureCanvas() {
+  // 抓 DOM → canvas
+  // - download：用 PNG 高保真（scale 2、不壓縮）
+  // - email：用 JPEG 0.85 + scale 1.5，把 PDF 從 30+ MB 壓到 < 5 MB（Gmail 附件 25 MB 上限）
+  async function captureCanvas(opts?: { scale?: number }) {
     if (!reportRef.current) return null;
     const html2canvas = (await import("html2canvas")).default;
     return html2canvas(reportRef.current, {
       backgroundColor: "#0b1020",
-      scale: 2,
+      scale: opts?.scale ?? 2,
       useCORS: true,
       logging: false,
     });
   }
 
+  // 共用：產生 jsPDF 物件（多頁切分）。
+  // compact=true 時用 JPEG + 小 scale，給寄信用（避免超過 Gmail 25 MB 附件上限）
+  async function buildPdf(opts?: { compact?: boolean }) {
+    const compact = opts?.compact ?? false;
+    const canvas = await captureCanvas({ scale: compact ? 1.5 : 2 });
+    if (!canvas) return null;
+    const { jsPDF } = await import("jspdf");
+    const imgData = compact
+      ? canvas.toDataURL("image/jpeg", 0.85)
+      : canvas.toDataURL("image/png");
+    const fmt = compact ? "JPEG" : "PNG";
+    const pdf = new jsPDF({
+      orientation: "p",
+      unit: "mm",
+      format: "a4",
+      compress: true,
+    });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let position = 0;
+    let remaining = imgH;
+    while (remaining > 0) {
+      pdf.addImage(imgData, fmt, 0, position, imgW, imgH);
+      remaining -= pageH;
+      position -= pageH;
+      if (remaining > 0) pdf.addPage();
+    }
+    return pdf;
+  }
 
   async function downloadPdf() {
     if (downloadingPdf) return;
     setDownloadingPdf(true);
     try {
-      const canvas = await captureCanvas();
-      if (!canvas) return;
-      const { jsPDF } = await import("jspdf");
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgW = pageW;
-      const imgH = (canvas.height * imgW) / canvas.width;
-      // 多頁切分（如果報告超過 A4 一頁）
-      let position = 0;
-      let remaining = imgH;
-      while (remaining > 0) {
-        pdf.addImage(imgData, "PNG", 0, position, imgW, imgH);
-        remaining -= pageH;
-        position -= pageH;
-        if (remaining > 0) pdf.addPage();
-      }
+      const pdf = await buildPdf();
+      if (!pdf) return;
       pdf.save(`report-${Date.now()}.pdf`);
     } catch (e) {
       alert("PDF 下載失敗：" + (e instanceof Error ? e.message : String(e)));
@@ -160,6 +232,73 @@ export function ReportCard({ text, streaming }: Props) {
       setDownloadingPdf(false);
     }
   }
+
+  // prefill = "" 代表「請使用者自填」（語音 + 非 udo 帳號的場景）；undefined 用
+  // DEFAULT_EMAIL_TO 預填（按鈕 click 場景，udo 自己用比較方便）。
+  function openEmailModal(prefill?: string) {
+    if (emailing) return;
+    setEmailTo(prefill !== undefined ? prefill : DEFAULT_EMAIL_TO);
+    setEmailStatus(null);
+    setEmailModalOpen(true);
+  }
+
+  async function emailReport(toOverride?: string) {
+    if (emailing || !data) return;
+    setEmailing(true);
+    setEmailStatus(null);
+    try {
+      // compact 版（JPEG + 小 scale）— 寄信用，附件大小遠小於 Gmail 25 MB 限制
+      const pdf = await buildPdf({ compact: true });
+      if (!pdf) {
+        setEmailStatus({ kind: "err", msg: "PDF 產生失敗" });
+        return;
+      }
+      // jsPDF.output('datauristring') 含 "data:application/pdf;base64,..." 前綴
+      // 撕掉前綴只送純 base64，server 才好 Buffer.from(b64, 'base64')
+      const dataUri = pdf.output("datauristring");
+      const pdfBase64 = dataUri.replace(/^data:[^,]+,/, "");
+
+      const targetTo = (toOverride ?? emailTo).trim() || DEFAULT_EMAIL_TO;
+      const res = await fetch("/api/email-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data,
+          pdfBase64,
+          to: targetTo,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setEmailStatus({
+          kind: "err",
+          msg: err.error ?? `HTTP ${res.status}`,
+        });
+        return;
+      }
+      const ok = await res.json();
+      setEmailStatus({
+        kind: "ok",
+        msg: `已寄至 ${ok.to}（PDF + Markdown 附件）`,
+      });
+      // 成功後關閉 popup，讓 banner 顯示在按鈕區下方
+      setEmailModalOpen(false);
+    } catch (e) {
+      setEmailStatus({
+        kind: "err",
+        msg: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setEmailing(false);
+    }
+  }
+
+  // 同步 ref 給語音事件 handler 用（hook 在前面已註冊，這裡只做指派）
+  emailReportRef.current = emailReport;
+  downloadPdfRef.current = downloadPdf;
+  openEmailModalRef.current = openEmailModal;
+  canActRef.current = !emailing && !downloadingPdf && !streaming && !!data;
 
   return (
     <div className="space-y-3 max-w-4xl mx-auto w-full">
@@ -473,24 +612,113 @@ export function ReportCard({ text, streaming }: Props) {
         </footer>
       </div>
 
-      {/* 下載 + 進入動態模擬 */}
-      <div className="flex flex-wrap justify-center gap-3">
-        <button
-          type="button"
-          onClick={downloadPdf}
-          disabled={downloadingPdf || streaming}
-          className="bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm px-4 py-2 rounded-lg font-medium"
-        >
-          {downloadingPdf ? "產生 PDF..." : "⬇ 下載完整報告 (PDF)"}
-        </button>
-        <Link
-          href="/simulation"
-          title="動態模擬 — 行為相變散佈圖、外在變因下的決策變化"
-          className="inline-flex items-center bg-violet-600 hover:bg-violet-500 text-white text-sm px-4 py-2 rounded-lg font-medium transition"
-        >
-          🛰 進入動態模擬 →
-        </Link>
+      {/* 下載 + 寄信 + 進入動態模擬 */}
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={downloadPdf}
+            disabled={downloadingPdf || streaming}
+            className="bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm px-4 py-2 rounded-lg font-medium"
+          >
+            {downloadingPdf ? "產生 PDF..." : "⬇ 下載完整報告 (PDF)"}
+          </button>
+          <button
+            type="button"
+            onClick={() => openEmailModal()}
+            disabled={emailing || downloadingPdf || streaming}
+            title="開啟寄信視窗"
+            className="bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm px-4 py-2 rounded-lg font-medium"
+          >
+            ✉ 寄信
+          </button>
+          <Link
+            href="/simulation"
+            title="動態模擬 — 行為相變散佈圖、外在變因下的決策變化"
+            className="inline-flex items-center bg-violet-600 hover:bg-violet-500 text-white text-sm px-4 py-2 rounded-lg font-medium transition"
+          >
+            🛰 進入動態模擬 →
+          </Link>
+        </div>
+        {emailStatus && !emailModalOpen && (
+          <div
+            className={`text-xs px-3 py-1.5 rounded-md border ${
+              emailStatus.kind === "ok"
+                ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300"
+                : "bg-red-500/10 border-red-500/40 text-red-300"
+            }`}
+          >
+            {emailStatus.kind === "ok" ? "✓" : "✗"} {emailStatus.msg}
+          </div>
+        )}
       </div>
+
+      {/* === 寄信 modal === */}
+      {emailModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !emailing) {
+              setEmailModalOpen(false);
+            }
+          }}
+        >
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="px-5 pt-5 pb-3 border-b border-slate-700/60">
+              <div className="text-[10px] uppercase tracking-wider text-amber-400 font-bold mb-1">
+                寄信
+              </div>
+              <h3 className="text-base font-bold text-slate-50">
+                寄出完整報告（PDF + Markdown）
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                附件含 PDF 報告與 Markdown 文字檔，可改收件人。
+              </p>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              <label className="block">
+                <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+                  收件人
+                </span>
+                <input
+                  type="email"
+                  value={emailTo}
+                  onChange={(e) => setEmailTo(e.target.value)}
+                  disabled={emailing}
+                  placeholder={DEFAULT_EMAIL_TO}
+                  className="mt-1 w-full bg-slate-950/60 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 disabled:opacity-50"
+                />
+              </label>
+
+              {emailStatus?.kind === "err" && (
+                <div className="text-xs px-3 py-2 rounded-md border bg-red-500/10 border-red-500/40 text-red-300">
+                  ✗ {emailStatus.msg}
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 pb-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => !emailing && setEmailModalOpen(false)}
+                disabled={emailing}
+                className="text-sm px-4 py-2 rounded-lg font-medium text-slate-300 hover:text-slate-100 disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => void emailReport()}
+                disabled={emailing || !emailTo.trim()}
+                className="bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm px-4 py-2 rounded-lg font-medium"
+              >
+                {emailing ? "寄送中..." : "送出"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

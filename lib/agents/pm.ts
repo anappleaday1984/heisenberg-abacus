@@ -85,7 +85,7 @@ const REPORT_SYSTEM = `${LANG_RULE}
 \`\`\`
 
 ## 規則
-- \`keyFindings\` 必須 3-5 個，按重要性排序
+- \`keyFindings\` 必須 3-4 個，按重要性排序（最多 4 項，挑最關鍵的留下）
 - \`groupComparison.rows\` 必須 3-5 列，涵蓋不同族群（高/低支持度、不同人生階段）
 - \`actionItems\` 必須 3-5 個，至少 1 個 high priority
 - \`metric\` 是 optional，但有數字依據的 finding 一定要附
@@ -245,7 +245,7 @@ ${summaryText}
     parsed.groupComparison = { headers: [], rows: [] };
   }
 
-  parsed.keyFindings = parsed.keyFindings.slice(0, 6).map((f) => ({
+  parsed.keyFindings = parsed.keyFindings.slice(0, 4).map((f) => ({
     icon: String(f.icon ?? "📌"),
     title: String(f.title ?? ""),
     headline: String(f.headline ?? ""),

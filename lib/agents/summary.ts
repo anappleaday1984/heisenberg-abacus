@@ -46,6 +46,17 @@ const SYSTEM = `${LANG_RULE}
 6. **必須回傳完整有效 JSON**；任何欄位都不可省略，否則前端會炸
 7. 全程繁體中文 + 台灣用語
 
+## ⚠️ value / unit 不要重複
+
+\`metrics[i].value\` 是純數字／數字範圍；\`metrics[i].unit\` 是單位。前端會自己把兩個串起來顯示。**value 裡不要再放 unit 字符**，否則畫面會出現「70-75%%」「85%元」這種雙符號。
+
+❌ 錯誤：\`{ "value": "70-75%", "unit": "%" }\` → 渲染「70-75%%」
+❌ 錯誤：\`{ "value": "85% 認為 6.88% 算低", "unit": "%" }\` → 文字塞進 value 又補 %
+✅ 正確：\`{ "value": "70-75", "unit": "%" }\` → 渲染「70-75%」
+✅ 正確：\`{ "value": "5000-6000", "unit": "元" }\` → 渲染「5000-6000元」
+
+value 應該是**純數字 / 數字範圍 / 數字+簡短限定詞**（如 "5000-6000"、"7.2"、"60"、"~12 個月"），不要放整句解釋。
+
 ## 🚨 規格保真規則（避免「年利率→月利率」這類飄移）
 報告中提到產品規格時**必須對齊使用者原始 prompt**：
 - 原 prompt 是「年利率 6.88%」，summary 就**不能寫「月利率 1.5%」** — 即使受訪者答案說了月利率，也要在 \`metrics\` / \`sections\` 中對照本方案的「年利率 6.88%」說明（例：「本方案年利率 6.88% vs 受訪者期望年利率 5% 以下」）。
@@ -130,15 +141,21 @@ ${responses
   if (!parsed.keyTakeaway) parsed.keyTakeaway = "";
   if (!Array.isArray(parsed.metrics)) parsed.metrics = [];
   if (!Array.isArray(parsed.groups)) parsed.groups = [];
-  parsed.metrics = parsed.metrics.slice(0, 4).map((m) => ({
-    label: String(m.label ?? ""),
-    value: String(m.value ?? ""),
-    unit: String(m.unit ?? ""),
-    tone: (["positive", "neutral", "negative"] as const).includes(m.tone)
-      ? m.tone
-      : "neutral",
-    icon: String(m.icon ?? "📊"),
-  }));
+  parsed.metrics = parsed.metrics.slice(0, 4).map((m) => {
+    const rawValue = String(m.value ?? "");
+    const unit = String(m.unit ?? "");
+    return {
+      label: String(m.label ?? ""),
+      // 防呆：剝掉 value 結尾的 unit 字符（避免 LLM 寫成 value="70-75%" + unit="%"
+      // 渲染變「70-75%%」）。多個重複也會剝乾淨。
+      value: stripDuplicateUnit(rawValue, unit),
+      unit,
+      tone: (["positive", "neutral", "negative"] as const).includes(m.tone)
+        ? m.tone
+        : "neutral",
+      icon: String(m.icon ?? "📊"),
+    };
+  });
   parsed.groups = parsed.groups.slice(0, 5).map((g) => ({
     name: String(g.name ?? ""),
     score: Math.max(0, Math.min(100, Math.round(Number(g.score) || 0))),
@@ -152,6 +169,24 @@ ${responses
   };
 
   return parsed;
+}
+
+/**
+ * 剝掉 value 結尾重複的 unit 字符。
+ * - "70-75%" + "%" → "70-75"
+ * - "70-75%%" + "%" → "70-75"（連續多個也清掉）
+ * - "5000-6000元" + "元" → "5000-6000"
+ * - "85% 認為 6.88% 算低%" + "%" → "85% 認為 6.88% 算低"（只剝結尾、不動中間）
+ * - "70-75" + "%" → "70-75"（沒重複就原樣回）
+ */
+function stripDuplicateUnit(value: string, unit: string): string {
+  if (!unit) return value.trim();
+  let v = value.trim();
+  // 連續多次嘗試剝結尾 unit（含尾端空白），直到不再以 unit 結尾
+  while (v.endsWith(unit)) {
+    v = v.slice(0, v.length - unit.length).trim();
+  }
+  return v;
 }
 
 /** 把結構化 summary 轉成可讀文字，供 PM Agent 寫最終報告 */

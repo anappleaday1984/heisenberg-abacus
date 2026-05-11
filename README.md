@@ -59,8 +59,10 @@
 | Component | 內容 |
 |---|---|
 | **PipelineStatus** | 5 階段進度條，當前階段脈動高亮（啟動者 / 規劃 / 訪談 / 彙集 / 回報）|
-| **PhaseTransitionMap** | 行為相變散佈圖；X=經濟壓力、Y=購買意願；**算盤滑桿**即時調整產品參數，34 顆受訪者粒子動態坍縮 |
-| **DecisionSankey** | 決策路徑桑基圖；左側口語關鍵字 → 右側決策（願意/觀望/拒絕）；隨算盤同步重畫 |
+| **PhaseTransitionMap** | 行為相變散佈圖；X=經濟壓力、Y=購買意願；**算盤滑桿** + **通膨/失業外部衝擊** 即時調整參數，受訪者粒子動態坍縮 |
+| **DecisionSankey** | 三層決策桑基圖；**語意脈絡 → 行為誘因 → 決策**（願意/觀望/拒絕）；中間層揭示動機差異（省錢 vs 便利 vs 安全感），ribbon 漸變色從出發節點漸層到目的節點；隨算盤 + 衝擊同步重畫 |
+| **AbacusBar** | 底部 sticky 控制條：左邊主算盤珠（利率 / 月費 / 回饋率），右邊兩條外部衝擊滑桿（通膨 / 失業），全區面板的臨界點同步偏移 |
+| **SimulationLab** | 環境壓力模擬艙獨立頁（`/simulation`）；上方雙欄並排（行為相變 / 三層桑基），下方 sticky AbacusBar 全寬控制 |
 | **PersonaQAExplorer** | Q&A 探索器；一題一題呈現 + 三色受訪者氣泡 + 翻頁按鈕（看下一題 / 換 3 位 / 看洞察報告）|
 | **SummaryCard** | 一頁式可下載 PNG 圖卡：Headline + Key Takeaway + KPI 卡 + 族群 bar chart + 4 區塊洞察 |
 | **ReportCard** | 完整決策報告：研究命題、執行摘要、重點發現（含 metric）、族群比較表、受訪者背景表、行動建議（priority 分級）+ PDF / PNG 下載 |
@@ -149,8 +151,10 @@ npm run dev
 │   ├── logger.ts                      # 寫 z_wth_log.md
 │   ├── personas-store.ts              # JSON 檔讀寫 + HackMD parser + Markdown 匯出
 │   ├── persona-scores.ts              # 五維啟發式評分 + 購買意願公式 (信貸/保險/信用卡)
-│   ├── persona-flows.ts               # 關鍵字桶 + 決策桶 + Sankey flow builder
-│   ├── product-params-context.tsx     # React Context：算盤參數共享
+│   ├── persona-flows.ts               # 關鍵字桶 + 行為誘因桶 + 決策桶 + 三層 Sankey flow builder
+│   ├── persona-projections.ts         # 外部衝擊 (通膨/失業) 套用,提供 applyShocks 共用工具
+│   ├── celebrity-ids.ts               # 名人 persona ID 集合 (portrait 模糊處理用)
+│   ├── product-params-context.tsx     # React Context：算盤參數 + shocks 共享
 │   └── agents/
 │       ├── types.ts                   # SSE event types
 │       ├── shared-rules.ts            # 共用語言規定 (繁中、不洩漏 agent 名稱)

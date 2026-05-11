@@ -136,6 +136,65 @@ export const KEYWORD_BUCKETS: Record<string, string[]> = {
 
 const FALLBACK_BUCKET = "🔹 其他主題";
 
+// ---- 行為誘因 (Incentive Drivers) ----
+// 中間層 — 同樣是「願意」也要區分背後動機:省錢 vs 便利 vs 安全感 vs 成長機會 vs 風險規避。
+// 行銷文案要落地時,「剛性支出節流」族群該打加油回饋、「便利速度」族群該打快速核卡 —
+// 這層把「答案表面」翻譯成「決策驅動力」。
+//
+// 每位受訪者依答案文字命中關鍵字最多者為主誘因。完全沒命中 → fallback 到 FALLBACK_INCENTIVE。
+export const INCENTIVE_BUCKETS: Record<string, string[]> = {
+  "💰 剛性支出節流": [
+    "省", "省錢", "節省", "節流", "預算", "成本",
+    "太貴", "貴", "便宜", "划算", "划不來", "不划算", "CP", "性價比", "C/P",
+    "月繳", "月費", "月付", "年費", "保費",
+    "撐不住", "撐不起", "撐不下去", "扛不住", "吃緊", "拮据", "緊",
+    "油錢", "油價", "汽油", "加油", "充電",
+    "家計", "生活費", "孝親費", "贍養費",
+    "199", "299", "499", "699",
+    "免費", "0元", "零元",
+    "負擔得起", "負擔不起", "買不起",
+  ],
+  "🛡 安全感建構": [
+    "保障", "保護", "安全", "踏實", "心安", "安心",
+    "預備金", "應急金", "緊急金", "備用金", "老本",
+    "醫療", "意外", "失能", "傷殘", "疾病", "重大傷病",
+    "家人", "孩子", "小孩", "父母", "配偶", "家庭", "撫養", "扶養", "贍養",
+    "退休", "年金", "年老", "晚年",
+    "後路", "底氣", "後盾",
+  ],
+  "📈 機會型成長": [
+    "投資", "理財", "報酬", "獲利", "賺錢", "賺",
+    "複利", "增值", "翻倍", "資產配置",
+    "副業", "斜槓", "接案", "兼差", "兼職",
+    "創業", "新創",
+    "加密", "比特幣", "幣圈", "ETF", "股票", "基金",
+    "包租", "收租", "現金流",
+    "機會", "搶頭香", "趁早",
+  ],
+  "⚡ 便利速度": [
+    "快", "速度", "立刻", "馬上", "即時", "瞬間", "現場",
+    "簡單", "輕鬆", "方便", "順手", "好操作",
+    "APP", "app", "應用程式", "線上", "遠端", "雲端",
+    "30秒", "30 秒", "1分鐘", "一分鐘", "幾分鐘", "幾秒",
+    "免出門", "免臨櫃",
+    "一鍵", "一指", "點一下", "滑一下",
+  ],
+  "🚧 風險規避": [
+    "怕", "擔心", "不敢", "猶豫", "退縮",
+    "詐騙", "被騙", "騙人", "黑箱", "黑心",
+    "陷阱", "套路", "話術", "魔鬼藏在",
+    "條款", "細則", "細項", "小字", "綁約",
+    "拒賠", "拒保", "免責", "除外", "不理賠",
+    "套牢", "破產", "倒帳", "違約", "卡債", "週轉不靈",
+    "信用瑕疵", "信用空白", "被拒",
+    "踩雷", "出事", "出狀況",
+  ],
+  // Fallback — 沒命中其他誘因的歸這裡(通常是純資訊型答案)
+  "🔸 一般考量": [],
+};
+
+const FALLBACK_INCENTIVE = "🔸 一般考量";
+
 // ---- 決策桶 ----
 export type DecisionKey = "願意" | "觀望" | "拒絕";
 
@@ -220,6 +279,24 @@ export function classifyPrimaryKeyword(text: string): string {
   let bestHits = 0;
   for (const [bucket, terms] of Object.entries(KEYWORD_BUCKETS)) {
     if (terms.length === 0) continue; // 跳過 fallback bucket 本身
+    const hits = terms.filter((t) => text.includes(t)).length;
+    if (hits > bestHits) {
+      bestHits = hits;
+      bestBucket = bucket;
+    }
+  }
+  return bestBucket;
+}
+
+/**
+ * 找出文字裡命中誘因關鍵字最多的「主要」桶 — 同 classifyPrimaryKeyword 的單一分類規則。
+ * 沒命中走 FALLBACK_INCENTIVE,確保每位受訪者都會出現在中間層。
+ */
+export function classifyPrimaryIncentive(text: string): string {
+  let bestBucket = FALLBACK_INCENTIVE;
+  let bestHits = 0;
+  for (const [bucket, terms] of Object.entries(INCENTIVE_BUCKETS)) {
+    if (terms.length === 0) continue;
     const hits = terms.filter((t) => text.includes(t)).length;
     if (hits > bestHits) {
       bestHits = hits;
@@ -323,4 +400,104 @@ export function decisionFromIntent(intent: number): DecisionKey {
   if (intent >= 60) return "願意";
   if (intent >= 40) return "觀望";
   return "拒絕";
+}
+
+// ---- 三層 sankey:keyword → incentive → decision ----
+
+/** 一條完整的三段路徑(單一受訪者) */
+export type Triple = {
+  keyword: string;
+  incentive: string;
+  decision: DecisionKey;
+  persona: Persona;
+};
+
+/** 兩個節點之間的聚合段(渲染 ribbon 用) */
+export type FlowSegment = {
+  from: string;
+  to: string;
+  count: number;
+  personas: Persona[];
+};
+
+export type ThreeLayerFlows = {
+  triples: Triple[];
+  keywordToIncentive: FlowSegment[];
+  incentiveToDecision: FlowSegment[];
+  keywordTotals: Record<string, number>;
+  incentiveTotals: Record<string, number>;
+  decisionTotals: Record<DecisionKey, number>;
+};
+
+/**
+ * 三層 sankey 的資料層 — 把每位受訪者的 (keyword, incentive, decision) 三元組
+ * 拆成兩段聚合 segments,左右兩個 ribbon 集分別由它們驅動。
+ *
+ * 守恆:三層節點各自的「總人數加總」都等於 entries.length,所以節點高度可以正確比例放大。
+ */
+export function buildThreeLayerFlows(
+  entries: Entry[],
+  decisionFn?: (entry: Entry) => DecisionKey
+): ThreeLayerFlows {
+  const triples: Triple[] = [];
+  const keywordTotals: Record<string, number> = {};
+  const incentiveTotals: Record<string, number> = {};
+  const decisionTotals: Record<DecisionKey, number> = {
+    願意: 0,
+    觀望: 0,
+    拒絕: 0,
+  };
+
+  // 用 Map 聚合兩段 segment
+  const k2iMap = new Map<string, { count: number; personas: Persona[] }>();
+  const i2dMap = new Map<string, { count: number; personas: Persona[] }>();
+
+  for (const entry of entries) {
+    const fullText = entry.answers.join("\n");
+    const keyword = classifyPrimaryKeyword(fullText);
+    const incentive = classifyPrimaryIncentive(fullText);
+    const decision = decisionFn ? decisionFn(entry) : classifyDecision(fullText);
+
+    triples.push({ keyword, incentive, decision, persona: entry.persona });
+    keywordTotals[keyword] = (keywordTotals[keyword] || 0) + 1;
+    incentiveTotals[incentive] = (incentiveTotals[incentive] || 0) + 1;
+    decisionTotals[decision]++;
+
+    const k2iKey = `${keyword}→${incentive}`;
+    const k2i = k2iMap.get(k2iKey) ?? { count: 0, personas: [] };
+    k2i.count++;
+    k2i.personas.push(entry.persona);
+    k2iMap.set(k2iKey, k2i);
+
+    const i2dKey = `${incentive}→${decision}`;
+    const i2d = i2dMap.get(i2dKey) ?? { count: 0, personas: [] };
+    i2d.count++;
+    i2d.personas.push(entry.persona);
+    i2dMap.set(i2dKey, i2d);
+  }
+
+  const keywordToIncentive: FlowSegment[] = [];
+  for (const [key, { count, personas }] of k2iMap) {
+    const [from, to] = key.split("→");
+    keywordToIncentive.push({ from, to, count, personas });
+  }
+  const incentiveToDecision: FlowSegment[] = [];
+  for (const [key, { count, personas }] of i2dMap) {
+    const [from, to] = key.split("→");
+    incentiveToDecision.push({
+      from,
+      to: to as DecisionKey,
+      count,
+      personas,
+    });
+  }
+
+  return {
+    triples,
+    keywordToIncentive,
+    incentiveToDecision,
+    keywordTotals,
+    incentiveTotals,
+    decisionTotals,
+  };
 }
