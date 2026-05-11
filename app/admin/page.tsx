@@ -7,6 +7,7 @@ import { LoginButton } from "@/components/LoginButton";
 import { PersonaEditor } from "@/components/PersonaEditor";
 import { PersonaGenerator } from "@/components/PersonaGenerator";
 import { PersonaSummaryTable } from "@/components/PersonaSummaryTable";
+import { ServiceFAQ } from "@/components/ServiceFAQ";
 import type { Persona } from "@/lib/agents/personas-data";
 
 const HACKMD_URL =
@@ -154,6 +155,7 @@ function AdminContent() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <ServiceFAQ />
           <LoginButton />
           <Link href="/" className="text-sm text-blue-400 hover:text-blue-300">
             ← 回對話介面

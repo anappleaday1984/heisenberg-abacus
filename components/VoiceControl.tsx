@@ -8,6 +8,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export const VOICE_EMAIL_REPORT_EVENT = "voice:email-report";
 export const VOICE_DOWNLOAD_PDF_EVENT = "voice:download-pdf";
 export const VOICE_RESTART_EVENT = "voice:restart";
+// 服務 QA 打開事件 — ServiceFAQ.tsx 監聽。若使用者不在 /admin 頁,
+// VoiceControl 會先 router.push 過去再 sessionStorage 留 flag 讓 ServiceFAQ mount 後自動開啟。
+export const VOICE_OPEN_FAQ_EVENT = "voice:open-faq";
+export const VOICE_OPEN_FAQ_SESSION_KEY = "voice:openFaq";
 // 語音肥皂上的「回到入口」按鈕觸發 — ChatInterface 監聽後用內部 scrollRef 捲頂。
 // 不能用 window.scrollTo({top:0})，因為聊天區是 flex-1 overflow-y-auto 的內層容器。
 export const APP_SCROLL_TOP_EVENT = "app:scroll-top";
@@ -87,6 +91,7 @@ type VoiceAction =
   | "restart"
   | "navigate_simulation"
   | "navigate_home"
+  | "open_service_faq"
   | "unknown";
 
 type Status = "idle" | "awake" | "processing" | "done" | "error" | "muted";
@@ -308,6 +313,24 @@ export function VoiceControl() {
         case "navigate_home":
           showDone(`✓ ${message || "回首頁"}`);
           router.push("/");
+          break;
+        case "open_service_faq":
+          showDone(`✓ ${message || "打開服務 QA"}`);
+          // ServiceFAQ 目前只 mount 在 /admin。若不在那,先存 flag 再導頁,
+          // ServiceFAQ mount 後 useEffect 會讀 flag 自動打開。
+          if (
+            typeof window !== "undefined" &&
+            window.location.pathname !== "/admin"
+          ) {
+            try {
+              sessionStorage.setItem(VOICE_OPEN_FAQ_SESSION_KEY, "1");
+            } catch {
+              /* sessionStorage 不可用就略過,user 到 admin 後手動點即可 */
+            }
+            router.push("/admin");
+          } else {
+            window.dispatchEvent(new CustomEvent(VOICE_OPEN_FAQ_EVENT));
+          }
           break;
         default:
           setStatus("error");

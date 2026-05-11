@@ -96,36 +96,174 @@ const VOICE: Record<string, Partial<Record<ProductType, string>>> = {
   },
 };
 
-// 「整體光譜」開放模式 — 沒明確金融商品時用,給每位 persona 一句不綁產品、
-// 純粹描述自己「人生壓力 / 心理底氣 / 對任何方案的反應姿態」的話。
-// 用既有的人設屬性推導,讓不同 persona 在同一(無產品)情境下仍有可辨識的差異。
-function generateOpenVoice(p: Persona): string {
+// 從問題語境抓一個代表性名詞放進 voice — 讓「對訂閱方案怎麼看」「對健身房怎麼看」
+// 這類開放問題的顯影,會把「訂閱方案」「健身房」直接 inline 進句子,避免每位 persona
+// 都只用泛稱「這類方案」造成內容雷同。
+function extractContextNoun(context: string): string {
+  if (!context) return "";
+  const patterns = [
+    /訂閱(?:制|式|服務|方案|app)?/,
+    /會員(?:制|資格|方案|卡)?/,
+    /健身(?:房|中心|教練|app|APP)?/,
+    /補習(?:班)?|課程|線上課|實體課|工作坊/,
+    /餐(?:點|盒|廳)|便當|早午餐|手搖|飲料|咖啡|拿鐵/,
+    /平台|app|APP|應用程式|軟體/,
+    /訂房|住宿|民宿|旅遊|機票/,
+    /電動車|機車|自行車|交通工具/,
+    /家電|3C|手機|相機|電腦/,
+    /商品|產品|服務|方案/,
+  ];
+  for (const p of patterns) {
+    const m = context.match(p);
+    if (m) return m[0];
+  }
+  return "";
+}
+
+// Persona id 雜湊 — 在多個 template 中決定當前 persona 取哪一句,確保 deterministic。
+function pidHash(id: string): number {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return h;
+}
+
+// 「整體光譜」開放模式 — 沒明確金融商品時用。把產品名詞(從 context 抓出)+
+// persona 特徵(年齡、收入、家庭、職業 hint)+ template 變體三者交叉,
+// 30 位人物盡量句句不重複。
+function generateOpenVoice(p: Persona, context: string): string {
   const text = `${p.archetype} ${p.personality} ${p.family} ${p.assetsAndEvents}`;
-  const income = p.yearlyIncomeTWD;
+  const noun = extractContextNoun(context) || "這類方案";
+  const wan = Math.round(p.yearlyIncomeTWD / 10_000);
+
+  const isPoor = p.yearlyIncomeTWD < 400_000;
+  const isMiddle = p.yearlyIncomeTWD >= 400_000 && p.yearlyIncomeTWD < 1_000_000;
+  const isWealthy = p.yearlyIncomeTWD > 1_000_000;
   const hasDependents =
     /撫養|扶養|贍養|養.*孩|養.*家|負擔|支柱|單親|媽媽|爸爸|父親|母親/.test(text);
-  const isPoor = income < 400_000;
-  const isWealthy = income > 1_000_000;
   const badCredit = /破產|卡債|信用瑕疵|遲繳|被拒|信用空白/.test(text);
-  const tech = /工程師|新創|APP|軟體|科技|遊牧|電腦|剪輯/.test(text);
+  const tech = /工程師|新創|APP|軟體|科技|遊牧|電腦|剪輯|碼農/.test(text);
   const conservative = /保守|穩定|定存|謹慎|細心|認真|傳統|樂活|不搶快/.test(text);
   const risky = /創業|投資|股市|加密|斜槓|追求|夢想|改裝|叛逆/.test(text);
-  const sick = /心血管|疾病|長期服藥|健康|憂鬱/.test(text);
+  const sick = /心血管|疾病|長期服藥|健康|憂鬱|病史/.test(text);
+  const freelance = /斜槓|接案|外送|自由|遊牧|兼差|兼職/.test(text);
   const old = p.age >= 55;
   const young = p.age <= 25;
 
-  if (badCredit) return "我先看條件清不清楚 — 過去踩過雷,容易先設防。";
-  if (sick) return "我會先想到健康跟家人,任何方案先考慮會不會撐住。";
-  if (hasDependents && isPoor) return "我手頭緊 — 任何要花錢的事都得算清楚負擔。";
-  if (hasDependents) return "家裡靠我撐著,我看的是穩定不是噱頭。";
-  if (isWealthy) return "我有餘裕 — 但 CP 值不到位的東西我也不買單。";
-  if (old) return "這年紀我求穩,新東西要先看看別人用得怎樣。";
-  if (young && isPoor) return "我預算很有限,但只要值得我會試試看。";
-  if (young) return "我願意嘗試新東西,前提是流程要簡單。";
-  if (tech) return "我看設計跟體驗,複雜流程我直接放棄。";
-  if (risky) return "我願意承擔風險,前提是潛在報酬講得清楚。";
-  if (conservative) return "我先觀望、看別人用過再說。";
-  return `${p.age} 歲我有自己的步調 — 划算 + 透明我才會動。`;
+  // 每個分支準備 3 句模板,用 id hash mod 3 挑;盡量塞入 persona 自有的數字 / 名詞
+  const v = pidHash(p.id) % 3;
+  const pick = (a: string, b: string, c: string) => [a, b, c][v];
+
+  if (badCredit) {
+    return pick(
+      `${noun} 我會先盯細則 — 過去踩過雷,直覺先設防。`,
+      `信用紀錄有瑕疵的我,對 ${noun} 比一般人多繞兩圈。`,
+      `${noun} 講得再好,我先問條件能不能寬到我這種人。`
+    );
+  }
+  if (sick) {
+    return pick(
+      `身體不好,${noun} 我先想會不會卡到我用藥跟回診。`,
+      `${noun} 對我來說彈性比折扣重要 — 萬一住院要能停。`,
+      `有病史的人,${noun} 第一個問題就是核保不過怎麼辦。`
+    );
+  }
+  if (old && isWealthy) {
+    return pick(
+      `${p.age} 歲手頭穩,${noun} 對我意義不大 — 我有自己的節奏。`,
+      `定存夠用,${noun} 除非真的省事我才會考慮。`,
+      `${noun} 講得花俏,沒解決退休後真實痛點都是白搭。`
+    );
+  }
+  if (old) {
+    return pick(
+      `${p.age} 歲了,${noun} 我求穩,看別人用過再說。`,
+      `這年紀面對 ${noun},我先想能不能讓孩子放心。`,
+      `${noun} 流程一複雜我就放棄 — 沒耐心了。`
+    );
+  }
+  if (hasDependents && isPoor) {
+    return pick(
+      `年收 ${wan} 萬還要顧家 — ${noun} 得擠進預算才考慮。`,
+      `撐家計的人,${noun} 最在意能不能停、會不會綁死。`,
+      `家裡開銷已經緊,${noun} 月費多 200 元都會評估。`
+    );
+  }
+  if (hasDependents) {
+    return pick(
+      `身為家庭支柱 — ${noun} 的長期承擔比短期甜頭重要。`,
+      `${noun} 出事誰善後 — 這是我會先問的。`,
+      `${p.age} 歲還在養家,${noun} 我看的是穩不是 buzz。`
+    );
+  }
+  if (isWealthy && risky) {
+    return pick(
+      `${noun} 我會試,但 IRR 跟最壞情況我自己會算。`,
+      `現金流夠的人,${noun} 是放對位置的工具不是賭注。`,
+      `${noun} 講機會我聽,講穩定我就關手機。`
+    );
+  }
+  if (isWealthy) {
+    return pick(
+      `年收 ${wan} 萬,${noun} 我看 CP 值不到位的懶得開帳號。`,
+      `有餘裕反而更挑 — ${noun} 浪費我時間最貴。`,
+      `${noun} 要符合我現有生活方式才動,不會為它改習慣。`
+    );
+  }
+  if (tech) {
+    return pick(
+      `${noun} 我先看 APP 體驗,UI 醜的直接跳過。`,
+      `工程腦看 ${noun} — 介面跟流程設計比文案重要。`,
+      `${noun} 多卡一步我就放棄,有 30 秒一鍵解決我就試。`
+    );
+  }
+  if (freelance && young) {
+    return pick(
+      `跑單收入不穩,${noun} 一定要能停才敢試。`,
+      `斜槓的我看 ${noun} — 千萬不能綁年約。`,
+      `${noun} 彈性 > 折扣,我隨時可能換職涯方向。`
+    );
+  }
+  if (young && isPoor) {
+    return pick(
+      `${p.age} 歲學生族 — ${noun} 預算很有限但夠便宜我會試。`,
+      `${noun} 價格在我這個年齡層就決定一切。`,
+      `${noun} 一定要先免費試,沒試我不付月費。`
+    );
+  }
+  if (young) {
+    return pick(
+      `${p.age} 歲願意嘗試 ${noun},前提是流程一鍵搞定。`,
+      `${noun} 社群口碑比廣告影響我多 — 我先去 Threads 搜。`,
+      `${noun} 有 IG / TikTok 才會先觀察一下。`
+    );
+  }
+  if (risky) {
+    return pick(
+      `${noun} 我願意賭,但要寫清楚最壞情況。`,
+      `創業腦看 ${noun} 是機會還是分心,先衡量時間成本。`,
+      `${noun} 講保守我會睡著,講高報酬我會醒。`
+    );
+  }
+  if (conservative) {
+    return pick(
+      `${noun} 我先觀望半年,看穩定再進場。`,
+      `保守的我,${noun} 要見過親友實際用過才動。`,
+      `${noun} 文案越花俏我越懷疑 — 越樸實越可信。`
+    );
+  }
+  if (isMiddle) {
+    return pick(
+      `年收 ${wan} 萬左右 — ${noun} 夾在「想試」跟「該省」之間。`,
+      `中等收入族對 ${noun} 最敏感:多 500 元少 500 元都會算。`,
+      `${noun} 要剛好打中我預算空隙我才會買。`
+    );
+  }
+  // default
+  return pick(
+    `${p.age} 歲我有自己的步調 — ${noun} 講透明我才會動。`,
+    `${noun} 對我來說 — 划算 + 不綁我才考慮。`,
+    `${p.archetype} 看 ${noun}:不浪費我時間就好。`
+  );
 }
 
 // 自訂人設沒有手刻台詞時，依 persona 屬性挑句 — 同一人在不同產品也會講不同話
@@ -260,7 +398,10 @@ export function SpectrumSwitcher({ personas, productContext }: Props) {
     : AXES[type];
   const headerLabel = isOpen ? "整體光譜" : `${cfg.icon} ${cfg.label}`;
   const headerIcon = "🏛";
-  const dimensionLabel = isOpen ? "整體" : `「${productLabel(type)}」`;
+  // 開放模式用「基本介紹」(中性、適合任何商品),產品模式維持「『XX』口吻」
+  const introSuffix = isOpen
+    ? "基本介紹"
+    : `「${productLabel(type)}」口吻`;
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   // 預設展示 8 位（橫向卡片），按「查看全部」可展開全部 30 位。
@@ -280,7 +421,7 @@ export function SpectrumSwitcher({ personas, productContext }: Props) {
             {headerIcon} 受訪者顯影 · {headerLabel}
           </div>
           <h3 className="text-base font-bold text-slate-100 leading-tight mt-0.5">
-            {personas.length} 位受訪者的{dimensionLabel}口吻
+            {personas.length} 位受訪者的{introSuffix}
           </h3>
           <p className="text-[11px] text-slate-400 mt-0.5">{cfg.blurb}</p>
         </div>
@@ -303,10 +444,11 @@ export function SpectrumSwitcher({ personas, productContext }: Props) {
           {visiblePersonas.map((p) => {
             const idxInAll = personas.indexOf(p);
             const color = colorForPersona(p.id, idxInAll);
-            // 開放模式(沒明確金融商品)用 generateOpenVoice 給中性整體口吻;
-            // 明確產品(信貸/保險/信用卡)才用 VOICE 手刻或 generateVoice 的產品口吻。
+            // 開放模式(沒明確金融商品)用 generateOpenVoice + 從 productContext
+            // 抓出來的名詞 inline 到句子裡,讓 30 位人物的「基本介紹」針對商品語境
+            // 而不只是泛談;明確產品(信貸/保險/信用卡)才用 VOICE 手刻或 generateVoice。
             const line = isOpen
-              ? generateOpenVoice(p)
+              ? generateOpenVoice(p, productContext ?? "")
               : (VOICE[p.id]?.[type] ?? generateVoice(p, type));
             const isHovered = hoverIdx === idxInAll;
             return (

@@ -66,6 +66,8 @@
 | **PersonaQAExplorer** | Q&A 探索器；一題一題呈現 + 三色受訪者氣泡 + 翻頁按鈕（看下一題 / 換 3 位 / 看洞察報告）|
 | **SummaryCard** | 一頁式可下載 PNG 圖卡：Headline + Key Takeaway + KPI 卡 + 族群 bar chart + 4 區塊洞察 |
 | **ReportCard** | 完整決策報告：研究命題、執行摘要、重點發現（含 metric）、族群比較表、受訪者背景表、行動建議（priority 分級）+ PDF / PNG 下載 |
+| **ServiceFAQ** | 17 筆服務 Q&A 面板（人物設定頁右上角）：搜尋 bar + 一鍵展開 / 收合，沒命中時可一鍵讓 MiniMax 即時回答；支援語音「Hey Heisenberg, 打開 FAQ」開啟 |
+| **VoiceControl** | 全域語音控制：Hey Heisenberg 喚醒 + Web Speech API STT + LLM 意圖判讀 → 7 種 action（寄報告 / 下載 PDF / 重啟 / 進模擬艙 / 回首頁 / 打開服務 QA / unknown）|
 
 ---
 

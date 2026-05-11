@@ -7,6 +7,7 @@ export type VoiceAction =
   | "restart"
   | "navigate_simulation"
   | "navigate_home"
+  | "open_service_faq"
   | "unknown";
 
 export type VoiceIntent = {
@@ -30,10 +31,12 @@ const SYSTEM = `你是「海森堡的算盤」人類行為觀測站的語音指�
   例：「進入模擬」「動態模擬」「模擬艙」「simulation」「去模擬」
 - navigate_home — 回到首頁聊天介面
   例：「回首頁」「回主畫面」「回去聊天」「home」
+- open_service_faq — 打開服務 QA / 常見問題說明面板
+  例：「打開 FAQ」「服務 QA」「常見問題」「打開問答」「服務說明」「show FAQ」「看 QA」
 - unknown — 指令不明確、不在支援範圍、或是雜訊
 
 ## 輸出格式（必須是嚴格 JSON，不要 markdown 包裹、不要多餘文字）
-{"action": "email_report" | "download_pdf" | "restart" | "navigate_simulation" | "navigate_home" | "unknown", "message": "（口語回應，10 字內）"}
+{"action": "email_report" | "download_pdf" | "restart" | "navigate_simulation" | "navigate_home" | "open_service_faq" | "unknown", "message": "（口語回應，10 字內）"}
 
 ## message 規則
 - 繁體中文
@@ -83,6 +86,7 @@ export async function detectVoiceIntent(transcript: string): Promise<VoiceIntent
       "restart",
       "navigate_simulation",
       "navigate_home",
+      "open_service_faq",
       "unknown",
     ];
     return {
@@ -106,6 +110,8 @@ function fallbackMessage(action: VoiceAction): string {
       return "進入模擬";
     case "navigate_home":
       return "回首頁";
+    case "open_service_faq":
+      return "打開服務 QA";
     default:
       return "沒聽清楚";
   }
