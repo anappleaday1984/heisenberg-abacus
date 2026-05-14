@@ -16,9 +16,11 @@ type Props = {
   onCancel?: () => void;
 };
 
-// Demo accounts — quick-fill 只填帳號，密碼必須手動輸入
+// Demo accounts — quick-fill。udo 為主 demo 帳號,點擊直接帶密碼 + 自動登入,讓
+// demo 現場一鍵到位;esun 仍維持「只填帳號」需手動輸入密碼。demoPassword 寫死在
+// client 上純粹是本機 demo 的妥協 — 真實部署請拿掉。
 const DEMO_ACCOUNTS = [
-  { account: "udo", name: "管理員", color: "amber" as const },
+  { account: "udo", name: "管理員", color: "amber" as const, demoPassword: "0825" },
   { account: "esun", name: "成員", color: "slate" as const },
 ];
 
@@ -39,13 +41,7 @@ export function AuthForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function fillAccount(acct: string) {
-    setAccount(acct);
-    // 不自動填入密碼 — 由使用者手動輸入
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function performLogin(acct: string, pwd: string) {
     if (busy) return;
     setBusy(true);
     setError(null);
@@ -53,7 +49,7 @@ export function AuthForm({
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ account, password }),
+        body: JSON.stringify({ account: acct, password: pwd }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "登入失敗");
@@ -63,6 +59,21 @@ export function AuthForm({
     } finally {
       setBusy(false);
     }
+  }
+
+  function fillAccount(acct: string, demoPwd?: string) {
+    setAccount(acct);
+    if (demoPwd) {
+      // demo 帳號(udo)— 直接帶密碼並自動送出,讓 demo 一鍵到位
+      setPassword(demoPwd);
+      void performLogin(acct, demoPwd);
+    }
+    // 沒 demoPwd 的(esun)只填帳號,密碼讓使用者手動輸入
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    await performLogin(account, password);
   }
 
   const containerClass =
@@ -127,18 +138,21 @@ export function AuthForm({
 
       <div className="bg-slate-800/40 border border-slate-700 rounded p-2 text-xs text-slate-400 space-y-1.5">
         <div className="text-slate-300 font-medium">
-          常用帳號（點擊填入帳號，密碼請洽管理員）
+          常用帳號(udo demo 一鍵登入,esun 點擊只填帳號)
         </div>
         <div className="flex gap-2 flex-wrap">
           {DEMO_ACCOUNTS.map((d) => (
             <button
               key={d.account}
               type="button"
-              onClick={() => fillAccount(d.account)}
+              onClick={() => fillAccount(d.account, d.demoPassword)}
               disabled={busy}
               className={`border rounded px-2 py-0.5 disabled:opacity-50 ${QUICK_BTN_COLOR[d.color]}`}
             >
               {d.account} / {d.name}
+              {d.demoPassword && (
+                <span className="ml-1 text-[10px] text-amber-300/70">⚡ 一鍵</span>
+              )}
             </button>
           ))}
         </div>

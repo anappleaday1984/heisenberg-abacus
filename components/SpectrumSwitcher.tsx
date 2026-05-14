@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Persona } from "@/lib/agents/personas-data";
-import { isCelebrity } from "@/lib/celebrity-ids";
+import { isCelebrity, resolvePortraitId } from "@/lib/celebrity-ids";
 import {
   colorForPersona,
   detectProductType,
@@ -527,7 +527,9 @@ function PersonaCard({
   // 圖檔預期路徑：public${PORTRAIT_DIRS[PORTRAIT_STYLE]}/{id}.png
   // 圖檔不存在時用 onError 切回 emoji 漸層底，確保 demo 不會出現破圖。
   const [imgFailed, setImgFailed] = useState(false);
-  const imageSrc = `${PORTRAIT_DIRS[PORTRAIT_STYLE]}/${persona.id}.png`;
+  // 走 resolvePortraitId() 讓 v2 上班族 persona 共用 v1 同 archetype 的 portrait
+  // (v2 是 v1 的職業變體,沒必要再產一套圖)
+  const imageSrc = `${PORTRAIT_DIRS[PORTRAIT_STYLE]}/${resolvePortraitId(persona.id)}.png`;
   // 名人 portrait 用 blur filter 處理 — 6 位真人不應該清楚顯示長相,只保留輪廓 / 色調。
   const celeb = isCelebrity(persona.id);
 

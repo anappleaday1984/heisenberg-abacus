@@ -11,6 +11,18 @@ export const CELEBRITY_IDS: ReadonlySet<string> = new Set([
   "persona_motn96at", // 胡漢龑(吊車大王)
 ]);
 
+/**
+ * 把 `_v2` 後綴剝掉,讓 v2 上班族 persona 共用 v1 同 archetype 的 portrait 與
+ * 名人判定(v2 是 v1 的職業變體,人物本身相同,沒必要再產一套圖)。
+ *
+ *   "uncle_zealot_v2"     → "uncle_zealot"
+ *   "nv_jensen_true_v2"   → "nv_jensen_true"
+ *   "uncle_zealot"        → "uncle_zealot"  (no-op)
+ */
+export function resolvePortraitId(personaId: string): string {
+  return personaId.endsWith("_v2") ? personaId.slice(0, -3) : personaId;
+}
+
 export function isCelebrity(personaId: string): boolean {
-  return CELEBRITY_IDS.has(personaId);
+  return CELEBRITY_IDS.has(resolvePortraitId(personaId));
 }

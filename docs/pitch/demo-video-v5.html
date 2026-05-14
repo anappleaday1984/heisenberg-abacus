@@ -1,0 +1,3844 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>海森堡的算盤 · 6min Demo v5 (24 場景 / 對嘴關閉 / 已修桑基交錯)</title>
+<style>
+  :root {
+    /* Tailwind-like slate / accents — match the app */
+    --slate-950: #020617;
+    --slate-900: #0f172a;
+    --slate-800: #1e293b;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-400: #94a3b8;
+    --slate-300: #cbd5e1;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --slate-50:  #f8fafc;
+    --blue-500: #3b82f6;
+    --blue-600: #2563eb;
+    --blue-400: #60a5fa;
+    --blue-300: #93c5fd;
+    --violet-500: #8b5cf6;
+    --violet-400: #a78bfa;
+    --violet-300: #c4b5fd;
+    --emerald-500: #10b981;
+    --emerald-400: #34d399;
+    --emerald-300: #6ee7b7;
+    --amber-500: #f59e0b;
+    --amber-400: #fbbf24;
+    --amber-300: #fcd34d;
+    --rose-500: #f43f5e;
+    --rose-400: #fb7185;
+    --red-500: #ef4444;
+    --red-400: #f87171;
+    --cyan-400: #22d3ee;
+    --cyan-500: #06b6d4;
+    --cyan-300: #67e8f9;
+    --pink-400: #f472b6;
+    --indigo-400: #818cf8;
+    --teal-400: #2dd4bf;
+    --app-bg: #0b1020;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+    color: var(--slate-100);
+    user-select: none;
+  }
+  .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, ui-monospace, monospace; }
+
+  /* ============ STAGE (browser frame) ============ */
+  .stage {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    overflow: hidden;
+  }
+  .browser {
+    position: absolute;
+    inset: 28px 28px 84px 28px;
+    background: var(--app-bg);
+    border-radius: 12px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .browser-bar {
+    height: 36px;
+    background: linear-gradient(180deg, #1a1f33, #131727);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center;
+    padding: 0 14px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .browser-bar .dots {
+    display: flex; gap: 6px;
+  }
+  .browser-bar .dots i {
+    width: 12px; height: 12px; border-radius: 50%;
+    display: block;
+  }
+  .browser-bar .dots i:nth-child(1) { background: #ff5f57; }
+  .browser-bar .dots i:nth-child(2) { background: #febc2e; }
+  .browser-bar .dots i:nth-child(3) { background: #28c840; }
+  .url-bar {
+    flex: 1;
+    margin: 0 14px;
+    height: 22px;
+    background: var(--slate-800);
+    border-radius: 11px;
+    display: flex; align-items: center; padding: 0 12px;
+    font-size: 11px;
+    color: var(--slate-400);
+    font-family: "SF Mono", monospace;
+    letter-spacing: 0.02em;
+  }
+  .url-bar .lock {
+    color: var(--emerald-400);
+    margin-right: 6px;
+    font-size: 10px;
+  }
+  .browser-bar .actions {
+    display: flex; gap: 6px;
+    font-size: 11px; color: var(--slate-500);
+  }
+  .viewport {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--app-bg);
+  }
+
+  /* ============ SCENES ============ */
+  .scene {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 500ms ease;
+  }
+  .scene.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ============ CURSOR ============ */
+  .cursor {
+    position: absolute;
+    width: 22px; height: 22px;
+    z-index: 500;
+    transition: left 800ms cubic-bezier(.45,.05,.55,.95), top 800ms cubic-bezier(.45,.05,.55,.95);
+    pointer-events: none;
+    transform-origin: 4px 4px;
+    opacity: 0;
+  }
+  .cursor::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'><path d='M2 2 L2 18 L7 14 L10 20 L13 18.5 L10 12.5 L17 12.5 Z' fill='white' stroke='black' stroke-width='1.3' stroke-linejoin='round'/></svg>") no-repeat center / contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+  }
+  .cursor.visible { opacity: 1; }
+  .cursor.click::after {
+    content: "";
+    position: absolute;
+    top: -4px; left: -4px;
+    width: 30px; height: 30px;
+    border: 2px solid var(--cyan-400);
+    border-radius: 50%;
+    animation: clickRing 500ms ease-out;
+  }
+  @keyframes clickRing {
+    from { opacity: 1; transform: scale(0.3); }
+    to { opacity: 0; transform: scale(1.4); }
+  }
+
+  /* ============ COMMON UI PRIMITIVES ============ */
+  .card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--slate-700);
+    border-radius: 16px;
+  }
+  .input {
+    background: var(--slate-800);
+    border: 1px solid var(--slate-700);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--slate-100);
+    font-size: 14px;
+    width: 100%;
+    transition: border-color 200ms;
+  }
+  .input:focus, .input.focus { border-color: var(--blue-500); outline: none; }
+  .btn {
+    background: var(--blue-600);
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 200ms;
+  }
+  .btn:hover { background: var(--blue-500); }
+  .btn.amber { background: transparent; border: 1px solid rgba(245, 158, 11, 0.4); color: var(--amber-300); }
+  .btn.slate { background: transparent; border: 1px solid var(--slate-600); color: var(--slate-300); }
+
+  /* ============ SCENE 1: LAB ENTRANCE (CRT terminal) ============ */
+  #scene-1 .lab-screen {
+    position: absolute; inset: 0;
+    background: #000;
+    display: flex;
+    align-items: center; justify-content: center;
+  }
+  #scene-1 .lab-inner {
+    width: 80%; max-width: 800px;
+    padding: 40px;
+    font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+    font-size: 14px;
+    color: #aab;
+    line-height: 1.85;
+    position: relative;
+  }
+  #scene-1 .lab-line { opacity: 0; }
+  #scene-1.active .lab-line:nth-child(1) { animation: typeIn 500ms 200ms forwards; }
+  #scene-1.active .lab-line:nth-child(2) { animation: typeIn 500ms 800ms forwards; }
+  #scene-1.active .lab-line:nth-child(3) { animation: typeIn 500ms 1400ms forwards; }
+  #scene-1.active .lab-line:nth-child(4) { animation: typeIn 500ms 2000ms forwards; }
+  #scene-1.active .lab-line:nth-child(5) { animation: typeIn 500ms 2700ms forwards; color: var(--emerald-400); }
+  #scene-1.active .lab-line:nth-child(6) { animation: typeIn 500ms 3400ms forwards; color: var(--cyan-400); }
+  #scene-1.active .lab-line:nth-child(7) { animation: typeIn 500ms 4200ms forwards; color: var(--cyan-400); font-weight: 600; }
+  @keyframes typeIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  #scene-1 .lab-line .prompt { color: var(--slate-600); margin-right: 6px; }
+  #scene-1 .crt-scanlines {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(0deg,
+      rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px,
+      transparent 1px, transparent 3px);
+    z-index: 4;
+  }
+  #scene-1 .crt-vignette {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+    z-index: 3;
+  }
+  #scene-1 .lab-title-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 6;
+    background: radial-gradient(ellipse at center, rgba(0,229,255,0.15), transparent 60%);
+    opacity: 0;
+  }
+  #scene-1.active .lab-title-overlay { animation: titleIn 800ms 5500ms forwards; }
+  @keyframes titleIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  #scene-1 .lab-title-overlay h1 {
+    font-size: 64px; font-weight: 800;
+    color: var(--slate-50); margin: 0;
+    text-shadow: 0 0 40px rgba(0,229,255,0.5);
+    letter-spacing: -0.02em;
+  }
+  #scene-1 .lab-title-overlay h1 .accent { color: var(--cyan-400); }
+  #scene-1 .lab-title-overlay .sub {
+    margin-top: 12px;
+    font-size: 14px; color: var(--slate-400);
+    letter-spacing: 0.3em;
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  /* ============ SCENE 2: LOGIN ============ */
+  #scene-2 .login-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(139, 92, 246, 0.15), transparent 50%),
+      radial-gradient(ellipse at 70% 70%, rgba(59, 130, 246, 0.10), transparent 50%),
+      var(--app-bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #scene-2 .login-card {
+    width: 380px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--slate-700);
+    border-radius: 16px;
+    padding: 28px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  #scene-2.active .login-card { animation: fadeUp 600ms 200ms forwards; }
+  @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+  #scene-2 .login-title {
+    font-size: 18px; font-weight: 600;
+    color: var(--slate-100); margin: 0 0 4px;
+  }
+  #scene-2 .login-sub {
+    font-size: 11px; color: var(--slate-400);
+    margin-bottom: 20px;
+  }
+  #scene-2 .label {
+    font-size: 11px; color: var(--slate-400);
+    margin-bottom: 6px; display: block;
+  }
+  #scene-2 .login-input {
+    background: var(--slate-800);
+    border: 1px solid var(--slate-700);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--slate-100);
+    font-size: 13px;
+    width: 100%;
+    margin-bottom: 12px;
+    transition: border-color 300ms;
+  }
+  #scene-2 .login-input.filled { color: var(--slate-100); }
+  #scene-2 .login-input.focused { border-color: var(--blue-500); }
+  #scene-2 .demo-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin: 14px 0;
+  }
+  #scene-2 .demo-btn {
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 11px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 200ms;
+    background: transparent;
+  }
+  #scene-2 .demo-btn.amber {
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: var(--amber-300);
+  }
+  #scene-2 .demo-btn.amber.highlight {
+    border-color: var(--amber-500);
+    background: rgba(245, 158, 11, 0.1);
+  }
+  #scene-2 .demo-btn.slate {
+    border: 1px solid var(--slate-600);
+    color: var(--slate-300);
+  }
+  #scene-2 .demo-btn .tag {
+    font-size: 9px; color: rgba(252, 211, 77, 0.7);
+    display: block; margin-top: 2px;
+  }
+  #scene-2 .submit-row {
+    margin-top: 14px;
+    display: flex; justify-content: flex-end;
+  }
+  #scene-2 .submit-btn {
+    background: var(--blue-600);
+    color: white;
+    border: none;
+    padding: 7px 18px;
+    border-radius: 6px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+  }
+  #scene-2 .submit-btn:hover { background: var(--blue-500); }
+
+  /* ============ SCENE 3: MAIN CHAT + EXAMPLE CARDS ============ */
+  #scene-3 .app-shell {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    background: var(--app-bg);
+  }
+  #scene-3 .app-header {
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--slate-800);
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(11, 16, 32, 0.9);
+    flex-shrink: 0;
+  }
+  #scene-3 .app-title {
+    font-size: 16px; font-weight: 600;
+    color: var(--slate-100);
+  }
+  #scene-3 .app-title .sub {
+    display: block;
+    font-size: 10px; font-weight: 400;
+    color: var(--slate-400);
+    margin-top: 2px;
+  }
+  #scene-3 .header-actions {
+    display: flex; gap: 8px;
+  }
+  #scene-3 .header-actions .hbtn {
+    font-size: 11px; color: var(--slate-400);
+    border: 1px solid var(--slate-700);
+    background: transparent;
+    padding: 5px 12px; border-radius: 6px;
+  }
+  #scene-3 .chat-area {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  #scene-3 .welcome {
+    text-align: center; margin-bottom: 28px;
+  }
+  #scene-3 .welcome h2 {
+    font-size: 22px; font-weight: 700;
+    color: var(--slate-100);
+    margin: 0 0 8px;
+  }
+  #scene-3 .welcome p {
+    font-size: 13px; color: var(--slate-400);
+    margin: 0;
+    line-height: 1.6;
+  }
+  #scene-3 .example-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    max-width: 720px; margin: 0 auto;
+  }
+  #scene-3 .ex-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 200ms;
+  }
+  #scene-3 .ex-card.hover {
+    border-color: var(--blue-500);
+    background: rgba(51, 65, 85, 0.6);
+    transform: translateY(-2px);
+  }
+  #scene-3 .ex-card .ex-icon {
+    font-size: 24px; margin-bottom: 6px; display: block;
+  }
+  #scene-3 .ex-card .ex-name {
+    font-size: 13px; font-weight: 600;
+    color: var(--slate-100); margin-bottom: 4px;
+  }
+  #scene-3 .ex-card .ex-desc {
+    font-size: 11px; color: var(--slate-400);
+    line-height: 1.5;
+  }
+  #scene-3 .input-row {
+    padding: 16px 24px;
+    border-top: 1px solid var(--slate-800);
+    display: flex; gap: 12px;
+    background: rgba(11, 16, 32, 0.95);
+    flex-shrink: 0;
+  }
+  #scene-3 .chat-input {
+    flex: 1;
+    background: var(--slate-800);
+    border: 1px solid var(--slate-700);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--slate-100);
+    font-size: 14px;
+    transition: border-color 200ms;
+  }
+  #scene-3 .chat-input.focused { border-color: var(--blue-500); }
+  #scene-3 .chat-input .typed { color: var(--slate-100); }
+  #scene-3 .chat-input .cursor-blink {
+    display: inline-block; width: 2px; height: 14px;
+    background: var(--blue-400); vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  #scene-3 .send-btn {
+    background: var(--blue-600);
+    color: white; border: none;
+    padding: 8px 20px;
+    border-radius: 10px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+  }
+  #scene-3 .send-btn.highlight {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    animation: btnPulse 1.5s infinite;
+  }
+  @keyframes btnPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+    50% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+  }
+
+  /* ============ SCENE 4: PIPELINE + AGENT MESSAGES ============ */
+  #scene-4 .app-shell {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    background: var(--app-bg);
+  }
+  #scene-4 .app-header {
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--slate-800);
+    background: rgba(11, 16, 32, 0.9);
+  }
+  #scene-4 .app-title { font-size: 16px; font-weight: 600; color: var(--slate-100); }
+  #scene-4 .pipeline-bar {
+    padding: 12px 24px;
+    background: rgba(15, 23, 42, 0.7);
+    border-bottom: 1px solid var(--slate-800);
+    backdrop-filter: blur(8px);
+  }
+  #scene-4 .pipeline-top {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  #scene-4 .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--blue-400);
+    animation: pulseDot 1.5s infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(59,130,246,0.6); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 8px rgba(59,130,246,0); }
+  }
+  #scene-4 .pipeline-status {
+    font-size: 12px; color: var(--slate-200);
+  }
+  #scene-4 .pipeline-status .agent { color: var(--blue-300); font-weight: 600; }
+  #scene-4 .pipeline-status .sep { color: var(--slate-500); margin: 0 6px; }
+  #scene-4 .pipeline-dots {
+    display: flex; gap: 4px; margin-bottom: 6px;
+  }
+  #scene-4 .pdot {
+    height: 4px; flex: 1; border-radius: 2px;
+    background: var(--slate-700);
+    transition: background 400ms;
+  }
+  #scene-4 .pdot.done.entry { background: var(--blue-500); }
+  #scene-4 .pdot.done.pm { background: var(--violet-500); }
+  #scene-4 .pdot.done.persona { background: var(--emerald-500); }
+  #scene-4 .pdot.done.summary { background: var(--amber-500); }
+  #scene-4 .pdot.done.report { background: var(--rose-500); }
+  #scene-4 .pdot.active.entry { background: var(--blue-500); animation: pulseLight 1.2s infinite; }
+  #scene-4 .pdot.active.pm { background: var(--violet-500); animation: pulseLight 1.2s infinite; }
+  #scene-4 .pdot.active.persona { background: var(--emerald-500); animation: pulseLight 1.2s infinite; }
+  #scene-4 .pdot.active.summary { background: var(--amber-500); animation: pulseLight 1.2s infinite; }
+  #scene-4 .pdot.active.report { background: var(--rose-500); animation: pulseLight 1.2s infinite; }
+  @keyframes pulseLight {
+    50% { opacity: 0.6; }
+  }
+  #scene-4 .pipeline-labels {
+    display: flex; justify-content: space-between;
+    font-size: 9px; letter-spacing: 0.1em;
+    color: var(--slate-500);
+    text-transform: uppercase;
+  }
+  #scene-4 .pipeline-labels .plab { flex: 1; text-align: center; }
+  #scene-4 .pipeline-labels .plab.active { color: var(--slate-100); font-weight: 700; }
+  #scene-4 .messages {
+    flex: 1; padding: 20px 24px;
+    overflow-y: auto;
+  }
+  #scene-4 .msg {
+    margin-bottom: 14px;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  #scene-4 .msg.user { display: flex; justify-content: flex-end; }
+  #scene-4 .msg.user .bubble {
+    background: var(--slate-700);
+    color: var(--slate-100);
+    padding: 9px 14px;
+    border-radius: 14px 14px 4px 14px;
+    max-width: 75%;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  #scene-4 .msg.agent .badge {
+    display: inline-flex; align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid;
+    font-size: 11px; font-weight: 500;
+    margin-bottom: 4px;
+  }
+  #scene-4 .msg.agent .badge .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+  #scene-4 .msg.agent .badge.entry {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--blue-300);
+    border-color: rgba(59, 130, 246, 0.4);
+  }
+  #scene-4 .msg.agent .badge.pm {
+    background: rgba(139, 92, 246, 0.2);
+    color: var(--violet-300);
+    border-color: rgba(139, 92, 246, 0.4);
+  }
+  #scene-4 .msg.agent .content {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 10px 14px;
+    color: var(--slate-100);
+    font-size: 12.5px;
+    line-height: 1.6;
+    max-width: 78%;
+  }
+  #scene-4 .msg.agent .content .typing-cursor {
+    display: inline-block; width: 7px; height: 13px;
+    background: var(--slate-400);
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 1s infinite;
+  }
+
+  /* ============ SCENE 5: PERSONA QA EXPLORER ============ */
+  #scene-5 .app-shell {
+    position: absolute; inset: 0;
+    background: var(--app-bg);
+    padding: 20px 24px;
+    overflow: hidden;
+  }
+  #scene-5 .pipeline-bar {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--slate-800);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+  }
+  #scene-5 .pipeline-top {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  #scene-5 .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--emerald-400);
+    animation: pulseDot 1.5s infinite;
+  }
+  #scene-5 .pipeline-status {
+    font-size: 12px; color: var(--slate-200);
+  }
+  #scene-5 .pipeline-status .agent { color: var(--emerald-300); font-weight: 600; }
+  #scene-5 .pipeline-status .sep { color: var(--slate-500); margin: 0 6px; }
+  #scene-5 .pipeline-dots {
+    display: flex; gap: 4px; margin-bottom: 4px;
+  }
+  #scene-5 .pdot {
+    height: 4px; flex: 1; border-radius: 2px;
+    background: var(--slate-700);
+  }
+  #scene-5 .pdot.entry-done { background: var(--blue-500); }
+  #scene-5 .pdot.pm-done { background: var(--violet-500); }
+  #scene-5 .pdot.persona-active {
+    background: var(--emerald-500);
+    animation: pulseLight 1.2s infinite;
+  }
+
+  #scene-5 .qa-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.08));
+    border: 2px solid rgba(59, 130, 246, 0.4);
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  #scene-5 .qa-card .qbadge {
+    position: absolute; top: -10px; left: 18px;
+    background: rgba(59, 130, 246, 0.95);
+    color: white;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 3px 10px; border-radius: 6px;
+  }
+  #scene-5 .qa-card .qtitle {
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  #scene-5 .qnum {
+    background: var(--blue-600);
+    color: white;
+    font-size: 13px; font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  #scene-5 .qtext {
+    font-size: 15px; color: var(--slate-50);
+    font-weight: 600; line-height: 1.45;
+    padding-top: 3px;
+  }
+  #scene-5 .answers {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  #scene-5 .ans {
+    background: rgba(30, 41, 59, 0.4);
+    border-left: 4px solid;
+    border-radius: 6px;
+    padding: 10px 12px;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  #scene-5.active .ans { animation: fadeUp 500ms forwards; }
+  #scene-5.active .ans:nth-child(1) { animation-delay: 800ms; border-color: var(--emerald-400); }
+  #scene-5.active .ans:nth-child(2) { animation-delay: 1100ms; border-color: var(--violet-400); }
+  #scene-5.active .ans:nth-child(3) { animation-delay: 1400ms; border-color: var(--amber-400); }
+  #scene-5.active .ans:nth-child(4) { animation-delay: 1700ms; border-color: var(--cyan-400); }
+  #scene-5.active .ans:nth-child(5) { animation-delay: 2000ms; border-color: var(--rose-400); }
+  #scene-5.active .ans:nth-child(6) { animation-delay: 2300ms; border-color: var(--pink-400); }
+  #scene-5 .ans .ahead {
+    font-size: 10px; color: var(--slate-500);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  #scene-5 .ans .aname {
+    font-weight: 700; font-size: 12px;
+  }
+  #scene-5 .ans:nth-child(1) .aname { color: var(--emerald-400); }
+  #scene-5 .ans:nth-child(2) .aname { color: var(--violet-400); }
+  #scene-5 .ans:nth-child(3) .aname { color: var(--amber-400); }
+  #scene-5 .ans:nth-child(4) .aname { color: var(--cyan-400); }
+  #scene-5 .ans:nth-child(5) .aname { color: var(--rose-400); }
+  #scene-5 .ans:nth-child(6) .aname { color: var(--pink-400); }
+  #scene-5 .ans .atext {
+    font-size: 12px; color: var(--slate-100);
+    line-height: 1.5;
+  }
+  #scene-5 .ans .hl {
+    background: rgba(96, 165, 250, 0.18);
+    color: var(--blue-300);
+    padding: 1px 4px; border-radius: 3px;
+    font-weight: 500;
+  }
+  #scene-5 .pager {
+    margin-top: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid var(--slate-700);
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+  #scene-5 .pager .progress {
+    font-size: 11px; color: var(--slate-400);
+  }
+  #scene-5 .pager-btns { display: flex; gap: 6px; }
+  #scene-5 .pbtn {
+    background: var(--slate-700);
+    color: var(--slate-200);
+    border: none;
+    padding: 6px 12px;
+    font-size: 11px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #scene-5 .pbtn.next { background: var(--blue-600); color: white; }
+  #scene-5 .pbtn.summary { background: var(--emerald-600, #059669); color: white; }
+
+  /* ============ SCENE 6: PHASE TRANSITION MAP ============ */
+  #scene-6 .app-shell {
+    position: absolute; inset: 0;
+    background: var(--app-bg);
+    padding: 18px 24px;
+    overflow: hidden;
+  }
+  #scene-6 .phase-card {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.6));
+    border: 1px solid var(--slate-700);
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  #scene-6 .phase-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  #scene-6 .phase-head .label {
+    font-size: 10px; color: var(--violet-400);
+    font-weight: 700; letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  #scene-6 .phase-head h3 {
+    font-size: 18px; font-weight: 700;
+    color: var(--slate-100); margin: 4px 0 0;
+  }
+  #scene-6 .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-bottom: 14px;
+  }
+  #scene-6 .stat {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid;
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+  #scene-6 .stat.s-buy {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.08);
+  }
+  #scene-6 .stat.s-watch {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.08);
+  }
+  #scene-6 .stat.s-reject {
+    border-color: rgba(244, 63, 94, 0.4);
+    background: rgba(244, 63, 94, 0.08);
+  }
+  #scene-6 .stat .slabel {
+    font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  #scene-6 .stat.s-buy .slabel { color: var(--emerald-400); }
+  #scene-6 .stat.s-watch .slabel { color: var(--amber-400); }
+  #scene-6 .stat.s-reject .slabel { color: var(--rose-400); }
+  #scene-6 .stat .sval {
+    font-size: 24px; font-weight: 700;
+    color: var(--slate-100);
+    font-variant-numeric: tabular-nums;
+  }
+  #scene-6 .stat .sval .delta {
+    font-size: 11px;
+    margin-left: 4px;
+  }
+  #scene-6 .phase-svg {
+    width: 100%; height: 320px;
+    background: rgba(2, 6, 23, 0.4);
+    border-radius: 10px;
+    border: 1px solid var(--slate-800);
+  }
+  #scene-6 .pdot {
+    transition: cx 1500ms cubic-bezier(.34,1.56,.64,1), cy 1500ms cubic-bezier(.34,1.56,.64,1);
+  }
+  #scene-6 .tooltip {
+    position: absolute;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid var(--violet-400);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 11px;
+    color: var(--slate-100);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 300ms, left 600ms, top 600ms;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    z-index: 10;
+    min-width: 140px;
+  }
+  #scene-6 .tooltip.visible { opacity: 1; }
+  #scene-6 .tooltip .tname { font-weight: 700; color: var(--violet-300); margin-bottom: 3px; }
+  #scene-6 .tooltip .tmeta { font-size: 10px; color: var(--slate-400); }
+
+  /* ============ SCENE 7: ABACUS DRAG ============ */
+  #scene-7 .app-shell {
+    position: absolute; inset: 0;
+    background: var(--app-bg);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  #scene-7 .top-area {
+    flex: 1;
+    padding: 16px 24px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  #scene-7 .phase-card {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.6));
+    border: 1px solid var(--slate-700);
+    border-radius: 16px;
+    padding: 16px;
+    flex: 1;
+    display: flex; flex-direction: column;
+  }
+  #scene-7 .ph-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  #scene-7 .ph-head .left .lbl {
+    font-size: 10px; color: var(--violet-400);
+    font-weight: 700; letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  #scene-7 .ph-head .left .ttl {
+    font-size: 15px; font-weight: 700;
+    color: var(--slate-100); margin-top: 2px;
+  }
+  #scene-7 .ph-head .right {
+    text-align: right;
+    font-size: 11px; color: var(--slate-400);
+  }
+  #scene-7 .ph-head .right .v {
+    color: var(--violet-300); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  #scene-7 .ph-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    margin-bottom: 10px;
+  }
+  #scene-7 .ph-stat {
+    border-radius: 6px; padding: 6px 10px;
+    border: 1px solid;
+  }
+  #scene-7 .ph-stat.buy { border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08); }
+  #scene-7 .ph-stat.watch { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08); }
+  #scene-7 .ph-stat.reject { border-color: rgba(244, 63, 94, 0.4); background: rgba(244, 63, 94, 0.08); }
+  #scene-7 .ph-stat .lbl { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
+  #scene-7 .ph-stat.buy .lbl { color: var(--emerald-400); }
+  #scene-7 .ph-stat.watch .lbl { color: var(--amber-400); }
+  #scene-7 .ph-stat.reject .lbl { color: var(--rose-400); }
+  #scene-7 .ph-stat .v {
+    font-size: 16px; font-weight: 700;
+    color: var(--slate-100);
+    font-variant-numeric: tabular-nums;
+    transition: color 800ms;
+  }
+  #scene-7 .ph-stat .delta {
+    font-size: 10px; margin-left: 4px;
+    color: var(--emerald-400);
+    opacity: 0;
+  }
+  #scene-7 .ph-svg-wrap { flex: 1; position: relative; min-height: 200px; }
+  #scene-7 .ph-svg { width: 100%; height: 100%; }
+  #scene-7 .ph-svg .dot {
+    transition: cx 1800ms cubic-bezier(.34,1.56,.64,1), cy 1800ms cubic-bezier(.34,1.56,.64,1);
+  }
+
+  #scene-7 .abacus-bar {
+    background: rgba(15, 23, 42, 0.95);
+    border-top: 1px solid var(--slate-800);
+    padding: 14px 24px;
+    backdrop-filter: blur(8px);
+    flex-shrink: 0;
+  }
+  #scene-7 .ab-inner {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: grid; grid-template-columns: 1.5fr 1fr;
+    gap: 18px;
+    align-items: center;
+  }
+  #scene-7 .ab-main .ab-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  #scene-7 .ab-main .ab-head .lbl {
+    font-size: 11px; color: var(--violet-300);
+    font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  #scene-7 .ab-main .ab-head .val {
+    font-size: 22px; font-weight: 700;
+    color: var(--blue-300);
+    font-variant-numeric: tabular-nums;
+    transition: color 600ms;
+  }
+  #scene-7 .ab-main .slider-row {
+    position: relative; height: 30px;
+  }
+  #scene-7 .ab-main .slider-track {
+    position: absolute; left: 0; right: 0; top: 13px;
+    height: 4px;
+    background: var(--slate-700);
+    border-radius: 2px;
+  }
+  #scene-7 .ab-main .slider-fill {
+    position: absolute; left: 0; top: 13px; height: 4px;
+    background: linear-gradient(90deg, var(--violet-500), var(--blue-400));
+    border-radius: 2px;
+    width: 60%;
+    transition: width 2000ms cubic-bezier(.34,1.56,.64,1);
+  }
+  #scene-7 .ab-main .slider-handle {
+    position: absolute; top: 4px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: white;
+    border: 4px solid var(--violet-500);
+    transform: translateX(-50%);
+    left: 60%;
+    transition: left 2000ms cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5);
+    z-index: 2;
+  }
+  #scene-7 .ab-main .slider-handle.dragging {
+    box-shadow: 0 0 0 8px rgba(139, 92, 246, 0.2), 0 2px 12px rgba(139, 92, 246, 0.6);
+    transform: translateX(-50%) scale(1.1);
+  }
+  #scene-7 .ab-main .ab-minmax {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--slate-500);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  #scene-7 .ab-presets {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  #scene-7 .ab-preset {
+    background: var(--slate-700);
+    border: 1px solid var(--slate-600);
+    color: var(--slate-300);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 300ms;
+  }
+  #scene-7 .ab-preset.active {
+    background: rgba(139, 92, 246, 0.3);
+    border-color: var(--violet-400);
+    color: var(--violet-200);
+  }
+  #scene-7 .ab-shocks {
+    grid-column: 1 / -1;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--slate-700);
+  }
+  #scene-7 .shock {
+    border: 1px solid; border-radius: 8px;
+    padding: 8px 10px;
+  }
+  #scene-7 .shock.inflation {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.08);
+  }
+  #scene-7 .shock.unemploy {
+    border-color: rgba(244, 63, 94, 0.4);
+    background: rgba(244, 63, 94, 0.08);
+  }
+  #scene-7 .shock .sh-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+  }
+  #scene-7 .shock.inflation .sh-head .lbl { color: var(--amber-300); }
+  #scene-7 .shock.unemploy .sh-head .lbl { color: var(--rose-400); }
+  #scene-7 .shock .sh-head .lbl {
+    font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; font-weight: 700;
+  }
+  #scene-7 .shock .sh-head .v {
+    font-size: 13px; font-weight: 700;
+    color: var(--slate-100);
+    font-variant-numeric: tabular-nums;
+  }
+  #scene-7 .shock .sh-track {
+    height: 4px; background: var(--slate-700);
+    border-radius: 2px; position: relative;
+  }
+  #scene-7 .shock.inflation .sh-fill {
+    height: 4px;
+    background: var(--amber-500);
+    border-radius: 2px;
+    width: 45%;
+    transition: width 1500ms;
+  }
+  #scene-7 .shock.unemploy .sh-fill {
+    height: 4px;
+    background: var(--rose-500);
+    border-radius: 2px;
+    width: 30%;
+    transition: width 1500ms;
+  }
+
+  /* ============ SCENE 8: DECISION SANKEY ============ */
+  #scene-8 .app-shell {
+    position: absolute; inset: 0;
+    background: var(--app-bg);
+    padding: 20px 24px;
+    overflow: hidden;
+  }
+  #scene-8 .sankey-card {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.6));
+    border: 1px solid var(--slate-700);
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 1100px; margin: 0 auto;
+    height: 100%;
+    display: flex; flex-direction: column;
+  }
+  #scene-8 .sk-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  #scene-8 .sk-head .left .lbl {
+    font-size: 10px; color: var(--cyan-400);
+    font-weight: 700; letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  #scene-8 .sk-head .left h3 {
+    font-size: 16px; font-weight: 700;
+    color: var(--slate-100); margin: 4px 0 0;
+  }
+  #scene-8 .sk-head .right {
+    font-size: 11px; color: var(--slate-400);
+    text-align: right;
+  }
+  #scene-8 .sk-head .right .seg-cnt { color: var(--cyan-300); font-weight: 600; }
+  #scene-8 .sk-svg-wrap { flex: 1; position: relative; }
+  #scene-8 .sk-svg { width: 100%; height: 100%; }
+  #scene-8 .sk-svg .ribbon {
+    stroke-dasharray: 1500;
+    stroke-dashoffset: 1500;
+    opacity: 0;
+  }
+  #scene-8.active .sk-svg .ribbon {
+    animation: rb 1200ms forwards;
+  }
+  @keyframes rb {
+    to { opacity: 0.55; stroke-dashoffset: 0; }
+  }
+  /* v5: 12 條交錯 ribbon — col1↔col2 6 條 + col2↔col3 6 條,每個節點都連到多個對象。 */
+  #scene-8.active .sk-svg .r1  { animation-delay: 500ms; }
+  #scene-8.active .sk-svg .r2  { animation-delay: 650ms; }
+  #scene-8.active .sk-svg .r3  { animation-delay: 800ms; }
+  #scene-8.active .sk-svg .r4  { animation-delay: 950ms; }
+  #scene-8.active .sk-svg .r5  { animation-delay: 1100ms; }
+  #scene-8.active .sk-svg .r6  { animation-delay: 1250ms; }
+  #scene-8.active .sk-svg .r7  { animation-delay: 1500ms; }
+  #scene-8.active .sk-svg .r8  { animation-delay: 1650ms; }
+  #scene-8.active .sk-svg .r9  { animation-delay: 1800ms; }
+  #scene-8.active .sk-svg .r10 { animation-delay: 1950ms; }
+  #scene-8.active .sk-svg .r11 { animation-delay: 2100ms; }
+  #scene-8.active .sk-svg .r12 { animation-delay: 2250ms; }
+  #scene-8 .sk-svg .node {
+    opacity: 0;
+  }
+  #scene-8.active .sk-svg .node {
+    animation: fadeIn 300ms forwards;
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+  #scene-8.active .sk-svg .nl1 { animation-delay: 100ms; }
+  #scene-8.active .sk-svg .nl2 { animation-delay: 350ms; }
+  #scene-8.active .sk-svg .nl3 { animation-delay: 600ms; }
+  #scene-8 .sk-detail {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid var(--slate-700);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--slate-300);
+    opacity: 0;
+  }
+  #scene-8.active .sk-detail { animation: fadeIn 500ms 2500ms forwards; }
+  #scene-8 .sk-detail .dlabel { color: var(--cyan-400); font-weight: 700; margin-right: 6px; }
+  #scene-8 .sk-detail .pers { color: var(--slate-100); }
+  #scene-8 .sk-detail .pers .sep { color: var(--slate-500); margin: 0 4px; }
+
+  /* ============ SCENE 9: REPORT CARD ============ */
+  #scene-9 .app-shell {
+    position: absolute; inset: 0;
+    background: var(--app-bg);
+    padding: 20px 24px;
+    overflow: hidden;
+  }
+  #scene-9 .report-wrap {
+    background: linear-gradient(135deg, var(--slate-950), var(--slate-900), var(--slate-950));
+    border: 1px solid var(--slate-700);
+    border-radius: 16px;
+    padding: 24px 28px;
+    max-width: 980px;
+    margin: 0 auto;
+    height: 100%;
+    overflow-y: auto;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  #scene-9.active .report-wrap { animation: fadeUp 800ms 200ms forwards; }
+  #scene-9 .rep-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--slate-800);
+  }
+  #scene-9 .rep-head .left { display: flex; gap: 14px; align-items: center; }
+  #scene-9 .rep-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--violet-500), var(--blue-500));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+  }
+  #scene-9 .rep-title h2 {
+    font-size: 18px; font-weight: 700;
+    color: var(--slate-50); margin: 0;
+  }
+  #scene-9 .rep-title .sub {
+    font-size: 11px; color: var(--slate-400);
+    margin-top: 2px;
+  }
+  #scene-9 .rep-head .right {
+    text-align: right;
+    font-size: 10px; color: var(--slate-500);
+    line-height: 1.6;
+  }
+  #scene-9 .rep-section {
+    margin-bottom: 16px;
+  }
+  #scene-9 .rep-sec-head {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  #scene-9 .rep-sec-bar {
+    width: 4px; height: 18px;
+    border-radius: 2px;
+  }
+  #scene-9 .rep-sec-bar.b1 { background: var(--blue-500); }
+  #scene-9 .rep-sec-bar.b2 { background: var(--violet-500); }
+  #scene-9 .rep-sec-bar.b3 { background: var(--emerald-500); }
+  #scene-9 .rep-sec-bar.b4 { background: var(--amber-500); }
+  #scene-9 .rep-sec-title {
+    font-size: 13px; font-weight: 700;
+    color: var(--slate-100);
+    letter-spacing: 0.05em;
+  }
+  #scene-9 .headline-box {
+    background: rgba(59, 130, 246, 0.08);
+    border-left: 3px solid var(--blue-500);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    font-size: 13px; color: var(--slate-100);
+    line-height: 1.6;
+  }
+  #scene-9 .headline-box b { color: var(--blue-300); }
+  #scene-9 .findings-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  #scene-9 .finding {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid var(--slate-700);
+    border-left: 3px solid;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px; color: var(--slate-200);
+    line-height: 1.55;
+  }
+  #scene-9 .finding.positive { border-left-color: var(--emerald-400); }
+  #scene-9 .finding.neutral { border-left-color: var(--blue-400); }
+  #scene-9 .finding.warning { border-left-color: var(--amber-400); }
+  #scene-9 .finding .ftitle {
+    font-weight: 700; color: var(--slate-50);
+    font-size: 12px; margin-bottom: 4px;
+  }
+  #scene-9 .finding .fmetric {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 10px;
+    background: rgba(96, 165, 250, 0.15);
+    color: var(--blue-300);
+    padding: 1px 6px; border-radius: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  #scene-9 .rep-actions {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--slate-800);
+    display: flex; gap: 10px;
+  }
+  #scene-9 .act-btn {
+    border: none;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  #scene-9 .act-btn.pdf { background: #dc2626; color: white; }
+  #scene-9 .act-btn.email { background: var(--amber-500); color: white; }
+  #scene-9 .act-btn.sim { background: var(--violet-500); color: white; }
+  #scene-9 .act-btn.pdf.highlight {
+    animation: pdfPulse 1.5s infinite;
+  }
+  @keyframes pdfPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+    50% { transform: scale(1.05); box-shadow: 0 0 0 14px rgba(220, 38, 38, 0); }
+  }
+
+  /* ============ SCENE 10: 滷肉飯餅乾 (非金融商品) ============ */
+  #scene-10 .app-shell {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 30%, rgba(245, 158, 11, 0.10), transparent 50%),
+      radial-gradient(ellipse at 70% 70%, rgba(16, 185, 129, 0.08), transparent 50%),
+      var(--app-bg);
+    padding: 24px;
+    overflow: hidden;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  #scene-10 .s10-banner {
+    text-align: center;
+    padding: 10px 16px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 10px;
+  }
+  #scene-10 .s10-banner .kicker {
+    font-size: 10px; letter-spacing: 0.3em;
+    color: var(--amber-300);
+    text-transform: uppercase;
+    font-weight: 600;
+    font-family: "JetBrains Mono", monospace;
+  }
+  #scene-10 .s10-banner h2 {
+    font-size: 20px; font-weight: 800;
+    color: var(--slate-50); margin: 4px 0 0;
+    letter-spacing: -0.01em;
+  }
+  #scene-10 .s10-banner h2 .accent { color: var(--amber-300); }
+  #scene-10 .s10-grid {
+    flex: 1;
+    display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px;
+    min-height: 0;
+  }
+  #scene-10 .s10-prompt {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex; flex-direction: column;
+  }
+  #scene-10 .s10-prompt-head {
+    display: flex; gap: 10px; align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--slate-700);
+  }
+  #scene-10 .s10-prompt-head .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--emerald-400);
+    box-shadow: 0 0 8px var(--emerald-400);
+  }
+  #scene-10 .s10-prompt-head .label {
+    font-size: 11px; letter-spacing: 0.2em;
+    color: var(--cyan-400); text-transform: uppercase;
+    font-family: "JetBrains Mono", monospace;
+  }
+  #scene-10 .s10-prompt .typed-area {
+    font-size: 14px; color: var(--slate-100);
+    line-height: 1.65;
+    font-family: "JetBrains Mono", monospace;
+    flex: 1;
+    min-height: 110px;
+  }
+  #scene-10 .s10-prompt .typed-area .cursor-blink {
+    display: inline-block; width: 2px; height: 14px;
+    background: var(--amber-400); vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: blink 1s infinite;
+  }
+  #scene-10 .s10-product-card {
+    margin-top: 12px;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex; gap: 14px; align-items: center;
+    opacity: 0;
+  }
+  #scene-10.active .s10-product-card {
+    animation: fadeUp 600ms 6000ms forwards;
+  }
+  #scene-10 .s10-product-card .icon {
+    font-size: 32px;
+  }
+  #scene-10 .s10-product-card .info {
+    flex: 1;
+  }
+  #scene-10 .s10-product-card .info .nm {
+    font-size: 14px; font-weight: 700; color: var(--slate-50);
+    margin-bottom: 2px;
+  }
+  #scene-10 .s10-product-card .info .spec {
+    font-size: 11px; color: var(--slate-400);
+  }
+  #scene-10 .s10-product-card .info .spec b { color: var(--amber-300); }
+  #scene-10 .s10-result {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 12px;
+    overflow: hidden;
+  }
+  #scene-10 .s10-result-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--slate-700);
+  }
+  #scene-10 .s10-result-head .label {
+    font-size: 11px; letter-spacing: 0.2em;
+    color: var(--emerald-400); text-transform: uppercase;
+    font-family: "JetBrains Mono", monospace;
+  }
+  #scene-10 .s10-result-head .meta {
+    font-size: 10px; color: var(--slate-500);
+    font-family: "JetBrains Mono", monospace;
+  }
+  #scene-10 .s10-kpi {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  #scene-10 .s10-kpi .k {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--slate-700);
+    border-left: 3px solid;
+    border-radius: 8px;
+    padding: 10px 12px;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  #scene-10.active .s10-kpi .k:nth-child(1) { animation: fadeUp 500ms 7500ms forwards; border-left-color: var(--emerald-400); }
+  #scene-10.active .s10-kpi .k:nth-child(2) { animation: fadeUp 500ms 8000ms forwards; border-left-color: var(--amber-400); }
+  #scene-10.active .s10-kpi .k:nth-child(3) { animation: fadeUp 500ms 8500ms forwards; border-left-color: var(--cyan-400); }
+  #scene-10.active .s10-kpi .k:nth-child(4) { animation: fadeUp 500ms 9000ms forwards; border-left-color: var(--rose-400); }
+  #scene-10 .s10-kpi .k .name {
+    font-size: 10px; color: var(--slate-400);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  #scene-10 .s10-kpi .k .v {
+    font-size: 22px; font-weight: 800;
+    color: var(--slate-50);
+    font-variant-numeric: tabular-nums;
+    font-family: "JetBrains Mono", monospace;
+  }
+  #scene-10 .s10-reactions {
+    display: flex; flex-direction: column; gap: 8px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  #scene-10 .s10-reactions .reaction {
+    display: flex; gap: 10px; align-items: center;
+    padding: 8px 10px;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 8px;
+    border-left: 3px solid;
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  #scene-10.active .s10-reactions .reaction:nth-child(1) { animation: slideX 500ms 9500ms forwards; border-left-color: var(--emerald-400); }
+  #scene-10.active .s10-reactions .reaction:nth-child(2) { animation: slideX 500ms 10000ms forwards; border-left-color: var(--amber-400); }
+  #scene-10.active .s10-reactions .reaction:nth-child(3) { animation: slideX 500ms 10500ms forwards; border-left-color: var(--rose-400); }
+  @keyframes slideX { to { opacity: 1; transform: translateX(0); } }
+  #scene-10 .s10-reactions .reaction .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background-size: cover; background-position: center;
+    border: 1px solid var(--slate-700);
+    flex-shrink: 0;
+  }
+  #scene-10 .s10-reactions .reaction .who {
+    font-size: 10px; color: var(--slate-500);
+    line-height: 1.3;
+  }
+  #scene-10 .s10-reactions .reaction .who b {
+    color: var(--slate-100); font-weight: 600;
+    font-size: 11px;
+  }
+  #scene-10 .s10-reactions .reaction .quote {
+    flex: 1;
+    font-size: 12px; color: var(--slate-200);
+    line-height: 1.45;
+  }
+
+  /* ============ PERSONA DISPLAY BACKGROUND ANIMATION ============ */
+  /* 「人物顯影動畫示意」— 微小受訪者頭像在背景隨機浮現,
+     強調 platform 抽樣自多樣化人格。可以在任何 scene 啟用 (scene.show-personas-bg)。 */
+  .persona-bg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 800ms;
+  }
+  .scene.active .persona-bg.show {
+    opacity: 0.18;
+  }
+  .persona-bg .pavatar {
+    position: absolute;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background-size: cover; background-position: center;
+    border: 1px solid rgba(34, 211, 238, 0.5);
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.3);
+    opacity: 0;
+    animation: avatarFloat 12s ease-in-out infinite;
+  }
+  @keyframes avatarFloat {
+    0%, 100% { opacity: 0; transform: scale(0.8) translateY(0); }
+    20%, 80% { opacity: 0.85; transform: scale(1) translateY(-4px); }
+  }
+
+  /* ============ NARRATOR (TALKING HEAD) WIDGET ============ */
+  /* 解說人物對嘴框 — 可掛 <video> (D-ID / HeyGen / Synthesia 等生成的對嘴影片),
+     沒檔案時 fallback 到動畫 SVG 頭像 (圓圈臉 + 嘴部動畫)。
+     位置:fixed 在 viewport 右下,不擋住 stage 內容。 */
+  .narrator {
+    position: fixed;
+    right: 36px;
+    bottom: 88px;
+    width: 168px;
+    z-index: 800;
+    transition: opacity 400ms, transform 400ms;
+  }
+  .narrator.hidden { opacity: 0; transform: translateY(20px); pointer-events: none; }
+  .narrator-frame {
+    position: relative;
+    width: 168px; height: 168px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(15, 23, 42, 0.95), rgba(139, 92, 246, 0.15));
+    border: 2px solid rgba(34, 211, 238, 0.6);
+    box-shadow: 0 0 30px rgba(34, 211, 238, 0.25), 0 8px 28px rgba(0,0,0,0.5);
+  }
+  .narrator-frame video {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .narrator-frame video.hidden { display: none; }
+  .narrator-svg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+  }
+  .narrator-svg.hidden { display: none; }
+  /* 動畫 SVG 臉 — 圓臉 + 眼睛 + 動畫的嘴 (張開閉合循環) */
+  .narrator-svg .face {
+    fill: url(#faceGrad);
+  }
+  .narrator-svg .eye {
+    fill: var(--slate-900);
+    animation: blink 5s infinite;
+    transform-origin: center;
+  }
+  /* v5: 移除對嘴動畫 — 嘴部固定靜止,避免 SVG 假對嘴在沒有音檔時看起來廉價。
+     若之後有真實對嘴影片,SCRIPT_MAP[lang][n].video 設好,narrator 會自動切到 <video> 元素。 */
+  .narrator-svg .mouth {
+    fill: var(--rose-500);
+    transform-origin: center;
+    transform: scaleY(0.45);
+  }
+  .narrator-label {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--cyan-400);
+    letter-spacing: 0.18em;
+    font-family: "JetBrains Mono", monospace;
+    text-transform: uppercase;
+  }
+  .narrator-label .lang-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(34, 211, 238, 0.15);
+    border: 1px solid rgba(34, 211, 238, 0.4);
+    color: var(--cyan-300);
+    font-size: 9px;
+  }
+  /* 速度指示器 — 解說人物正在說話時邊框脈動 */
+  .narrator.speaking .narrator-frame {
+    animation: speakingPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes speakingPulse {
+    0%, 100% { box-shadow: 0 0 30px rgba(34, 211, 238, 0.25), 0 8px 28px rgba(0,0,0,0.5); }
+    50% { box-shadow: 0 0 50px rgba(34, 211, 238, 0.55), 0 8px 28px rgba(0,0,0,0.5); }
+  }
+
+  /* ============ LIVE PREVIEW (服務網頁 iframe) ============ */
+  .live-preview {
+    position: fixed;
+    top: 60px; right: 36px;
+    width: 380px;
+    height: 280px;
+    background: var(--slate-950);
+    border: 2px solid var(--cyan-400);
+    border-radius: 12px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 30px rgba(34,211,238,0.25);
+    z-index: 850;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transform: translateY(-12px) scale(0.96);
+    transition: all 360ms cubic-bezier(.34,1.56,.64,1);
+  }
+  .live-preview.open {
+    opacity: 1; pointer-events: auto;
+    transform: translateY(0) scale(1);
+  }
+  .live-preview .live-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: linear-gradient(180deg, #1a1f33, #131727);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+  .live-preview .live-head .pulse {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--emerald-400);
+    box-shadow: 0 0 8px var(--emerald-400);
+    animation: pulseDot 1.5s infinite;
+  }
+  .live-preview .live-head .label {
+    font-size: 11px; letter-spacing: 0.2em;
+    color: var(--cyan-400); text-transform: uppercase;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .live-preview .live-head .url {
+    flex: 1;
+    font-size: 10px; color: var(--slate-400);
+    font-family: "SF Mono", monospace;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .live-preview .live-head .close-btn {
+    background: transparent; border: 1px solid var(--slate-600);
+    color: var(--slate-400);
+    width: 24px; height: 24px;
+    border-radius: 4px;
+    font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 200ms;
+  }
+  .live-preview .live-head .close-btn:hover {
+    border-color: var(--red-400); color: var(--red-400);
+  }
+  .live-preview iframe {
+    flex: 1;
+    border: 0;
+    width: 100%;
+    background: white;
+  }
+  .live-preview .iframe-hint {
+    position: absolute;
+    inset: 41px 0 0 0;
+    pointer-events: none;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--slate-500);
+    font-size: 11px;
+    text-align: center;
+    padding: 0 24px;
+    background: rgba(2, 6, 23, 0.4);
+    opacity: 0;
+    transition: opacity 400ms 1500ms;
+  }
+  .live-preview.open .iframe-hint {
+    opacity: 1;
+  }
+
+  /* ============ LANGUAGE SWITCH ============ */
+  .lang-switch {
+    display: inline-flex;
+    background: var(--slate-800);
+    border: 1px solid var(--slate-700);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .lang-switch button {
+    background: transparent;
+    border: 0;
+    color: var(--slate-400);
+    padding: 0 10px;
+    height: 28px;
+    width: auto;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    font-family: "JetBrains Mono", monospace;
+    border-radius: 0;
+  }
+  .lang-switch button.active {
+    background: var(--cyan-400);
+    color: var(--slate-950);
+    font-weight: 700;
+  }
+  .lang-switch button:hover:not(.active) {
+    background: var(--slate-700);
+    color: var(--slate-100);
+  }
+
+  /* ============ SCENE 11: TECH HIGHLIGHTS ============ */
+  #scene-11 .app-shell {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(0,229,255,0.10) 0%, transparent 60%),
+      var(--app-bg);
+    padding: 30px 36px;
+    overflow: hidden;
+  }
+  #scene-11 .head {
+    text-align: center; margin-bottom: 28px;
+  }
+  #scene-11 .head .kicker {
+    font-size: 11px; letter-spacing: 0.3em;
+    color: var(--cyan-400);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  #scene-11 .head h2 {
+    font-size: 32px; font-weight: 800;
+    color: var(--slate-50); margin: 8px 0 0;
+    letter-spacing: -0.01em;
+  }
+  #scene-11 .head h2 .accent { color: var(--cyan-400); }
+  #scene-11 .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+  }
+  #scene-11 .tcard {
+    background: linear-gradient(180deg, rgba(0, 229, 255, 0.06), rgba(15, 23, 42, 0.92));
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 14px;
+    padding: 22px;
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  #scene-11.active .tcard:nth-child(1) { animation: tin 600ms 200ms cubic-bezier(.34,1.56,.64,1) forwards; }
+  #scene-11.active .tcard:nth-child(2) { animation: tin 600ms 700ms cubic-bezier(.34,1.56,.64,1) forwards; }
+  #scene-11.active .tcard:nth-child(3) { animation: tin 600ms 1200ms cubic-bezier(.34,1.56,.64,1) forwards; }
+  @keyframes tin { to { opacity: 1; transform: scale(1); } }
+  #scene-11 .tcard .ticon { font-size: 32px; margin-bottom: 12px; display: block; }
+  #scene-11 .tcard .ttag {
+    font-size: 9px; color: var(--cyan-400);
+    letter-spacing: 0.25em; text-transform: uppercase;
+    margin-bottom: 8px;
+    font-family: "JetBrains Mono", monospace;
+  }
+  #scene-11 .tcard .ttitle {
+    font-size: 16px; font-weight: 700;
+    color: var(--slate-100); margin-bottom: 12px;
+    line-height: 1.3;
+  }
+  #scene-11 .tcard .tmetric {
+    font-size: 28px; font-weight: 800;
+    font-family: "JetBrains Mono", monospace;
+    color: var(--emerald-400);
+    margin-bottom: 10px;
+  }
+  #scene-11 .tcard .tmetric .from {
+    color: var(--rose-400);
+    text-decoration: line-through;
+    opacity: 0.6;
+    font-size: 18px;
+  }
+  #scene-11 .tcard .tdesc {
+    font-size: 11.5px; color: var(--slate-400);
+    line-height: 1.6;
+  }
+
+  /* ============ SCENE 12: CLOSING ============ */
+  #scene-12 .app-shell {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 50%, rgba(0,229,255,0.10), transparent 60%),
+      var(--app-bg);
+    padding: 24px;
+    overflow: hidden;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  #scene-12 .ba-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    max-width: 1000px; margin: 0 auto;
+    margin-bottom: 28px;
+  }
+  #scene-12 .ba-side {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 18px 22px;
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  #scene-12 .ba-side.after { transform: translateX(30px); }
+  #scene-12.active .ba-side.before { animation: slideX 600ms 200ms forwards; }
+  #scene-12.active .ba-side.after { animation: slideX 600ms 400ms forwards; }
+  @keyframes slideX { to { opacity: 1; transform: translateX(0); } }
+  #scene-12 .ba-side h3 {
+    font-size: 10px; letter-spacing: 0.25em;
+    text-transform: uppercase;
+    margin: 0 0 14px;
+  }
+  #scene-12 .ba-side.before h3 { color: var(--rose-400); }
+  #scene-12 .ba-side.after h3 { color: var(--emerald-400); }
+  #scene-12 .ba-row {
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.08);
+    font-size: 12px; line-height: 1.5;
+  }
+  #scene-12 .ba-row:last-child { border: 0; }
+  #scene-12 .ba-row .k {
+    font-size: 9px; color: var(--cyan-400);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  #scene-12 .ba-side.before .ba-row { color: var(--slate-400); }
+  #scene-12 .ba-side.after .ba-row { color: var(--slate-100); }
+  #scene-12 .ba-side.after .ba-row .k { color: var(--emerald-400); }
+  #scene-12 .quote {
+    text-align: center;
+    opacity: 0;
+  }
+  #scene-12.active .quote { animation: fadeUp 800ms 1200ms forwards; }
+  #scene-12 .quote h2 {
+    font-size: 42px; font-weight: 800;
+    color: var(--slate-50); margin: 0;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+  #scene-12 .quote h2 .accent { color: var(--cyan-400); }
+  #scene-12 .url-row {
+    margin-top: 20px;
+    display: flex; justify-content: center; align-items: center;
+    gap: 22px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--slate-400);
+  }
+  #scene-12 .url-row a { color: var(--cyan-400); text-decoration: none; }
+  #scene-12 .url-row .qr {
+    width: 64px; height: 64px;
+    background: white;
+    border-radius: 4px;
+    padding: 4px;
+    display: grid; grid-template-columns: repeat(8, 1fr);
+  }
+  #scene-12 .url-row .qr i {
+    background: #000;
+    aspect-ratio: 1;
+  }
+  #scene-12 .url-row .qr i.w { background: white; }
+
+  /* ============ V4 NEW SCENES ============ */
+
+  /* scene-title — 標題塌縮 */
+  #scene-title .title-shell {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at center, rgba(34, 211, 238, 0.18), transparent 55%),
+      var(--app-bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  #scene-title h1 {
+    font-size: 84px; font-weight: 800;
+    color: var(--slate-50);
+    text-shadow: 0 0 50px rgba(34, 211, 238, 0.55);
+    letter-spacing: -0.02em;
+    margin: 0;
+    opacity: 0; transform: scale(0.7);
+    filter: blur(20px);
+  }
+  #scene-title.active h1 { animation: titleIn 1200ms 200ms forwards; }
+  #scene-title h1 .accent { color: var(--cyan-400); }
+  #scene-title .sub {
+    margin-top: 20px;
+    font-size: 16px; color: var(--slate-400);
+    letter-spacing: 0.35em;
+    font-family: "JetBrains Mono", monospace;
+    opacity: 0;
+  }
+  #scene-title.active .sub { animation: fadeUp 800ms 1400ms forwards; }
+  #scene-title .formula {
+    margin-top: 28px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    color: var(--cyan-400);
+    letter-spacing: 0.05em;
+    opacity: 0;
+  }
+  #scene-title.active .formula { animation: fadeUp 800ms 2200ms forwards; }
+
+  /* scene-persona-show — 30 顆人物頭像在 viewport 浮現,代表多樣化生活型態 */
+  #scene-persona-show .ps-shell {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.10), transparent 60%),
+      var(--app-bg);
+    overflow: hidden;
+  }
+  #scene-persona-show .ps-header {
+    position: absolute; top: 26px; left: 0; right: 0;
+    text-align: center;
+    z-index: 5;
+  }
+  #scene-persona-show .ps-header .kicker {
+    font-size: 11px; letter-spacing: 0.3em;
+    color: var(--violet-400);
+    font-family: "JetBrains Mono", monospace;
+    text-transform: uppercase;
+  }
+  #scene-persona-show .ps-header h2 {
+    margin: 6px 0 0;
+    font-size: 28px; font-weight: 800;
+    color: var(--slate-50);
+    letter-spacing: -0.01em;
+  }
+  #scene-persona-show .ps-header h2 .accent { color: var(--violet-300); }
+  #scene-persona-show .ps-cloud {
+    position: absolute; inset: 100px 0 60px 0;
+  }
+  #scene-persona-show .ps-cloud .ps-avatar {
+    position: absolute;
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background-size: cover; background-position: center;
+    border: 1.5px solid rgba(139, 92, 246, 0.55);
+    box-shadow: 0 0 18px rgba(139, 92, 246, 0.35);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  #scene-persona-show.active .ps-cloud .ps-avatar {
+    animation: psPop 600ms forwards;
+  }
+  @keyframes psPop {
+    0%   { opacity: 0;    transform: translate(-50%, -50%) scale(0.4); }
+    60%  { opacity: 1;    transform: translate(-50%, -50%) scale(1.1); }
+    100% { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
+  }
+  #scene-persona-show .ps-cloud .ps-avatar .ps-name {
+    position: absolute;
+    top: 100%; left: 50%;
+    transform: translateX(-50%);
+    margin-top: 4px;
+    font-size: 9px; color: var(--slate-300);
+    white-space: nowrap;
+    background: rgba(15, 23, 42, 0.85);
+    padding: 1px 5px;
+    border-radius: 3px;
+    opacity: 0;
+  }
+  #scene-persona-show.active .ps-cloud .ps-avatar .ps-name {
+    animation: fadeIn 400ms 800ms forwards;
+  }
+  #scene-persona-show .ps-stats {
+    position: absolute; bottom: 30px; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 22px;
+    font-size: 11px;
+    color: var(--slate-400);
+    font-family: "JetBrains Mono", monospace;
+    letter-spacing: 0.12em;
+    opacity: 0;
+  }
+  #scene-persona-show.active .ps-stats {
+    animation: fadeUp 600ms 2000ms forwards;
+  }
+  #scene-persona-show .ps-stats b { color: var(--violet-300); font-weight: 700; }
+
+  /* scene-arch — 系統架構簡介 */
+  #scene-arch .arch-shell {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.6), rgba(11, 16, 32, 1)),
+      var(--app-bg);
+    padding: 28px 32px;
+    overflow: hidden;
+  }
+  #scene-arch .arch-head {
+    text-align: center;
+    margin-bottom: 22px;
+  }
+  #scene-arch .arch-head .kicker {
+    font-size: 11px; letter-spacing: 0.3em;
+    color: var(--cyan-400);
+    font-family: "JetBrains Mono", monospace;
+    text-transform: uppercase;
+  }
+  #scene-arch .arch-head h2 {
+    font-size: 26px; font-weight: 800;
+    color: var(--slate-50); margin: 6px 0 0;
+    letter-spacing: -0.01em;
+  }
+  #scene-arch .arch-head h2 .accent { color: var(--cyan-400); }
+  #scene-arch .arch-flow {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  #scene-arch .arch-stage {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--slate-700);
+    border-radius: 8px;
+    padding: 12px 10px;
+    position: relative;
+    text-align: left;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  #scene-arch.active .arch-stage:nth-child(1) { animation: fadeUp 500ms 400ms forwards; border-color: rgba(59, 130, 246, 0.5); }
+  #scene-arch.active .arch-stage:nth-child(2) { animation: fadeUp 500ms 700ms forwards; border-color: rgba(139, 92, 246, 0.5); }
+  #scene-arch.active .arch-stage:nth-child(3) { animation: fadeUp 500ms 1000ms forwards; border-color: rgba(16, 185, 129, 0.5); }
+  #scene-arch.active .arch-stage:nth-child(4) { animation: fadeUp 500ms 1300ms forwards; border-color: rgba(245, 158, 11, 0.5); }
+  #scene-arch.active .arch-stage:nth-child(5) { animation: fadeUp 500ms 1600ms forwards; border-color: rgba(244, 63, 94, 0.5); }
+  #scene-arch .arch-stage .num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px; letter-spacing: 0.2em;
+    margin-bottom: 4px;
+  }
+  #scene-arch .arch-stage:nth-child(1) .num { color: var(--blue-300); }
+  #scene-arch .arch-stage:nth-child(2) .num { color: var(--violet-300); }
+  #scene-arch .arch-stage:nth-child(3) .num { color: var(--emerald-300); }
+  #scene-arch .arch-stage:nth-child(4) .num { color: var(--amber-300); }
+  #scene-arch .arch-stage:nth-child(5) .num { color: var(--rose-400); }
+  #scene-arch .arch-stage .name {
+    font-size: 13px; font-weight: 700;
+    color: var(--slate-100);
+    margin-bottom: 4px;
+  }
+  #scene-arch .arch-stage .role {
+    font-size: 10px; color: var(--slate-400);
+    line-height: 1.45;
+  }
+  #scene-arch .arch-stage .role code {
+    color: var(--emerald-300);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+  }
+  #scene-arch .arch-stage::after {
+    content: "→";
+    position: absolute;
+    right: -6px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--cyan-400);
+    font-size: 14px;
+    text-shadow: 0 0 6px var(--cyan-400);
+  }
+  #scene-arch .arch-stage:last-child::after { display: none; }
+  #scene-arch .arch-spec {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-top: 8px;
+  }
+  #scene-arch .arch-spec .spec-card {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--slate-700);
+    border-radius: 8px;
+    padding: 12px 14px;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  #scene-arch.active .arch-spec .spec-card:nth-child(1) { animation: fadeUp 500ms 2000ms forwards; }
+  #scene-arch.active .arch-spec .spec-card:nth-child(2) { animation: fadeUp 500ms 2300ms forwards; }
+  #scene-arch.active .arch-spec .spec-card:nth-child(3) { animation: fadeUp 500ms 2600ms forwards; }
+  #scene-arch.active .arch-spec .spec-card:nth-child(4) { animation: fadeUp 500ms 2900ms forwards; }
+  #scene-arch .arch-spec .spec-card .label {
+    font-size: 10px; letter-spacing: 0.18em;
+    color: var(--cyan-400);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-family: "JetBrains Mono", monospace;
+  }
+  #scene-arch .arch-spec .spec-card .value {
+    font-size: 13px;
+    color: var(--slate-100);
+    line-height: 1.55;
+  }
+  #scene-arch .arch-spec .spec-card .value code {
+    color: var(--emerald-300);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    background: rgba(16, 185, 129, 0.08);
+    padding: 1px 4px; border-radius: 3px;
+  }
+
+  /* ============ HUD ============ */
+  .hud {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 64px;
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.92));
+    display: flex; align-items: center;
+    padding: 0 24px;
+    gap: 14px;
+    z-index: 1000;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .hud button {
+    background: rgba(34, 211, 238, 0.15);
+    border: 1px solid var(--cyan-400);
+    color: var(--cyan-400);
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hud button.secondary {
+    border-color: var(--slate-600);
+    color: var(--slate-400);
+    background: rgba(255,255,255,0.03);
+    width: auto; padding: 0 12px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.15em;
+  }
+  .hud .progress {
+    flex: 1; height: 4px;
+    background: rgba(255,255,255,0.08);
+    position: relative; border-radius: 2px;
+    cursor: pointer; overflow: hidden;
+  }
+  .hud .bar {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--cyan-400), var(--emerald-400));
+    width: 0;
+    transition: width 200ms linear;
+    box-shadow: 0 0 8px var(--cyan-400);
+  }
+  .hud .markers {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+  .hud .markers span {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: rgba(255,255,255,0.18);
+  }
+  .hud .time {
+    color: var(--cyan-400);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    min-width: 96px; text-align: right;
+  }
+  .caption {
+    /* v4: 字幕從畫面移除,搬到外部 demo-video-v4-script.md / -timeline.json,
+       未來生成雙語旁白音檔後直接掛到 narrator widget。
+       保留元素但隱藏,SCRIPT_MAP 仍可寫入(評審按 ? 啟用即可看到 fallback caption)。 */
+    display: none;
+  }
+  body.captions-on .caption {
+    display: block;
+    position: fixed; left: 0; right: 0; bottom: 76px;
+    text-align: center;
+    font-size: 14px; color: var(--slate-50);
+    z-index: 999; padding: 0 80px;
+    line-height: 1.5;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.95);
+    pointer-events: none;
+  }
+  body.captions-on .caption .ktag {
+    display: block;
+    font-size: 9px; color: var(--cyan-400);
+    letter-spacing: 0.3em; margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  /* ============ START SCREEN ============ */
+  .start-screen {
+    position: fixed; inset: 0;
+    z-index: 2000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(0,229,255,0.15), transparent 50%), #000;
+    transition: opacity 800ms;
+  }
+  .start-screen.hide { opacity: 0; pointer-events: none; }
+  .start-screen h1 {
+    font-size: 72px; font-weight: 800; margin: 0;
+    color: var(--slate-50);
+    text-shadow: 0 0 50px rgba(0,229,255,0.6);
+    letter-spacing: -0.02em;
+  }
+  .start-screen h1 .accent { color: var(--cyan-400); }
+  .start-screen .sub {
+    font-size: 14px; color: var(--slate-400);
+    margin-top: 12px; letter-spacing: 0.3em;
+  }
+  .start-screen .v-tag {
+    margin-top: 8px;
+    background: rgba(34, 211, 238, 0.12);
+    border: 1px solid var(--cyan-400);
+    padding: 4px 12px; border-radius: 4px;
+    font-size: 11px; color: var(--cyan-400);
+    letter-spacing: 0.2em;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .start-screen .meta {
+    margin-top: 18px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px; color: var(--slate-500);
+    letter-spacing: 0.3em;
+  }
+  .start-screen .play-btn {
+    margin-top: 44px;
+    background: rgba(34, 211, 238, 0.12);
+    border: 2px solid var(--cyan-400);
+    color: var(--cyan-400);
+    width: 92px; height: 92px;
+    border-radius: 50%;
+    font-size: 30px;
+    cursor: pointer;
+    transition: all 300ms;
+    box-shadow: 0 0 30px rgba(34,211,238,0.4);
+  }
+  .start-screen .play-btn:hover {
+    background: rgba(34, 211, 238, 0.25);
+    transform: scale(1.08);
+  }
+  .start-screen .hint {
+    margin-top: 20px;
+    color: var(--slate-500);
+    font-size: 11px; letter-spacing: 0.2em;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+<!-- Mouse cursor (overlay over browser frame) -->
+<div class="cursor" id="cursor"></div>
+
+<!-- ========================= -->
+<!-- BROWSER WRAPPER           -->
+<!-- ========================= -->
+<div class="browser">
+  <div class="browser-bar">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <div class="url-bar">
+      <span class="lock">🔒</span>
+      <span id="url-text">stoic-thaw-trustee.ngrok-free.dev</span>
+    </div>
+    <div class="actions">⟳ ↗ ☰</div>
+  </div>
+
+  <div class="viewport">
+
+  <!-- ========== SCENE 1: LAB ENTRANCE (CRT terminal) ========== -->
+  <section class="scene" id="scene-1" data-scene="1">
+    <div class="lab-screen">
+      <div class="lab-inner">
+        <div class="lab-line"><span class="prompt">$</span> initiating observer reference frame…</div>
+        <div class="lab-line"><span class="prompt">$</span> solving Schrödinger equation: iℏ∂ψ/∂t = Ĥψ</div>
+        <div class="lab-line"><span class="prompt">$</span> evaluating commutator [x̂,p̂] = iℏ</div>
+        <div class="lab-line"><span class="prompt">$</span> spinning up 6 Claude agents · concurrency = 6</div>
+        <div class="lab-line"><span class="prompt">$</span> [AUTH] secure channel established · OK</div>
+        <div class="lab-line"><span class="prompt">$</span> verifying credentials… OK</div>
+        <div class="lab-line">* OBSERVER FRAME LOCKED · PRESS [ENTER] TO ENTER LABORATORY *</div>
+      </div>
+      <div class="crt-scanlines"></div>
+      <div class="crt-vignette"></div>
+      <div class="lab-title-overlay">
+        <h1>海森堡的算盤<span class="accent">·</span></h1>
+        <div class="sub">PRESS [ENTER] TO ENTER</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 2: LOGIN ========== -->
+  <section class="scene" id="scene-2" data-scene="2">
+    <div class="login-bg">
+      <div class="login-card">
+        <div class="login-title">登入觀測站</div>
+        <div class="login-sub">輸入帳號密碼，或一鍵以 demo 身分進入</div>
+
+        <label class="label">帳號</label>
+        <input class="login-input" id="login-user" placeholder="observer_07" readonly>
+
+        <label class="label">密碼</label>
+        <input class="login-input" id="login-pass" type="password" placeholder="••••••••••" readonly>
+
+        <div class="demo-row">
+          <div class="demo-btn amber" id="demo-admin">
+            ⚡ admin · observer_07
+            <span class="tag">一鍵登入</span>
+          </div>
+          <div class="demo-btn slate">
+            member · guest
+            <span class="tag" style="color: var(--slate-500)">需輸入密碼</span>
+          </div>
+        </div>
+
+        <div class="submit-row">
+          <button class="submit-btn" id="submit-login">登入 →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 3: MAIN PAGE + EXAMPLE CARDS ========== -->
+  <section class="scene" id="scene-3" data-scene="3">
+    <div class="app-shell">
+      <div class="app-header">
+        <div>
+          <div class="app-title">海森堡的算盤
+            <span class="sub">人類行為觀測站 · 14 天市調 → 90 秒</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="hbtn">受訪者管理</button>
+          <button class="hbtn">登出</button>
+        </div>
+      </div>
+
+      <div class="chat-area">
+        <div class="welcome">
+          <h2>選一個產品場景，或直接輸入命題</h2>
+          <p>每位虛擬受訪者會 streaming 回答 4-6 題，60-90 秒拿到完整決策報告。</p>
+        </div>
+        <div class="example-grid">
+          <div class="ex-card" id="ex-1">
+            <span class="ex-icon">💰</span>
+            <div class="ex-name">微型信貸</div>
+            <div class="ex-desc">5 萬額度、年利率 6.88%、30 秒撥款。外送員族群會買單嗎？</div>
+          </div>
+          <div class="ex-card" id="ex-2">
+            <span class="ex-icon">✈️</span>
+            <div class="ex-name">旅遊保險信用卡</div>
+            <div class="ex-desc">年費 990 元、保額 200 萬、海外消費 1.5% 回饋。30-45 歲族群會買嗎？</div>
+          </div>
+          <div class="ex-card" id="ex-3">
+            <span class="ex-icon">💳</span>
+            <div class="ex-name">信用卡回饋</div>
+            <div class="ex-desc">點數 vs 現金回饋哪個更能說服 30-45 歲中收族群？</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <div class="chat-input" id="chat-input"><span class="typed" id="chat-typed"></span><span class="cursor-blink"></span></div>
+        <button class="send-btn" id="send-btn">送出 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 4: PIPELINE + AGENT MESSAGES ========== -->
+  <section class="scene" id="scene-4" data-scene="4">
+    <div class="app-shell">
+      <div class="app-header">
+        <div class="app-title">海森堡的算盤</div>
+      </div>
+      <div class="pipeline-bar">
+        <div class="pipeline-top">
+          <div class="pulse-dot" id="p4-dot"></div>
+          <div class="pipeline-status">
+            <span class="agent" id="p4-agent">啟動者</span>
+            <span class="sep">·</span>
+            <span id="p4-label">定位光譜 · 解析需求中</span>
+          </div>
+        </div>
+        <div class="pipeline-dots">
+          <div class="pdot entry" id="p4-d1"></div>
+          <div class="pdot pm" id="p4-d2"></div>
+          <div class="pdot persona" id="p4-d3"></div>
+          <div class="pdot summary" id="p4-d4"></div>
+          <div class="pdot report" id="p4-d5"></div>
+        </div>
+        <div class="pipeline-labels">
+          <div class="plab" id="p4-l1">啟動</div>
+          <div class="plab" id="p4-l2">規劃</div>
+          <div class="plab" id="p4-l3">訪談</div>
+          <div class="plab" id="p4-l4">彙集</div>
+          <div class="plab" id="p4-l5">回報</div>
+        </div>
+      </div>
+      <div class="messages" id="p4-msgs">
+        <div class="msg user" id="p4-m1" style="opacity:0;">
+          <div class="bubble">年費 990 元、保額 200 萬的旅遊保險信用卡，30-45 歲族群會買嗎？</div>
+        </div>
+        <div class="msg agent" id="p4-m2" style="opacity:0;">
+          <span class="badge entry"><span class="dot"></span>啟動者 · entry</span>
+          <div class="content">
+            收到。判斷為「金融商品概念驗證」場景,將啟動 5 段管線 + 6 個 agent 並行。
+            目標族群: 30-45 歲, 樣本 N=30。<span class="typing-cursor"></span>
+          </div>
+        </div>
+        <div class="msg agent" id="p4-m3" style="opacity:0;">
+          <span class="badge pm"><span class="dot"></span>觀測者·規劃 · pm</span>
+          <div class="content">
+            研究問題:<br/>
+            Q1. 你會願意以 990 元/年購買這張卡嗎? 為什麼?<br/>
+            Q2. 200 萬保額對你來說是「充足」還是「太低」?<br/>
+            Q3. 旅遊頻率多高才會讓你覺得這張卡划算?<br/>
+            Q4. 你會把它跟哪些卡比較?<span class="typing-cursor"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 5: PERSONA QA EXPLORER ========== -->
+  <section class="scene" id="scene-5" data-scene="5">
+    <div class="app-shell">
+      <div class="pipeline-bar">
+        <div class="pipeline-top">
+          <div class="pulse-dot"></div>
+          <div class="pipeline-status">
+            <span class="agent">對話者 × 30</span>
+            <span class="sep">·</span>
+            並行訪談中 · Q2/4 · concurrency=6
+          </div>
+        </div>
+        <div class="pipeline-dots">
+          <div class="pdot entry-done"></div>
+          <div class="pdot pm-done"></div>
+          <div class="pdot persona-active"></div>
+          <div class="pdot"></div>
+          <div class="pdot"></div>
+        </div>
+      </div>
+
+      <div class="qa-card">
+        <div class="qbadge">QUESTION 2 / 4</div>
+        <div class="qtitle">
+          <div class="qnum">Q2</div>
+          <div class="qtext">200 萬保額對你來說是「充足」還是「太低」?</div>
+        </div>
+      </div>
+
+      <div class="answers">
+        <div class="ans">
+          <div class="ahead">受訪者 · 38</div>
+          <div class="aname">陳明哲 · 工程師</div>
+          <div class="atext">200 萬<span class="hl">勉強夠</span>。我去歐美都會自費再加買，這張卡只能算基本盤。</div>
+        </div>
+        <div class="ans">
+          <div class="ahead">受訪者 · 42</div>
+          <div class="aname">王雅婷 · 行銷主管</div>
+          <div class="atext">我覺得太低。<span class="hl">300 萬以上</span>才有競爭力，現在中信跟玉山都到 500 萬了。</div>
+        </div>
+        <div class="ans">
+          <div class="ahead">受訪者 · 35</div>
+          <div class="aname">林俊宏 · 業務</div>
+          <div class="atext">如果<span class="hl">海外就醫</span>有實支實付，200 萬可以。我比較看額外附加。</div>
+        </div>
+        <div class="ans">
+          <div class="ahead">受訪者 · 40</div>
+          <div class="aname">張怡君 · 教師</div>
+          <div class="atext">夠了。我一年出國 2 次，去日韓為主，200 萬綽綽有餘。年費反而比較關鍵。</div>
+        </div>
+        <div class="ans">
+          <div class="ahead">受訪者 · 45</div>
+          <div class="aname">黃志強 · 自雇</div>
+          <div class="atext">太低。我太太常帶小孩出國，<span class="hl">家庭出遊</span>一次保額分母太大。</div>
+        </div>
+        <div class="ans">
+          <div class="ahead">受訪者 · 32</div>
+          <div class="aname">李宜芳 · 設計</div>
+          <div class="atext">200 萬我覺得 OK，<span class="hl">年費</span>夠便宜的話我會試一年看看。</div>
+        </div>
+      </div>
+
+      <div class="pager">
+        <div class="progress">Q2 / 4 · 30 位受訪者中精選 6 位</div>
+        <div class="pager-btns">
+          <button class="pbtn">← 上一題</button>
+          <button class="pbtn">換 3 位</button>
+          <button class="pbtn next">下一題 →</button>
+          <button class="pbtn summary">📊 看洞察報告</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 6: PHASE TRANSITION MAP ========== -->
+  <section class="scene" id="scene-6" data-scene="6">
+    <div class="app-shell">
+      <div class="phase-card">
+        <div class="phase-head">
+          <div>
+            <div class="label">PHASE TRANSITION MAP</div>
+            <h3>30 位受訪者的「行為相變」散布</h3>
+          </div>
+          <div style="text-align:right; font-size:11px; color:var(--slate-400);">
+            X · 經濟壓力<br/>Y · 購買意願
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat s-buy">
+            <div class="slabel">購買 · BUY</div>
+            <div class="sval">38%</div>
+          </div>
+          <div class="stat s-watch">
+            <div class="slabel">觀望 · WATCH</div>
+            <div class="sval">34%</div>
+          </div>
+          <div class="stat s-reject">
+            <div class="slabel">拒絕 · REJECT</div>
+            <div class="sval">28%</div>
+          </div>
+        </div>
+
+        <svg class="phase-svg" viewBox="0 0 700 320" preserveAspectRatio="none">
+          <!-- background zones -->
+          <rect x="0"   y="0" width="245" height="320" fill="rgba(244,63,94,0.10)"/>
+          <rect x="245" y="0" width="210" height="320" fill="rgba(245,158,11,0.08)"/>
+          <rect x="455" y="0" width="245" height="320" fill="rgba(16,185,129,0.10)"/>
+
+          <!-- threshold lines -->
+          <line x1="245" y1="0" x2="245" y2="320" stroke="rgba(245,158,11,0.4)" stroke-dasharray="4 4"/>
+          <line x1="455" y1="0" x2="455" y2="320" stroke="rgba(16,185,129,0.4)" stroke-dasharray="4 4"/>
+
+          <!-- zone labels -->
+          <text x="120" y="22" fill="var(--rose-400)" font-size="10" font-family="JetBrains Mono" letter-spacing="2" text-anchor="middle">REJECT</text>
+          <text x="350" y="22" fill="var(--amber-400)" font-size="10" font-family="JetBrains Mono" letter-spacing="2" text-anchor="middle">WATCH</text>
+          <text x="580" y="22" fill="var(--emerald-400)" font-size="10" font-family="JetBrains Mono" letter-spacing="2" text-anchor="middle">BUY</text>
+
+          <!-- grid -->
+          <g stroke="rgba(71,85,105,0.3)" stroke-width="0.5">
+            <line x1="0" y1="80" x2="700" y2="80"/>
+            <line x1="0" y1="160" x2="700" y2="160"/>
+            <line x1="0" y1="240" x2="700" y2="240"/>
+          </g>
+
+          <!-- 10 persona dots -->
+          <!-- 30 位虛擬受訪者粒子分布 (BUY > 455 / WATCH 245-455 / REJECT < 245) -->
+          <circle class="pdot" cx="520" cy="80"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="420" cy="180" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="580" cy="60"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="340" cy="220" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="260" cy="240" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="540" cy="140" r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="130" cy="280" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="380" cy="190" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="480" cy="120" r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="300" cy="260" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="500" cy="100" r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="560" cy="170" r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="630" cy="90"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="475" cy="60"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="555" cy="40"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="610" cy="125" r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="360" cy="150" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="320" cy="180" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="280" cy="200" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="395" cy="120" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="440" cy="240" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="270" cy="160" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="100" cy="240" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="160" cy="200" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="200" cy="290" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="60"  cy="270" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="180" cy="260" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="220" cy="220" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="85"  cy="210" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+          <circle class="pdot" cx="140" cy="160" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+
+          <!-- axes -->
+          <text x="690" y="312" fill="var(--slate-400)" font-size="10" text-anchor="end">經濟壓力 →</text>
+          <text x="10" y="14" fill="var(--slate-400)" font-size="10">↑ 購買意願</text>
+        </svg>
+
+        <div class="tooltip" id="phase-tooltip">
+          <div class="tname">王雅婷 · 42</div>
+          <div class="tmeta">行銷主管 · 月收 75k</div>
+          <div class="tmeta">經濟壓力 0.42 · 購買意願 0.55</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 7: ABACUS DRAG (REAL UI) ========== -->
+  <section class="scene" id="scene-7" data-scene="7">
+    <div class="app-shell">
+      <div class="top-area">
+        <div class="phase-card">
+          <div class="ph-head">
+            <div class="left">
+              <div class="lbl">SIMULATION LAB</div>
+              <div class="ttl">拖一下算盤，phase map 即時重新塌縮</div>
+            </div>
+            <div class="right">
+              年費 · <span class="v" id="s7-fee-display">$990</span>
+            </div>
+          </div>
+          <div class="ph-stats">
+            <div class="ph-stat buy">
+              <div class="lbl">BUY</div>
+              <div class="v" id="s7-buy">38%<span class="delta" id="s7-buy-d">↑29</span></div>
+            </div>
+            <div class="ph-stat watch">
+              <div class="lbl">WATCH</div>
+              <div class="v" id="s7-watch">34%</div>
+            </div>
+            <div class="ph-stat reject">
+              <div class="lbl">REJECT</div>
+              <div class="v" id="s7-reject">28%</div>
+            </div>
+          </div>
+          <div class="ph-svg-wrap">
+            <svg class="ph-svg" viewBox="0 0 700 220" preserveAspectRatio="none">
+              <rect x="0"   y="0" width="245" height="220" fill="rgba(244,63,94,0.10)"/>
+              <rect x="245" y="0" width="210" height="220" fill="rgba(245,158,11,0.08)"/>
+              <rect x="455" y="0" width="245" height="220" fill="rgba(16,185,129,0.10)"/>
+              <line x1="245" y1="0" x2="245" y2="220" stroke="rgba(245,158,11,0.4)" stroke-dasharray="4 4"/>
+              <line x1="455" y1="0" x2="455" y2="220" stroke="rgba(16,185,129,0.4)" stroke-dasharray="4 4"/>
+              <!-- 30 位粒子 (前 10 個有 id 給拖拉動畫追蹤,其餘為背景填充) -->
+              <circle class="dot" id="d7-1"  cx="520" cy="60"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-2"  cx="420" cy="130" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-3"  cx="580" cy="50"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-4"  cx="340" cy="150" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-5"  cx="260" cy="170" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-6"  cx="540" cy="90"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-7"  cx="130" cy="190" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-8"  cx="380" cy="135" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-9"  cx="480" cy="80"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-10" cx="300" cy="180" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-11" cx="500" cy="100" r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-12" cx="560" cy="140" r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-13" cx="620" cy="70"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-14" cx="475" cy="40"  r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-15" cx="595" cy="105" r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-16" cx="465" cy="120" r="5" fill="#34d399" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-17" cx="360" cy="120" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-18" cx="320" cy="160" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-19" cx="280" cy="195" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-20" cx="395" cy="100" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-21" cx="440" cy="195" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-22" cx="270" cy="140" r="5" fill="#fbbf24" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-23" cx="100" cy="180" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-24" cx="160" cy="160" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-25" cx="200" cy="200" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-26" cx="60"  cy="195" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-27" cx="180" cy="195" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-28" cx="220" cy="170" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-29" cx="85"  cy="150" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+              <circle class="dot" id="d7-30" cx="140" cy="125" r="5" fill="#f87171" stroke="white" stroke-width="1.2"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="abacus-bar">
+        <div class="ab-inner">
+          <div class="ab-main">
+            <div class="ab-head">
+              <span class="lbl">⚙ 主算盤 · 年費</span>
+              <span class="val" id="s7-fee">$990</span>
+            </div>
+            <div class="slider-row">
+              <div class="slider-track"></div>
+              <div class="slider-fill" id="s7-fill"></div>
+              <div class="slider-handle" id="s7-handle"></div>
+            </div>
+            <div class="ab-minmax">
+              <span>$0</span>
+              <span>$3,000</span>
+            </div>
+          </div>
+          <div class="ab-presets">
+            <div class="ab-preset">免年費</div>
+            <div class="ab-preset active">$990 標準</div>
+            <div class="ab-preset">$1,800 進階</div>
+            <div class="ab-preset">$2,800 旗艦</div>
+          </div>
+          <div class="ab-shocks">
+            <div class="shock inflation">
+              <div class="sh-head">
+                <span class="lbl">📈 外部衝擊 · 通膨</span>
+                <span class="v">+3.2%</span>
+              </div>
+              <div class="sh-track"><div class="sh-fill"></div></div>
+            </div>
+            <div class="shock unemploy">
+              <div class="sh-head">
+                <span class="lbl">📉 外部衝擊 · 失業率</span>
+                <span class="v">+1.8pp</span>
+              </div>
+              <div class="sh-track"><div class="sh-fill"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 8: DECISION SANKEY ========== -->
+  <section class="scene" id="scene-8" data-scene="8">
+    <div class="app-shell">
+      <div class="sankey-card">
+        <div class="sk-head">
+          <div class="left">
+            <div class="lbl">DECISION SANKEY · 3-TIER</div>
+            <h3>語意脈絡 → 行為誘因 → 決策 · 為什麼買 / 為什麼不</h3>
+          </div>
+          <div class="right">
+            30 位受訪者 · <span class="seg-cnt">8 個 segment</span><br/>
+            <span style="color:var(--violet-300); font-weight:600;">參數 · 年費 $990 · 保額 200萬</span>
+          </div>
+        </div>
+
+        <div class="sk-svg-wrap">
+          <svg class="sk-svg" viewBox="0 0 1000 360" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="g1" x1="0" x2="1"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#34d399"/></linearGradient>
+              <linearGradient id="g2" x1="0" x2="1"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f87171"/></linearGradient>
+              <linearGradient id="g3" x1="0" x2="1"><stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#34d399"/></linearGradient>
+              <linearGradient id="g4" x1="0" x2="1"><stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#fbbf24"/></linearGradient>
+              <linearGradient id="g5" x1="0" x2="1"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#fbbf24"/></linearGradient>
+              <linearGradient id="g6" x1="0" x2="1"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#f87171"/></linearGradient>
+              <linearGradient id="g7" x1="0" x2="1"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#34d399"/></linearGradient>
+              <linearGradient id="g8" x1="0" x2="1"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#fbbf24"/></linearGradient>
+            </defs>
+
+            <!-- Tier labels -->
+            <text x="50" y="22" fill="var(--cyan-400)" font-size="11" font-weight="700" letter-spacing="3">語意脈絡</text>
+            <text x="500" y="22" fill="var(--cyan-400)" font-size="11" font-weight="700" letter-spacing="3" text-anchor="middle">行為誘因</text>
+            <text x="950" y="22" fill="var(--cyan-400)" font-size="11" font-weight="700" letter-spacing="3" text-anchor="end">決策</text>
+
+            <!-- Column 1: 語意脈絡 -->
+            <g class="node nl1">
+              <rect x="40" y="50" width="14" height="70" fill="#fbbf24" rx="2"/>
+              <text x="62" y="76" fill="var(--slate-50)" font-size="13" font-weight="600">💰 省錢動機</text>
+              <text x="62" y="92" fill="var(--slate-400)" font-size="10">42% · 4 人</text>
+            </g>
+            <g class="node nl1">
+              <rect x="40" y="150" width="14" height="60" fill="#22d3ee" rx="2"/>
+              <text x="62" y="176" fill="var(--slate-50)" font-size="13" font-weight="600">⚡ 便利優先</text>
+              <text x="62" y="192" fill="var(--slate-400)" font-size="10">28% · 3 人</text>
+            </g>
+            <g class="node nl1">
+              <rect x="40" y="240" width="14" height="80" fill="#a78bfa" rx="2"/>
+              <text x="62" y="266" fill="var(--slate-50)" font-size="13" font-weight="600">🛡 安全感</text>
+              <text x="62" y="282" fill="var(--slate-400)" font-size="10">30% · 3 人</text>
+            </g>
+
+            <!-- Column 2: 行為誘因 -->
+            <g class="node nl2">
+              <rect x="490" y="55" width="14" height="55" fill="#34d399" rx="2"/>
+              <text x="512" y="78" fill="var(--slate-50)" font-size="12" font-weight="600">回饋率</text>
+              <text x="512" y="92" fill="var(--slate-400)" font-size="9">28%</text>
+            </g>
+            <g class="node nl2">
+              <rect x="490" y="145" width="14" height="70" fill="#fbbf24" rx="2"/>
+              <text x="512" y="170" fill="var(--slate-50)" font-size="12" font-weight="600">保額充足</text>
+              <text x="512" y="184" fill="var(--slate-400)" font-size="9">32%</text>
+            </g>
+            <g class="node nl2">
+              <rect x="490" y="240" width="14" height="80" fill="#f87171" rx="2"/>
+              <text x="512" y="266" fill="var(--slate-50)" font-size="12" font-weight="600">年費敏感</text>
+              <text x="512" y="280" fill="var(--slate-400)" font-size="9">40%</text>
+            </g>
+
+            <!-- Column 3: 決策 -->
+            <g class="node nl3">
+              <rect x="946" y="55" width="14" height="90" fill="#34d399" rx="2"/>
+              <text x="938" y="80" fill="var(--slate-50)" font-size="13" font-weight="600" text-anchor="end">✅ 願意</text>
+              <text x="938" y="96" fill="var(--slate-400)" font-size="10" text-anchor="end">38% · 4 人</text>
+            </g>
+            <g class="node nl3">
+              <rect x="946" y="175" width="14" height="80" fill="#fbbf24" rx="2"/>
+              <text x="938" y="200" fill="var(--slate-50)" font-size="13" font-weight="600" text-anchor="end">⏸ 觀望</text>
+              <text x="938" y="216" fill="var(--slate-400)" font-size="10" text-anchor="end">34% · 3 人</text>
+            </g>
+            <g class="node nl3">
+              <rect x="946" y="285" width="14" height="55" fill="#f87171" rx="2"/>
+              <text x="938" y="306" fill="var(--slate-50)" font-size="13" font-weight="600" text-anchor="end">✗ 拒絕</text>
+              <text x="938" y="322" fill="var(--slate-400)" font-size="10" text-anchor="end">28% · 3 人</text>
+            </g>
+
+            <!--
+              v5: 交錯 ribbon — col1 ↔ col2 6 條 + col2 ↔ col3 6 條,每個節點都連到 2-3 個對象,
+              重現「動機混合」的決策結構 (省錢動機不只走回饋率,也會延伸到年費敏感)。
+              ribbon 從 node 的不同 y 子位置出發,自然形成「楔形分支」視覺。
+            -->
+            <!-- col1 → col2 (6 條交錯) -->
+            <!-- 省錢動機 → 回饋率 (主流, 寬) -->
+            <path class="ribbon r1" d="M 54 80  C 270 80,  270 82,  490 82"  stroke="url(#g1)" stroke-width="22" fill="none"/>
+            <!-- 省錢動機 → 年費敏感 (副流, 細) -->
+            <path class="ribbon r2" d="M 54 108 C 270 108, 270 258, 490 258" stroke="url(#g2)" stroke-width="10" fill="none"/>
+            <!-- 便利優先 → 回饋率 (副流) -->
+            <path class="ribbon r3" d="M 54 162 C 270 162, 270 100, 490 100" stroke="url(#g4)" stroke-width="9"  fill="none"/>
+            <!-- 便利優先 → 保額充足 (主流) -->
+            <path class="ribbon r4" d="M 54 195 C 270 195, 270 170, 490 170" stroke="url(#g3)" stroke-width="18" fill="none"/>
+            <!-- 安全感 → 保額充足 (主流, 寬) -->
+            <path class="ribbon r5" d="M 54 258 C 270 258, 270 200, 490 200" stroke="url(#g6)" stroke-width="24" fill="none"/>
+            <!-- 安全感 → 年費敏感 (中流) -->
+            <path class="ribbon r6" d="M 54 305 C 270 305, 270 300, 490 300" stroke="url(#g5)" stroke-width="14" fill="none"/>
+
+            <!-- col2 → col3 (6 條交錯) -->
+            <!-- 回饋率 → 願意 (主流) -->
+            <path class="ribbon r7" d="M 504 78  C 720 78,  720 88,  946 88"  stroke="url(#g7)" stroke-width="22" fill="none"/>
+            <!-- 回饋率 → 觀望 (副流, 細) -->
+            <path class="ribbon r8" d="M 504 105 C 720 105, 720 195, 946 195" stroke="url(#g8)" stroke-width="10" fill="none"/>
+            <!-- 保額充足 → 願意 (中流, 交錯) -->
+            <path class="ribbon r9" d="M 504 158 C 720 158, 720 115, 946 115" stroke="url(#g7)" stroke-width="13" fill="none"/>
+            <!-- 保額充足 → 觀望 (主流) -->
+            <path class="ribbon r10" d="M 504 200 C 720 200, 720 218, 946 218" stroke="url(#g8)" stroke-width="22" fill="none"/>
+            <!-- 年費敏感 → 觀望 (中流, 交錯) -->
+            <path class="ribbon r11" d="M 504 270 C 720 270, 720 240, 946 240" stroke="url(#g8)" stroke-width="13" fill="none"/>
+            <!-- 年費敏感 → 拒絕 (主流) -->
+            <path class="ribbon r12" d="M 504 310 C 720 310, 720 310, 946 310" stroke="url(#g6)" stroke-width="22" fill="none"/>
+          </svg>
+        </div>
+
+        <div class="sk-detail">
+          <span class="dlabel">▸ Segment 高亮:</span>
+          <span class="pers">王雅婷 <span class="sep">·</span> 黃志強 <span class="sep">·</span> 周淑芬</span>
+          <span style="color:var(--slate-500); margin-left:8px;">「保額不足 → 觀望」群體，建議推 300 萬升級方案</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 9: REPORT CARD ========== -->
+  <section class="scene" id="scene-9" data-scene="9">
+    <div class="app-shell">
+      <div class="report-wrap">
+        <div class="rep-head">
+          <div class="left">
+            <div class="rep-icon">📊</div>
+            <div class="rep-title">
+              <h2>研究命題 · 年費 990 元保險信用卡 · 30-45 歲族群</h2>
+              <div class="sub">30 位虛擬受訪者 · 並行訪談 87 秒 · 完整決策報告</div>
+            </div>
+          </div>
+          <div class="right">
+            REPORT #2026-05-13<br/>
+            海森堡實驗室 · AIA<br/>
+            <span style="color:var(--cyan-400)">完整 PDF 已就緒</span>
+          </div>
+        </div>
+
+        <div class="rep-section">
+          <div class="rep-sec-head">
+            <div class="rep-sec-bar b1"></div>
+            <div class="rep-sec-title">執行摘要 · Headline</div>
+          </div>
+          <div class="headline-box">
+            整體支持度 <b>38%</b>(願意)、<b>34%</b>(觀望)、<b>28%</b>(拒絕)。
+            「保額」與「年費 vs 回饋率」是決策關鍵;
+            30-40 歲女性傾向觀望,看保額是否高於 200 萬;30-35 歲男性對年費敏感度顯著高於 36-45 歲。
+          </div>
+        </div>
+
+        <div class="rep-section">
+          <div class="rep-sec-head">
+            <div class="rep-sec-bar b3"></div>
+            <div class="rep-sec-title">重點發現 · Key Findings</div>
+          </div>
+          <div class="findings-grid">
+            <div class="finding positive">
+              <div class="ftitle">F1 · 保額臨界點<span class="fmetric">+18pp</span></div>
+              保額提升到 300 萬時,觀望→購買的轉化率提升 18 個百分點。
+            </div>
+            <div class="finding neutral">
+              <div class="ftitle">F2 · 年費敏感度<span class="fmetric">2.4×</span></div>
+              30-35 歲族群對年費 990 元的敏感度是 36-45 歲族群的 2.4 倍。
+            </div>
+            <div class="finding warning">
+              <div class="ftitle">F3 · 回饋認知<span class="fmetric">+11pp</span></div>
+              「現金回饋」比「點數」對中收族群的吸引力高 11pp。
+            </div>
+            <div class="finding positive">
+              <div class="ftitle">F4 · 替代焦慮<span class="fmetric">3 競品</span></div>
+              受訪者主動比較中信、玉山、永豐;差異化必須在 30 秒內講清楚。
+            </div>
+          </div>
+        </div>
+
+        <div class="rep-actions">
+          <button class="act-btn pdf highlight" id="s9-pdf">📄 下載完整 PDF</button>
+          <button class="act-btn email">✉ 寄到我信箱</button>
+          <button class="act-btn sim">🧪 進模擬艙調參數</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 10: 滷肉飯餅乾 (非金融商品) ========== -->
+  <section class="scene" id="scene-10" data-scene="10">
+    <div class="persona-bg" data-bg="personas"></div>
+    <div class="app-shell">
+      <div class="s10-banner">
+        <div class="kicker">BEYOND FINANCE · 新產品市場測試</div>
+        <h2>不只金融商品 — <span class="accent">食品 / FMCG 也能跑</span></h2>
+      </div>
+
+      <div class="s10-grid">
+        <!-- 左:prompt 輸入 -->
+        <div class="s10-prompt">
+          <div class="s10-prompt-head">
+            <div class="dot"></div>
+            <div class="label">PROMPT · NEW PRODUCT</div>
+          </div>
+          <div class="typed-area">
+            <span class="typed" id="s10-typed"></span><span class="cursor-blink"></span>
+          </div>
+          <div class="s10-product-card">
+            <div class="icon">🥔</div>
+            <div class="info">
+              <div class="nm">知名滷肉飯聯名 · 滷肉飯口味洋芋片餅乾</div>
+              <div class="spec">
+                <b>102克</b> · 售價 <b>NT$ 49</b> · 香脆 / 鹹甜醬油風味 / 試水溫
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右:結果預覽 -->
+        <div class="s10-result">
+          <div class="s10-result-head">
+            <div class="label">QUICK RESULT · 30 位虛擬受訪者</div>
+            <div class="meta">87s · concurrency=6</div>
+          </div>
+          <div class="s10-kpi">
+            <div class="k">
+              <div class="name">試吃意願</div>
+              <div class="v">78%</div>
+            </div>
+            <div class="k">
+              <div class="name">願意付 $49</div>
+              <div class="v">52%</div>
+            </div>
+            <div class="k">
+              <div class="name">期望售價</div>
+              <div class="v">$35-55</div>
+            </div>
+            <div class="k">
+              <div class="name">獵奇加分</div>
+              <div class="v">+11pp</div>
+            </div>
+          </div>
+          <div class="s10-reactions">
+            <div class="reaction">
+              <div class="avatar" style="background-image: url('../../public/personas-techlife/slasher_girl.png');"></div>
+              <div class="who"><b>斜槓小資女 · 26</b><br/>正職 + 兼職</div>
+              <div class="quote">「聯名超有梗，買來嚐鮮可以但只買一次。」</div>
+            </div>
+            <div class="reaction">
+              <div class="avatar" style="background-image: url('../../public/personas-techlife/quiet_landlord.png');"></div>
+              <div class="who"><b>低調包租公 · 35</b><br/>科技業 + 投資</div>
+              <div class="quote">「49 元偏高,如果便利商店有第二件 7 折我會買。」</div>
+            </div>
+            <div class="reaction">
+              <div class="avatar" style="background-image: url('../../public/personas-techlife/uncle_zealot.png');"></div>
+              <div class="who"><b>熱血大叔 · 42</b><br/>傳產主管</div>
+              <div class="quote">「聯名讓我反感,寧願去吃真正的滷肉飯。」</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 11: TECH HIGHLIGHTS ========== -->
+  <section class="scene" id="scene-11" data-scene="11">
+    <div class="app-shell">
+      <div class="head">
+        <div class="kicker">ENGINEERING HIGHLIGHTS · BUILT WITH CLAUDE CODE</div>
+        <h2>三個讓 demo <span class="accent">真的跑得動</span> 的決定</h2>
+      </div>
+      <div class="grid">
+        <div class="tcard">
+          <span class="ticon">📦</span>
+          <div class="ttag">BUNDLED JSON</div>
+          <div class="ttitle">每位 persona 一通 call、一次吐 N 題答案</div>
+          <div class="tmetric"><span class="from">150</span> 30 calls</div>
+          <div class="tdesc">30 受訪者 × 5 題場景:LLM call 從 150 砍到 30,端到端從 4.7 分鐘縮到 2.3 分鐘。JSON 失敗自動退回逐題模式。</div>
+        </div>
+        <div class="tcard">
+          <span class="ticon">🚦</span>
+          <div class="ttag">GLOBAL SEMAPHORE</div>
+          <div class="ttitle">全域 LLM 限流 + 429 自動退避</div>
+          <div class="tmetric">0 / 79s</div>
+          <div class="tdesc">所有 6 個 agent 共用單一 semaphore(concurrency=6)。30×5 場景實測 0 個 429、wall time 79 秒;之前同條件 35 個 429、196 秒。</div>
+        </div>
+        <div class="tcard">
+          <span class="ticon">🎙</span>
+          <div class="ttag">VOICE CONTROL</div>
+          <div class="ttitle">"Hey Heisenberg, 寄出報告"</div>
+          <div class="tmetric">7 actions</div>
+          <div class="tdesc">Web Speech API + LLM 意圖判讀,覆蓋寄報告 / 下載 PDF / 進模擬艙 / 打開 FAQ 等 7 種動作;發表時不用點滑鼠。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCENE 12: CLOSING ========== -->
+  <section class="scene" id="scene-12" data-scene="12">
+    <div class="app-shell">
+      <div class="ba-grid">
+        <div class="ba-side before">
+          <h3>BEFORE · 傳統市調</h3>
+          <div class="ba-row"><div class="k">時間</div>14 天問卷 + 焦點訪談</div>
+          <div class="ba-row"><div class="k">預算</div>單輪 30-50 萬</div>
+          <div class="ba-row"><div class="k">參數調整</div>每換一次條件,整輪重招募</div>
+          <div class="ba-row"><div class="k">交付物</div>逐字稿 + 簡報,跨團隊失真</div>
+          <div class="ba-row"><div class="k">合規</div>IRB / 法務 / 同意書流程</div>
+        </div>
+        <div class="ba-side after">
+          <h3>AFTER · 海森堡的算盤</h3>
+          <div class="ba-row"><div class="k">時間</div>90 秒並行訪談、15 分鐘出報告</div>
+          <div class="ba-row"><div class="k">預算</div>邊際成本趨近於零</div>
+          <div class="ba-row"><div class="k">參數調整</div>拖算盤珠,phase map 即時塌縮</div>
+          <div class="ba-row"><div class="k">交付物</div>ReportCard PDF + Sankey + Phase Map</div>
+          <div class="ba-row"><div class="k">合規</div>全合成 persona、零真人 PII</div>
+        </div>
+      </div>
+
+      <div class="quote">
+        <h2>不再訪問消費者,<br/><span class="accent">召喚機率雲。</span></h2>
+        <div class="url-row">
+          <div class="qr">
+            <i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="w"></i><i></i>
+            <i></i><i></i><i></i><i class="w"></i><i></i><i class="w"></i><i></i><i></i>
+            <i class="w"></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i>
+            <i></i><i></i><i class="w"></i><i></i><i></i><i></i><i class="w"></i><i></i>
+            <i></i><i class="w"></i><i></i><i class="w"></i><i></i><i></i><i></i><i class="w"></i>
+            <i></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i>
+            <i class="w"></i><i></i><i></i><i></i><i></i><i class="w"></i><i class="w"></i><i></i>
+            <i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div>
+            Live Demo · <a href="https://stoic-thaw-trustee.ngrok-free.dev/">stoic-thaw-trustee.ngrok-free.dev</a><br/>
+            <span style="color:var(--slate-500)">Built with Claude Code · MiniMax-M2.5 · Next.js 14</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== V4 NEW SCENE: TITLE REVEAL ========== -->
+  <section class="scene" id="scene-title" data-scene="title">
+    <div class="title-shell">
+      <h1>海森堡的算盤<span class="accent">·</span></h1>
+      <div class="sub">HEISENBERG'S ABACUS · HUMAN BEHAVIOUR OBSERVATORY</div>
+      <div class="formula">ψ(x,t) → 觀測 → 決策 ｜ entry → pm → persona × N → summary → report</div>
+    </div>
+  </section>
+
+  <!-- ========== V4 NEW SCENE: PERSONA SHOWCASE (30 人物顯影) ========== -->
+  <section class="scene" id="scene-persona-show" data-scene="persona-show">
+    <div class="ps-shell">
+      <div class="ps-header">
+        <div class="kicker">SYNTHETIC RESPONDENT POOL · N=30</div>
+        <h2>30 種<span class="accent"> 生活型態</span> · 並行作答</h2>
+      </div>
+      <div class="ps-cloud" id="ps-cloud"><!-- avatars 由 JS 動態填入 --></div>
+      <div class="ps-stats">
+        <div>外送員 <b>30</b></div>
+        <div>·</div>
+        <div>上班族 <b>30</b></div>
+        <div>·</div>
+        <div>v1 / v2 雙軸切換</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== V4 NEW SCENE: ARCHITECTURE OVERVIEW ========== -->
+  <section class="scene" id="scene-arch" data-scene="arch">
+    <div class="arch-shell">
+      <div class="arch-head">
+        <div class="kicker">SYSTEM ARCHITECTURE · BRIEF</div>
+        <h2>五段管線 · <span class="accent">六個 Claude agent</span> 接力</h2>
+      </div>
+
+      <div class="arch-flow">
+        <div class="arch-stage">
+          <div class="num">01 / ENTRY</div>
+          <div class="name">啟動者</div>
+          <div class="role">Brief 結構化、輸出 <code>STATUS:READY</code> 或追問</div>
+        </div>
+        <div class="arch-stage">
+          <div class="num">02 / PM·PLAN</div>
+          <div class="name">觀測者規劃</div>
+          <div class="role">4-6 題訪談題目 + 範圍摘要 <code>JSON</code></div>
+        </div>
+        <div class="arch-stage">
+          <div class="num">03 / PERSONA × N</div>
+          <div class="name">對話者並行</div>
+          <div class="role">30 位 persona,<code>concurrency=6</code>,bundled JSON</div>
+        </div>
+        <div class="arch-stage">
+          <div class="num">04 / SUMMARY</div>
+          <div class="name">彙總者</div>
+          <div class="role">共識 / 分歧 / 風險 / metric 萃取</div>
+        </div>
+        <div class="arch-stage">
+          <div class="num">05 / PM·REPORT</div>
+          <div class="name">決策報告</div>
+          <div class="role">行動建議 + 優先序 → 前端 PDF</div>
+        </div>
+      </div>
+
+      <div class="arch-spec">
+        <div class="spec-card">
+          <div class="label">LLM Provider</div>
+          <div class="value"><code>MiniMax-M2.5</code> via Anthropic SDK 相容 endpoint · adaptive thinking · prompt cache ephemeral</div>
+        </div>
+        <div class="spec-card">
+          <div class="label">Rate Limit</div>
+          <div class="value">全域 Semaphore (<code>concurrency=6</code>) + 429 exp-backoff retry · 30×5 場景 0 個 429 / 79s</div>
+        </div>
+        <div class="spec-card">
+          <div class="label">Frontend</div>
+          <div class="value"><code>Next.js 14</code> + Tailwind + 純 SVG visualizations · SSE streaming</div>
+        </div>
+        <div class="spec-card">
+          <div class="label">Data Source</div>
+          <div class="value">30 位 v1 外送員 + 30 位 v2 上班族 = 60 種 persona,從 HackMD 章節同步</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </div><!-- /.viewport -->
+</div><!-- /.browser -->
+</div><!-- /.stage -->
+
+<!-- =================== NARRATOR (TALKING HEAD) =================== -->
+<!--
+  解說人物對嘴框 — 雙語切換、可掛 AI 生成的對嘴影片 (D-ID / HeyGen / Synthesia 等)。
+  影片 / 音檔的路徑寫在下面 JS 的 SCRIPT_MAP,沒檔案時 fallback 到動畫 SVG 頭像 +
+  捲動字幕 (caption)。
+-->
+<div class="narrator hidden" id="narrator">
+  <div class="narrator-frame">
+    <video class="hidden" id="narrator-video" muted playsinline></video>
+    <svg class="narrator-svg paused" id="narrator-svg" viewBox="0 0 200 200">
+      <defs>
+        <radialGradient id="faceGrad" cx="50%" cy="40%" r="60%">
+          <stop offset="0%"  stop-color="#fde68a"/>
+          <stop offset="60%" stop-color="#fcd34d"/>
+          <stop offset="100%" stop-color="#a16207"/>
+        </radialGradient>
+      </defs>
+      <!-- 圓臉 -->
+      <circle class="face" cx="100" cy="100" r="78"/>
+      <!-- 髮型上半圓 -->
+      <path d="M 28 88 A 72 72 0 0 1 172 88 L 172 70 A 72 72 0 0 0 28 70 Z" fill="#0f172a"/>
+      <!-- 眼睛 -->
+      <ellipse class="eye" cx="78" cy="105" rx="6" ry="9"/>
+      <ellipse class="eye" cx="122" cy="105" rx="6" ry="9"/>
+      <!-- 嘴 (會張開閉合) -->
+      <ellipse class="mouth" cx="100" cy="138" rx="14" ry="9"/>
+    </svg>
+  </div>
+  <div class="narrator-label">
+    <span class="lang-tag" id="narrator-lang-tag">ZH</span>
+    <span>NARRATOR</span>
+  </div>
+  <audio id="narrator-audio" preload="auto"></audio>
+</div>
+
+<!-- =================== CAPTION =================== -->
+<div class="caption" id="caption"></div>
+
+<!-- =================== LIVE PREVIEW (服務網頁 iframe) =================== -->
+<div class="live-preview" id="live-preview">
+  <div class="live-head">
+    <div class="pulse"></div>
+    <div class="label">LIVE</div>
+    <div class="url">stoic-thaw-trustee.ngrok-free.dev</div>
+    <button class="close-btn" id="live-close" title="關閉">✕</button>
+  </div>
+  <iframe id="live-iframe" loading="lazy" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" referrerpolicy="no-referrer-when-downgrade" title="Live service"></iframe>
+  <div class="iframe-hint">
+    若見到 ngrok 警告頁,請點「Visit Site」一次即可<br/>(只需做一次,之後 cookie 會記住)
+  </div>
+</div>
+
+<!-- =================== HUD =================== -->
+<div class="hud">
+  <button id="play-btn" title="Play/Pause">▶</button>
+  <button class="secondary" id="prev-btn">‹ PREV</button>
+  <button class="secondary" id="next-btn">NEXT ›</button>
+  <button class="secondary" id="restart-btn">↻ RESTART</button>
+  <button class="secondary" id="live-btn" title="開關實際服務 iframe 預覽">⌬ LIVE</button>
+  <div class="lang-switch">
+    <button id="lang-zh" class="active" title="中文旁白">中</button>
+    <button id="lang-en" title="English narration">EN</button>
+  </div>
+  <div class="progress" id="progress">
+    <div class="bar" id="bar"></div>
+    <div class="markers" id="markers"></div>
+  </div>
+  <div class="time" id="time">0:00 / 6:00</div>
+</div>
+
+<!-- =================== START SCREEN =================== -->
+<div class="start-screen" id="start-screen">
+  <h1>海森堡的算盤<span class="accent">·</span></h1>
+  <div class="sub">6 MIN DEMO · 24 場景 · 雙語旁白 · 桑基交錯版</div>
+  <div class="v-tag">V5 · BUG FIXES · LIP-SYNC OFF · SANKEY CROSSED</div>
+  <div class="meta">AIA × CLAUDE CODE SHOWCASE · 2026</div>
+  <button class="play-btn" id="start-btn">▶</button>
+  <div class="hint">按下 ▶ 開始 · 空白鍵暫停 · ← → 切換場景 · 右下角切換 中/EN 語言</div>
+</div>
+
+<script>
+// =================== SCENE TIMELINE (24 slots / 360s) ===================
+// `sceneEl` 指定要 active 的 HTML element id;多個連續 slot 可指向同一 element,
+// 此時 applyScene 不會重新觸發進場動畫,只更新 narrator / SCRIPT_MAP 對應的旁白。
+const scenes = [
+  // ---- 開場 (0-30s) ----
+  { id: 1,  sceneEl: 'scene-1',              start:   0, end:  12, url: 'stoic-thaw-trustee.ngrok-free.dev' },        // cold open
+  { id: 2,  sceneEl: 'scene-title',          start:  12, end:  30, url: 'stoic-thaw-trustee.ngrok-free.dev' },        // 標題塌縮
+  // ---- 登入 + 主介面 (30-60s) ----
+  { id: 3,  sceneEl: 'scene-2',              start:  30, end:  48, url: 'stoic-thaw-trustee.ngrok-free.dev/login' },  // login
+  { id: 4,  sceneEl: 'scene-3',              start:  48, end:  60, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // 主介面 (cards)
+  // ---- 人物顯影 (60-90s) ----
+  { id: 5,  sceneEl: 'scene-persona-show',   start:  60, end:  90, url: 'stoic-thaw-trustee.ngrok-free.dev/admin' },  // 30 人物頭像浮現
+  // ---- prompt + pipeline (90-150s) ----
+  { id: 6,  sceneEl: 'scene-3',              start:  90, end: 110, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // prompt typing + submit
+  { id: 7,  sceneEl: 'scene-4',              start: 110, end: 130, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // pipeline entry/pm
+  { id: 8,  sceneEl: 'scene-4',              start: 130, end: 150, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // pipeline persona × 30
+  // ---- Persona QA (150-180s) ----
+  { id: 9,  sceneEl: 'scene-5',              start: 150, end: 165, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // Q2 6 answers
+  { id:10,  sceneEl: 'scene-5',              start: 165, end: 180, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // 翻頁繼續 Q3
+  // ---- Phase Map (180-205s) ----
+  { id:11,  sceneEl: 'scene-6',              start: 180, end: 195, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // 散布圖誕生
+  { id:12,  sceneEl: 'scene-6',              start: 195, end: 205, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // tooltip / 解讀
+  // ---- Abacus (205-235s) ----
+  { id:13,  sceneEl: 'scene-7',              start: 205, end: 220, url: 'stoic-thaw-trustee.ngrok-free.dev/simulation' }, // 進模擬艙
+  { id:14,  sceneEl: 'scene-7',              start: 220, end: 235, url: 'stoic-thaw-trustee.ngrok-free.dev/simulation' }, // 拖滑桿 / KPI shift
+  // ---- Sankey (235-255s) ----
+  { id:15,  sceneEl: 'scene-8',              start: 235, end: 255, url: 'stoic-thaw-trustee.ngrok-free.dev/simulation' }, // 三層 sankey
+  // ---- Report (255-285s) ----
+  { id:16,  sceneEl: 'scene-9',              start: 255, end: 270, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // ReportCard 降落
+  { id:17,  sceneEl: 'scene-9',              start: 270, end: 285, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // PDF / email 按鈕脈動
+  // ---- Beyond Finance · 滷肉飯 (285-330s) ----
+  { id:18,  sceneEl: 'scene-10',             start: 285, end: 300, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // 滷肉飯 prompt
+  { id:19,  sceneEl: 'scene-10',             start: 300, end: 315, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // 商品 spec
+  { id:20,  sceneEl: 'scene-10',             start: 315, end: 330, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // KPI + reactions
+  // ---- 架構 + 結語 (330-360s) ----
+  { id:21,  sceneEl: 'scene-arch',           start: 330, end: 348, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // 系統架構
+  { id:22,  sceneEl: 'scene-12',             start: 348, end: 353, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // BA 對比 (使用 scene-12 BA 部分)
+  { id:23,  sceneEl: 'scene-12',             start: 353, end: 357, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // 召喚機率雲 quote
+  { id:24,  sceneEl: 'scene-12',             start: 357, end: 360, url: 'stoic-thaw-trustee.ngrok-free.dev/' },       // URL + QR + credits
+];
+const TOTAL = 360;
+
+// =================== SCRIPT MAP =====================
+// 每個場景對應一段中英文旁白 + 音檔 / 對嘴影片 (預留, 之後 AI 生成填入)。
+// audio / video 為 null 時 fallback 到動畫 SVG 頭像 + caption 字幕。
+//
+// 建議檔案命名:
+//   /sound/v3/zh/sceneN.mp3   /sound/v3/en/sceneN.mp3
+//   /sound/v3/zh/sceneN.mp4   /sound/v3/en/sceneN.mp4
+// 30 位受訪者的設定請見 HackMD「人設設定_v1_外送員」與「人設設定_v2_上班族」章節。
+// v4: 24 段旁白,中英雙語,audio/video 預留路徑供後續 ElevenLabs/D-ID 生成填入。
+// 完整外部腳本見 docs/pitch/demo-video-v4-script.md, timing 同 demo-video-v4-timeline.json。
+const SCRIPT_MAP = {
+  zh: {
+    1:  { kicker:'OPENING',         line:'量子實驗室開機,觀測者進場。', audio:null, video:null },
+    2:  { kicker:'TITLE',           line:'海森堡的算盤 — 把市場調查當作量子觀測,N=30 位虛擬受訪者並行作答。', audio:null, video:null },
+    3:  { kicker:'AUTH',            line:'一鍵以 demo admin 進場,觀測者身份確認。', audio:null, video:null },
+    4:  { kicker:'MAIN UI',         line:'主介面三張產品範例卡片,可直接點或自訂命題。', audio:null, video:null },
+    5:  { kicker:'PERSONA POOL',    line:'平台抽樣自 60 位合成虛擬人格 — v1 外送員 30 位、v2 上班族 30 位,每個都有獨立的家庭、收入、人格五維。', audio:null, video:null },
+    6:  { kicker:'PROMPT',          line:'我們示範一個年費 990 元、保額 200 萬的旅遊保險信用卡,目標 30-45 歲族群。', audio:null, video:null },
+    7:  { kicker:'PIPELINE START',  line:'送出觀測,五段管線啟動 — 啟動者結構化、觀測者規劃 4-6 題訪談。', audio:null, video:null },
+    8:  { kicker:'PIPELINE FAN',    line:'30 位 persona 並行 streaming 答題,concurrency 6、bundled JSON 一通 N 題。', audio:null, video:null },
+    9:  { kicker:'Q&A · Q2',        line:'第二題保額 200 萬夠不夠 — 6 位代表立場各異,從「勉強夠」「太低」到「家庭出遊不夠」。', audio:null, video:null },
+    10: { kicker:'Q&A · Q3-Q4',     line:'翻頁繼續看 Q3 年費敏感度、Q4 競品比較 — 同樣 30 位受訪者橫向掃描。', audio:null, video:null },
+    11: { kicker:'PHASE MAP',       line:'行為相變散布圖誕生 — 30 顆粒子分布在拒絕 / 觀望 / 購買三區,KPI 同步顯示 38 / 34 / 28%。', audio:null, video:null },
+    12: { kicker:'PHASE READ',      line:'Hover 任何粒子看到受訪者背景、五維分數;族群結構即時量化。', audio:null, video:null },
+    13: { kicker:'SIM LAB',         line:'進模擬艙 — 算盤滑桿掌控年費 / 保額 / 回饋率三條主軸,外加通膨、失業兩個外部衝擊。', audio:null, video:null },
+    14: { kicker:'ABACUS DRAG',     line:'年費從 990 拉到 490,粒子重新塌縮,購買率 38% 跳到 67% — 假設驗證從兩週縮到兩秒。', audio:null, video:null },
+    15: { kicker:'SANKEY',          line:'三層決策桑基:語意脈絡 → 行為誘因 → 決策,動機差異一條條 ribbon 攤開,直接看到「保額不足 → 觀望」族群在哪。', audio:null, video:null },
+    16: { kicker:'REPORT',          line:'完整決策報告降下:Headline、KPI、四項關鍵發現、族群比較表、行動建議。', audio:null, video:null },
+    17: { kicker:'EXPORT',          line:'一鍵下載 PDF 或寄到信箱,或直接跳回模擬艙微調 — 交付物不再是逐字稿與簡報。', audio:null, video:null },
+    18: { kicker:'BEYOND · PROMPT', line:'不只金融商品 — 我換個題目:幫我規劃滷肉飯口味洋芋片餅乾的市調。', audio:null, video:null },
+    19: { kicker:'BEYOND · SPEC',   line:'商品規格:跟知名滷肉飯聯名、102 克售價 49 元、香脆鹹甜醬油風味、試水溫。', audio:null, video:null },
+    20: { kicker:'BEYOND · RESULT', line:'30 位受訪者 87 秒給回應:試吃意願 78%、願意付 49 元 52%、期望售價 35 到 55 元、獵奇加分 11pp。', audio:null, video:null },
+    21: { kicker:'ARCHITECTURE',    line:'系統架構:Next.js 14 前端 + Anthropic SDK 串 MiniMax-M2.5,5 段管線、6 個 Claude agent 接力,全域 semaphore + bundled JSON 維持 0 個 429。', audio:null, video:null },
+    22: { kicker:'BEFORE / AFTER',  line:'把市場調查從 14 天、30-50 萬、PII 風險,壓縮成 90 秒、零真人資料、邊際成本趨近零。', audio:null, video:null },
+    23: { kicker:'QUOTE',           line:'不再訪問消費者 — 召喚機率雲。', audio:null, video:null },
+    24: { kicker:'CREDITS',         line:'海森堡的算盤,Built with Claude Code · MiniMax-M2.5 · Next.js 14。', audio:null, video:null },
+  },
+  en: {
+    1:  { kicker:'OPENING',         line:'The quantum laboratory boots up. The observer enters.', audio:null, video:null },
+    2:  { kicker:'TITLE',           line:'Heisenberg\'s Abacus — market research as quantum observation, N=30 synthetic respondents answering in parallel.', audio:null, video:null },
+    3:  { kicker:'AUTH',            line:'One-click demo admin login. Observer identity confirmed.', audio:null, video:null },
+    4:  { kicker:'MAIN UI',         line:'Three product templates on the main screen — or type any prompt of your own.', audio:null, video:null },
+    5:  { kicker:'PERSONA POOL',    line:'The platform draws from 60 synthetic personas — 30 delivery riders (v1), 30 office workers (v2). Each one has its own family, income, and five-dimensional personality.', audio:null, video:null },
+    6:  { kicker:'PROMPT',          line:'We pitch a travel-insurance credit card: NT$990 per year, NT$2M coverage, targeting ages 30 to 45.', audio:null, video:null },
+    7:  { kicker:'PIPELINE START',  line:'Submit. The five-stage pipeline lights up — the entry agent structures the brief, the PM agent designs 4 to 6 interview questions.', audio:null, video:null },
+    8:  { kicker:'PIPELINE FAN',    line:'30 personas answer in parallel — concurrency 6, bundled JSON, one call per persona covers every question.', audio:null, video:null },
+    9:  { kicker:'Q&A · Q2',        line:'Question 2: is NT$2M coverage enough? Six voices, six positions — "barely enough", "too low", "not for family travel".', audio:null, video:null },
+    10: { kicker:'Q&A · Q3-Q4',     line:'Page to Q3 on annual-fee sensitivity, Q4 on competitor comparison — the same 30 respondents scanned horizontally.', audio:null, video:null },
+    11: { kicker:'PHASE MAP',       line:'The behavioural phase-transition map appears — 30 particles spread across reject, watch, buy zones; KPIs read 38 / 34 / 28%.', audio:null, video:null },
+    12: { kicker:'PHASE READ',      line:'Hover any particle for the respondent\'s background and five-dimensional score. Segment structure quantified in real time.', audio:null, video:null },
+    13: { kicker:'SIM LAB',         line:'Enter the simulation lab — the abacus slider controls annual fee, coverage, rebate, plus inflation and unemployment shocks.', audio:null, video:null },
+    14: { kicker:'ABACUS DRAG',     line:'Drag the annual fee from 990 to 490. Particles re-collapse, buy rate jumps from 38% to 67%. Hypothesis testing in two seconds.', audio:null, video:null },
+    15: { kicker:'SANKEY',          line:'A three-tier decision Sankey: semantic context → behavioural triggers → decision. Motivation differences unfold as ribbons. The "low-coverage → watch" segment is right there.', audio:null, video:null },
+    16: { kicker:'REPORT',          line:'The full decision report descends: headline, KPIs, four key findings, segment comparison table, action items.', audio:null, video:null },
+    17: { kicker:'EXPORT',          line:'One click to download the PDF, email it, or jump back to the simulation lab. The deliverable is no longer a transcript or a slide deck.', audio:null, video:null },
+    18: { kicker:'BEYOND · PROMPT', line:'Beyond financial products — let\'s switch topics. Help me design a market study for a braised-pork-rice flavoured potato chip cracker.', audio:null, video:null },
+    19: { kicker:'BEYOND · SPEC',   line:'Product spec: co-branded with a famous braised-pork-rice brand, 102g at NT$49, crispy, savoury soy-sauce flavour, testing the waters.', audio:null, video:null },
+    20: { kicker:'BEYOND · RESULT', line:'30 respondents, 87 seconds: 78% willing to taste, 52% accept the NT$49 price, expected price range NT$35-55, novelty adds 11 percentage points.', audio:null, video:null },
+    21: { kicker:'ARCHITECTURE',    line:'System architecture: Next.js 14 frontend, Anthropic SDK pointing at MiniMax-M2.5, five-stage pipeline with six Claude agents in relay, global semaphore plus bundled JSON keeps 429 errors at zero.', audio:null, video:null },
+    22: { kicker:'BEFORE / AFTER',  line:'Compress market research from 14 days, NT$300-500K budget, and PII risk — into 90 seconds, zero real-person data, near-zero marginal cost.', audio:null, video:null },
+    23: { kicker:'QUOTE',           line:'Stop interviewing consumers — summon the probability cloud.', audio:null, video:null },
+    24: { kicker:'CREDITS',         line:'Heisenberg\'s Abacus. Built with Claude Code, MiniMax-M2.5, Next.js 14.', audio:null, video:null },
+  },
+};
+
+// =================== STATE ===================
+let playing = false;
+let elapsed = 0;
+let lastTick = 0;
+let rafId = null;
+let currentScene = -1;
+let sceneStartTime = 0;
+let sceneTimers = [];
+
+const $ = (id) => document.getElementById(id);
+const playBtn = $('play-btn');
+const prevBtn = $('prev-btn');
+const nextBtn = $('next-btn');
+const restartBtn = $('restart-btn');
+const bar = $('bar');
+const timeEl = $('time');
+const captionEl = $('caption');
+const markersEl = $('markers');
+const progressEl = $('progress');
+const startScreen = $('start-screen');
+const startBtn = $('start-btn');
+const cursor = $('cursor');
+const urlText = $('url-text');
+const narratorEl = $('narrator');
+const narratorVideo = $('narrator-video');
+const narratorSvg = $('narrator-svg');
+const narratorAudio = $('narrator-audio');
+const narratorLangTag = $('narrator-lang-tag');
+const langZhBtn = $('lang-zh');
+const langEnBtn = $('lang-en');
+
+// =================== LANGUAGE STATE ===================
+let currentLang = 'zh'; // 'zh' | 'en'
+
+// =================== MARKERS ===================
+scenes.forEach(s => {
+  const m = document.createElement('span');
+  m.style.left = (s.start / TOTAL * 100) + '%';
+  markersEl.appendChild(m);
+});
+
+function fmt(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+// =================== CURSOR ===================
+function moveCursor(x, y, duration) {
+  cursor.style.transition = `left ${duration}ms cubic-bezier(.45,.05,.55,.95), top ${duration}ms cubic-bezier(.45,.05,.55,.95)`;
+  cursor.style.left = x + 'px';
+  cursor.style.top = y + 'px';
+}
+function showCursor() { cursor.classList.add('visible'); }
+function hideCursor() { cursor.classList.remove('visible'); }
+function clickCursor() {
+  cursor.classList.add('click');
+  setTimeout(() => cursor.classList.remove('click'), 500);
+}
+
+// Move cursor to a specific element (within the viewport coordinate space)
+function moveCursorTo(el, duration = 800) {
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  moveCursor(rect.left + rect.width / 2, rect.top + rect.height / 2, duration);
+}
+
+// =================== APPLY SCENE ===================
+// v4: 使用 scene.sceneEl 指定 HTML element id。多個 slot 可指向同一 element,
+// 此時只更新旁白/字幕,不重新觸發進場動畫(動畫 keyframe 只播一次)。
+let lastSceneEl = null;
+function applyScene(t) {
+  const scene = scenes.find(s => t >= s.start && t < s.end);
+  const idx = scene ? scene.id : -1;
+  if (idx !== currentScene) {
+    currentScene = idx;
+    const targetEl = scene?.sceneEl ?? null;
+    // 只在 sceneEl 變動時切換 active 並重置 timer / 動畫
+    if (targetEl !== lastSceneEl) {
+      sceneTimers.forEach(id => clearTimeout(id));
+      sceneTimers = [];
+      document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
+      hideCursor();
+      if (targetEl) {
+        const el = $(targetEl);
+        if (el) el.classList.add('active');
+        runSceneElActions(targetEl);
+      }
+      lastSceneEl = targetEl;
+    }
+    // 不管 sceneEl 變不變,旁白 / 字幕 / URL 都跟著 scene id 更新
+    stopNarratorMedia();
+    if (scene) {
+      const script = SCRIPT_MAP[currentLang]?.[scene.id];
+      renderCaption(script);
+      urlText.textContent = scene.url;
+      updateNarrator(script);
+      // 可以在這裡放「同 sceneEl 但不同 slot 的微動作」(目前略)
+    } else {
+      captionEl.innerHTML = '';
+      narratorEl.classList.add('hidden');
+    }
+  }
+}
+
+function renderCaption(script) {
+  if (!script) { captionEl.innerHTML = ''; return; }
+  captionEl.innerHTML = `<span class="ktag">SCENE ${currentScene} / ${script.kicker}</span>${script.line}`;
+}
+
+// 切換語言時:重新渲染當前場景的字幕 + narrator media
+function rerenderForLang() {
+  const scene = scenes.find(s => s.id === currentScene);
+  if (!scene) return;
+  const script = SCRIPT_MAP[currentLang]?.[scene.id];
+  renderCaption(script);
+  updateNarrator(script);
+}
+
+// =================== NARRATOR ===================
+function updateNarrator(script) {
+  narratorLangTag.textContent = currentLang.toUpperCase();
+  narratorEl.classList.remove('hidden');
+
+  // 1. 如果該 scene 有對嘴影片 (mp4),就掛上 video element
+  if (script?.video) {
+    narratorSvg.classList.add('hidden');
+    narratorVideo.classList.remove('hidden');
+    narratorVideo.src = script.video;
+    narratorVideo.currentTime = 0;
+    narratorVideo.play().catch(() => {});
+    narratorEl.classList.add('speaking');
+    return;
+  }
+  // 2. 否則改回 SVG 動畫頭像
+  narratorVideo.classList.add('hidden');
+  narratorVideo.removeAttribute('src');
+  narratorSvg.classList.remove('hidden');
+
+  // 3. 如果有音檔, 同步播放 + 觸發嘴部動畫
+  if (script?.audio) {
+    narratorAudio.src = script.audio;
+    narratorAudio.currentTime = 0;
+    narratorAudio.play()
+      .then(() => {
+        narratorSvg.classList.remove('paused');
+        narratorEl.classList.add('speaking');
+      })
+      .catch(() => {
+        narratorSvg.classList.add('paused');
+        narratorEl.classList.remove('speaking');
+      });
+  } else {
+    // 4. 都沒有 — 進入「靜默 demo 模式」: SVG 嘴部仍動,模擬說話姿態
+    //    但實際沒有音訊輸出。字幕由 caption 區塊顯示。
+    narratorSvg.classList.remove('paused');
+    narratorEl.classList.add('speaking');
+    narratorAudio.removeAttribute('src');
+  }
+}
+
+function stopNarratorMedia() {
+  narratorAudio.pause();
+  if (!narratorVideo.classList.contains('hidden')) {
+    narratorVideo.pause();
+  }
+  narratorEl.classList.remove('speaking');
+}
+
+function delay(ms, fn) {
+  const t = setTimeout(fn, ms);
+  sceneTimers.push(t);
+  return t;
+}
+
+// =================== SCENE ACTIONS ===================
+// v4: 從以 scene.id 觸發改為以 sceneEl id 觸發,因為多個 slot 可指向同一 element,
+// 進場動畫只跑一次即可。
+function runSceneElActions(sceneElId) {
+  switch (sceneElId) {
+    case 'scene-2':  return runLogin();
+    case 'scene-3':  return runMainChat();
+    case 'scene-4':  return runPipeline();
+    case 'scene-6':  return runPhaseMap();
+    case 'scene-7':  return runAbacus();
+    case 'scene-10': return runFoodPrompt();
+    case 'scene-persona-show': return runPersonaShow();
+  }
+}
+
+// 兼容外部還可能 import 這個名字,保留;但內部 dispatcher 不再呼叫它。
+function runSceneActions(_id) {}
+
+function runLogin() {
+  delay(1500, () => {
+    showCursor();
+    // cursor starts at center-ish, move to demo-admin button
+    const startX = window.innerWidth * 0.4;
+    const startY = window.innerHeight * 0.7;
+    moveCursor(startX, startY, 100);
+    delay(300, () => {
+      const btn = $('demo-admin');
+      moveCursorTo(btn, 900);
+      delay(1000, () => {
+        btn.classList.add('highlight');
+        clickCursor();
+      });
+      delay(1400, () => {
+        const u = $('login-user'); u.value = 'observer_07'; u.classList.add('filled');
+        const p = $('login-pass'); p.value = '••••••••••'; p.classList.add('filled');
+      });
+      delay(2200, () => {
+        const sb = $('submit-login');
+        moveCursorTo(sb, 800);
+        delay(900, () => clickCursor());
+      });
+    });
+  });
+}
+
+function runMainChat() {
+  delay(800, () => {
+    showCursor();
+    moveCursor(window.innerWidth * 0.3, window.innerHeight * 0.7, 100);
+    delay(400, () => {
+      const ex = $('ex-2');
+      moveCursorTo(ex, 1000);
+      delay(1100, () => {
+        ex.classList.add('hover');
+        clickCursor();
+      });
+      delay(1800, () => {
+        // Click triggers prefill
+        const ci = $('chat-input');
+        ci.classList.add('focused');
+        const typed = $('chat-typed');
+        const full = '年費 990 元、保額 200 萬的旅遊保險信用卡，30-45 歲族群會買嗎？';
+        let i = 0;
+        const t = setInterval(() => {
+          if (i >= full.length) { clearInterval(t); return; }
+          typed.textContent = full.slice(0, ++i);
+        }, 55);
+        sceneTimers.push(t);
+      });
+      delay(7500, () => {
+        const sb = $('send-btn');
+        sb.classList.add('highlight');
+        moveCursorTo(sb, 800);
+        delay(900, () => clickCursor());
+      });
+    });
+  });
+}
+
+function runPipeline() {
+  hideCursor();
+  // Show user message at start
+  delay(200, () => {
+    $('p4-m1').style.opacity = '1';
+    $('p4-m1').style.transform = 'translateY(0)';
+  });
+  // Entry stage active
+  delay(800, () => {
+    $('p4-d1').classList.add('active');
+    $('p4-l1').classList.add('active');
+  });
+  delay(1800, () => {
+    $('p4-m2').style.opacity = '1';
+    $('p4-m2').style.transform = 'translateY(0)';
+    $('p4-m2').style.transition = 'opacity 400ms, transform 400ms';
+  });
+  // Entry done, PM active
+  delay(7500, () => {
+    $('p4-d1').classList.remove('active'); $('p4-d1').classList.add('done');
+    $('p4-l1').classList.remove('active');
+    $('p4-d2').classList.add('active');
+    $('p4-l2').classList.add('active');
+    $('p4-agent').textContent = '觀測者·規劃';
+    $('p4-label').textContent = '生成 4-6 題訪談 · pm·plan';
+    $('p4-dot').style.background = 'var(--violet-400)';
+  });
+  delay(8500, () => {
+    $('p4-m3').style.opacity = '1';
+    $('p4-m3').style.transform = 'translateY(0)';
+    $('p4-m3').style.transition = 'opacity 400ms, transform 400ms';
+  });
+  // PM done, persona active
+  delay(20000, () => {
+    $('p4-d2').classList.remove('active'); $('p4-d2').classList.add('done');
+    $('p4-l2').classList.remove('active');
+    $('p4-d3').classList.add('active');
+    $('p4-l3').classList.add('active');
+    $('p4-agent').textContent = '對話者 × 30';
+    $('p4-label').textContent = '並行訪談 · concurrency=6';
+    $('p4-dot').style.background = 'var(--emerald-400)';
+  });
+}
+
+function runPhaseMap() {
+  delay(2500, () => {
+    showCursor();
+    moveCursor(window.innerWidth * 0.6, window.innerHeight * 0.5, 100);
+    delay(300, () => {
+      // hover over a dot at (420, 180) in SVG which maps to a position on screen
+      const svg = document.querySelector('#scene-6 .phase-svg');
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      // dot at viewbox 420,180 in 700x320 viewbox
+      const x = rect.left + (420 / 700) * rect.width;
+      const y = rect.top + (180 / 320) * rect.height;
+      moveCursor(x, y, 1000);
+      delay(1100, () => {
+        const tt = $('phase-tooltip');
+        tt.style.left = (x - rect.left + 18) + 'px';
+        tt.style.top = (y - rect.top - 40) + 'px';
+        tt.classList.add('visible');
+      });
+    });
+  });
+}
+
+function runAbacus() {
+  delay(2000, () => {
+    showCursor();
+    moveCursor(window.innerWidth * 0.5, window.innerHeight * 0.5, 100);
+    delay(400, () => {
+      const handle = $('s7-handle');
+      moveCursorTo(handle, 1000);
+      delay(1100, () => handle.classList.add('dragging'));
+      delay(1500, () => {
+        // Drag the handle: change fill width, value, and reposition dots into BUY zone
+        $('s7-fill').style.width = '32%';
+        handle.style.left = '32%';
+        $('s7-fee').textContent = '$490';
+        $('s7-fee-display').textContent = '$490';
+        // Move cursor to follow handle (approximate)
+        const ab = document.querySelector('#scene-7 .ab-main');
+        if (ab) {
+          const r = ab.getBoundingClientRect();
+          moveCursor(r.left + r.width * 0.32, r.top + r.height * 0.55, 2000);
+        }
+        // Reposition 30 dots toward BUY zone (X > 455 in 700-wide viewbox)
+        const moves = [
+          ['d7-1', 580, 50],  ['d7-2', 540, 80],  ['d7-3', 620, 40],
+          ['d7-4', 510, 100], ['d7-5', 470, 130], ['d7-6', 590, 70],
+          ['d7-7', 380, 160], ['d7-8', 540, 110], ['d7-9', 600, 60],
+          ['d7-10', 480, 140],
+          ['d7-11', 605, 95], ['d7-12', 555, 130], ['d7-13', 645, 65],
+          ['d7-14', 495, 35], ['d7-15', 615, 110], ['d7-16', 525, 55],
+          ['d7-17', 480, 110], ['d7-18', 470, 145], ['d7-19', 425, 175],
+          ['d7-20', 565, 90],  ['d7-21', 555, 60],  ['d7-22', 510, 135],
+          ['d7-23', 380, 150], ['d7-24', 410, 130], ['d7-25', 350, 170],
+          ['d7-26', 320, 175], ['d7-27', 460, 160], ['d7-28', 400, 175],
+          ['d7-29', 335, 165], ['d7-30', 285, 165]
+        ];
+        moves.forEach(([id, cx, cy]) => {
+          const d = $(id);
+          if (d) {
+            d.setAttribute('cx', cx);
+            d.setAttribute('cy', cy);
+            // recolor: if cx > 455 → emerald, 245-455 → amber, < 245 → rose
+            if (cx > 455) d.setAttribute('fill', '#34d399');
+            else if (cx > 245) d.setAttribute('fill', '#fbbf24');
+            else d.setAttribute('fill', '#f87171');
+          }
+        });
+        // KPI numbers tick
+        $('s7-buy').innerHTML = '67%<span class="delta" style="color:var(--emerald-400); opacity:1;">↑29</span>';
+        $('s7-watch').textContent = '22%';
+        $('s7-reject').textContent = '11%';
+        $('s7-buy').style.color = 'var(--emerald-300)';
+      });
+      delay(4000, () => handle.classList.remove('dragging'));
+      delay(5500, () => hideCursor());
+    });
+  });
+}
+
+// v4: scene-persona-show — 30 顆人物頭像浮現在全螢幕,標籤 / 姓名於 800ms 後現身
+function runPersonaShow() {
+  const cloud = $('ps-cloud');
+  if (!cloud || cloud.children.length > 0) return; // init 一次即可
+  const NAMES = [
+    ['熱血大叔', 'uncle_zealot'], ['斜槓小資女', 'slasher_girl'], ['更生青年', 'rehab_youth'],
+    ['樂活大哥', 'retired_lohas'], ['熱血大學生', 'student'], ['二度就業媽媽', 'returning_mom'],
+    ['低調包租公', 'quiet_landlord'], ['前科技工程師', 'ex_engineer'], ['地下樂團主唱', 'indie_singer'],
+    ['數位遊牧', 'nomad'], ['單親媽媽小薇', 'gen_morj9z1s_1'], ['工廠媽媽阿香', 'gen_morj9z1s_2'],
+    ['清潔正職秀蘭', 'gen_morj9z1s_4'], ['竹科阿豪', 'gen_morlsj36_1'], ['新創 PM 小傑', 'gen_morlsj36_2'],
+    ['奶爸志明', 'gen_morlsj36_3'], ['低調阿文', 'gen_morlsj36_4'], ['YouTuber 阿誠', 'gen_morlsj36_5'],
+    ['海歸曉雨', 'gen_morlsj36_6'], ['黑手育瑋', 'gen_morlsj36_7'], ['遠端小風', 'gen_morlsj36_8'],
+    ['碩士宜蓁', 'gen_morlsj36_9'], ['業務大叔', 'gen_mowco5zb_5'], ['怒哥組長', 'gen_mowcvn69_1'],
+    ['法拉利姊', 'persona_motn8zh9'], ['吊車大王', 'persona_motn96at'], ['黃仁勳', 'nv_jensen_true'],
+    ['伍佰', 'chin_blue_500'], ['林襄', 'mizuki_official'], ['許光漢', 'greg_han_01'],
+  ];
+  // 5×6 grid 但加隨機偏移,避免太規整
+  const cols = 6, rows = 5;
+  const cw = 100 / cols;
+  const rh = 100 / rows;
+  NAMES.forEach(([name, id], i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const av = document.createElement('div');
+    av.className = 'ps-avatar';
+    av.style.backgroundImage = `url('../../public/personas-techlife/${id}.png')`;
+    av.style.top = (row * rh + rh / 2 + (Math.random() - 0.5) * 4) + '%';
+    av.style.left = (col * cw + cw / 2 + (Math.random() - 0.5) * 4) + '%';
+    av.style.transform = 'translate(-50%, -50%) scale(0.6)';
+    av.style.animationDelay = (200 + i * 60) + 'ms';
+    // 名字泡泡
+    const nm = document.createElement('span');
+    nm.className = 'ps-name';
+    nm.textContent = name;
+    av.appendChild(nm);
+    cloud.appendChild(av);
+  });
+}
+
+// 人物顯影背景 — 隨機灑 12 張 techlife portrait 在指定容器內,強化「多樣化人格」感
+// 一次性 init,scene 切換時 CSS .show 控制顯隱
+const PORTRAIT_POOL = [
+  'uncle_zealot', 'slasher_girl', 'rehab_youth', 'retired_lohas', 'student',
+  'returning_mom', 'quiet_landlord', 'ex_engineer', 'indie_singer', 'nomad',
+  'gen_morj9z1s_1', 'gen_morj9z1s_2', 'gen_morj9z1s_4', 'gen_morlsj36_1',
+  'gen_morlsj36_2', 'gen_morlsj36_3', 'gen_morlsj36_5', 'gen_morlsj36_6',
+  'gen_morlsj36_7', 'gen_morlsj36_8', 'gen_morlsj36_9', 'gen_mowco5zb_5',
+  'gen_mowcvn69_1',
+];
+function initPersonaBg() {
+  document.querySelectorAll('.persona-bg[data-bg="personas"]').forEach(bg => {
+    if (bg.children.length > 0) return; // 已 init 過
+    bg.classList.add('show');
+    for (let i = 0; i < 14; i++) {
+      const av = document.createElement('div');
+      av.className = 'pavatar';
+      const id = PORTRAIT_POOL[i % PORTRAIT_POOL.length];
+      av.style.backgroundImage = `url('../../public/personas-techlife/${id}.png')`;
+      av.style.top = Math.random() * 70 + 5 + '%';
+      av.style.left = Math.random() * 90 + 2 + '%';
+      av.style.animationDelay = (Math.random() * 6) + 's';
+      av.style.animationDuration = (10 + Math.random() * 6) + 's';
+      bg.appendChild(av);
+    }
+  });
+}
+
+// v3 新場景:滷肉飯口味餅乾 — 打字 prompt → 出 KPI + 三位受訪者反應
+function runFoodPrompt() {
+  initPersonaBg();
+  const PROMPT_ZH = '我想要推出一款跟知名滷肉飯聯名推出的洋芋片餅乾,102克售價49元,口感香脆,口味獨特,想要先測試市場的反應,幫我規劃市場調查。';
+  const PROMPT_EN = 'I want to launch a braised-pork-rice-flavoured potato chip cracker in partnership with a well-known brand. 102g at NT$49, crispy, unique flavour. Help me design a market study.';
+  const text = currentLang === 'en' ? PROMPT_EN : PROMPT_ZH;
+  const typed = $('s10-typed');
+  if (!typed) return;
+  typed.textContent = '';
+  let i = 0;
+  const t = setInterval(() => {
+    if (i >= text.length) { clearInterval(t); return; }
+    typed.textContent = text.slice(0, ++i);
+  }, 55);
+  sceneTimers.push(t);
+}
+
+// =================== TICK ===================
+function tick(now) {
+  if (!playing) return;
+  if (!lastTick) lastTick = now;
+  const dt = (now - lastTick) / 1000;
+  lastTick = now;
+  elapsed += dt;
+  if (elapsed >= TOTAL) {
+    elapsed = TOTAL;
+    pause();
+  }
+  bar.style.width = (elapsed / TOTAL * 100) + '%';
+  timeEl.textContent = `${fmt(elapsed)} / 6:00`;
+  applyScene(elapsed);
+  if (playing) rafId = requestAnimationFrame(tick);
+}
+
+function play() {
+  playing = true;
+  lastTick = 0;
+  playBtn.textContent = '⏸';
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  playBtn.textContent = '▶';
+  if (rafId) cancelAnimationFrame(rafId);
+}
+
+function seek(sec) {
+  elapsed = Math.max(0, Math.min(TOTAL, sec));
+  bar.style.width = (elapsed / TOTAL * 100) + '%';
+  timeEl.textContent = `${fmt(elapsed)} / 6:00`;
+  currentScene = -1;
+  applyScene(elapsed);
+}
+
+function jumpScene(delta) {
+  const cur = scenes.findIndex(s => elapsed >= s.start && elapsed < s.end);
+  const target = Math.max(0, Math.min(scenes.length - 1, (cur < 0 ? 0 : cur) + delta));
+  seek(scenes[target].start);
+}
+
+// =================== CONTROLS ===================
+playBtn.addEventListener('click', () => playing ? pause() : play());
+prevBtn.addEventListener('click', () => jumpScene(-1));
+nextBtn.addEventListener('click', () => jumpScene(1));
+restartBtn.addEventListener('click', () => { seek(0); play(); });
+progressEl.addEventListener('click', (e) => {
+  const r = progressEl.getBoundingClientRect();
+  seek(((e.clientX - r.left) / r.width) * TOTAL);
+});
+startBtn.addEventListener('click', () => {
+  startScreen.classList.add('hide');
+  setTimeout(play, 600);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === ' ') { e.preventDefault(); playing ? pause() : play(); }
+  if (e.key === 'ArrowRight') jumpScene(1);
+  if (e.key === 'ArrowLeft') jumpScene(-1);
+  if (e.key === 'Home') seek(0);
+});
+
+// =================== LANGUAGE SWITCH ===================
+function setLang(lang) {
+  if (lang !== 'zh' && lang !== 'en') return;
+  currentLang = lang;
+  langZhBtn.classList.toggle('active', lang === 'zh');
+  langEnBtn.classList.toggle('active', lang === 'en');
+  rerenderForLang();
+  // 若 scene 10 (滷肉飯) 正在 active,重打 prompt 才能立刻看到語言切換效果
+  if (currentScene === 10) runFoodPrompt();
+}
+langZhBtn.addEventListener('click', () => setLang('zh'));
+langEnBtn.addEventListener('click', () => setLang('en'));
+
+// =================== LIVE PREVIEW (服務網頁嵌入) ===================
+// 提供一個可隨時打開的「實際服務」視窗、以 iframe 顯示 https://stoic-thaw-trustee.ngrok-free.dev/。
+// ngrok-free 的 browser warning 頁面可能會在首次載入時出現，用戶需手動按一下 "Visit Site" 。
+const livePreview = $('live-preview');
+const liveBtn = $('live-btn');
+const liveCloseBtn = $('live-close');
+const liveIframe = $('live-iframe');
+const LIVE_URL = 'https://stoic-thaw-trustee.ngrok-free.dev/';
+if (liveBtn) {
+  liveBtn.addEventListener('click', () => {
+    if (livePreview.classList.contains('open')) {
+      livePreview.classList.remove('open');
+    } else {
+      // Lazy load:首次打開才設 src,避免頁面一載入就連 ngrok
+      if (!liveIframe.src) liveIframe.src = LIVE_URL;
+      livePreview.classList.add('open');
+    }
+  });
+}
+if (liveCloseBtn) {
+  liveCloseBtn.addEventListener('click', () => livePreview.classList.remove('open'));
+}
+
+applyScene(0);
+</script>
+
+</body>
+</html>

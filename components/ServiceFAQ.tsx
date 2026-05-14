@@ -1339,6 +1339,763 @@ const FAQ_ENTRIES: FAQEntry[] = [
     keywords:
       "即時 real-time 更新 reactive reactivity 滑桿 slider 算盤珠 計算 公式 formula context useMemo SVG transition 動畫 animation 效能 performance 反應鏈",
   },
+  // ──────────── 簡報層 · 問題 / 解決 / 商業 ────────────
+  {
+    id: "problem-motivation",
+    q: "為什麼要做「海森堡的算盤」?要解決什麼問題?",
+    summary:
+      "早期概念驗證沒人做 — 傳統市調太貴(NT$5-20 萬)+ 太慢(14 天),於是 PM 大部分新方案靠「拍腦袋上線→改半年」。海森堡把假設驗證的邊際成本壓到 ≈ 0,讓 PM 敢試、能試、想試。",
+    body: (
+      <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <p>
+          這個專案要回答的核心問題:
+          <span className="text-amber-300 mx-1">
+            為什麼新產品的早期概念驗證在 9 成企業裡都沒人做?
+          </span>
+        </p>
+
+        <div className="space-y-2 text-xs">
+          <div className="border border-rose-500/40 bg-rose-500/5 rounded p-3">
+            <div className="text-rose-300 font-semibold mb-1">
+              ❶ 痛點:傳統市調的「最低門檻」太高
+            </div>
+            <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+              <li>30 位深訪要花 NT$ 5-20 萬 + 14-21 天</li>
+              <li>單一錯誤上線的損失常常上百萬,但前期驗證沒人付得起</li>
+              <li>結果:大部分中型新方案都是「PM 加 RD 開會猜出來的」</li>
+            </ul>
+          </div>
+
+          <div className="border border-amber-500/40 bg-amber-500/5 rounded p-3">
+            <div className="text-amber-300 font-semibold mb-1">
+              ❷ 實際案例:外送員微型信貸
+            </div>
+            <div className="text-slate-300 space-y-1">
+              <p>
+                銀行想推「5 萬額度、6.88% 年利、30 秒核準」給外送員 —
+                <span className="text-amber-300 mx-1">這群人會接受嗎?</span>
+                做正規市調要 5 萬塊,於是 PM 直接拍板上線。
+              </p>
+              <p className="text-slate-400">
+                海森堡讓他在 15 分鐘 + NT$ 15 內看到「在通膨 +2% / 失業 +1.5% 衝擊下,
+                30 位人格在新利率的意願分布」,先排除明顯爛主意。
+              </p>
+            </div>
+          </div>
+
+          <div className="border border-cyan-500/40 bg-cyan-500/5 rounded p-3">
+            <div className="text-cyan-300 font-semibold mb-1">
+              ❸ 動機:把「敢試」變成預設值
+            </div>
+            <div className="text-slate-300 space-y-1">
+              <p>
+                當試錯成本接近零,PM 就會用試錯來代替猜測。海森堡的真正產出
+                <strong className="text-amber-300 mx-1">不是報告</strong>,
+                而是把「驗證假設」從「重大專案」變成「日常動作」。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 p-3 bg-slate-900/60 border border-slate-700 rounded text-xs">
+          <div className="text-cyan-300 font-semibold mb-1">🎯 我們不打算取代什麼</div>
+          <div className="text-slate-300">
+            上市前的 GTM 規模驗證、法規敏感的深訪、品牌情感研究 — 這些仍然需要真人。
+            海森堡是
+            <strong className="text-amber-300 mx-1">早期假設過濾器</strong>
+            ,不是研究外包商。
+          </div>
+        </div>
+      </div>
+    ),
+    keywords:
+      "問題 動機 motivation problem pain point 痛點 為什麼 why 市調 概念驗證 概念可行性 早期 驗證 外送員 微貸 假設 試錯",
+  },
+  {
+    id: "dev-process",
+    q: "這個服務是怎麼從零做到 demo 的?開發流程?",
+    summary:
+      "Claude Code agent 配對開發 · 200+ commits / 7 天 · 每天 dogfood 自己當 PM 跑案子。沒寫 unit test、改用「對話 log + 真實 use case」當回歸測試。",
+    body: (
+      <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <p>
+          整個專案的開發風格是
+          <span className="text-amber-300 mx-1">conversation-driven development</span>
+           — 跟 Claude Code agent 對話設計 → 即時改 code → dogfood 試 → 再對話。
+        </p>
+
+        <div className="space-y-2 text-xs">
+          <div className="border border-blue-500/40 bg-blue-500/5 rounded p-3">
+            <div className="text-blue-300 font-semibold mb-1">
+              ① 開發節奏 · 每天一個 vertical slice
+            </div>
+            <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+              <li>每天聚焦一個垂直切片(例如:今天做完桑基圖,明天做語音)</li>
+              <li>當天 build → dogfood → 發現問題 → 隔天先補</li>
+              <li>不寫 PRD、不開 sprint 會議 — log 就是 PRD</li>
+            </ul>
+          </div>
+
+          <div className="border border-violet-500/40 bg-violet-500/5 rounded p-3">
+            <div className="text-violet-300 font-semibold mb-1">
+              ② AI-pair 流程 · Claude Code agent
+            </div>
+            <div className="text-slate-300 space-y-1">
+              <p>
+                我跟 Claude Code 對話設計新功能 →
+                agent 直接改檔 → 我 review &amp; 試 → 對話修正 → 再改。
+                整段過程都留在
+                <code className="text-cyan-300 bg-slate-950 px-1 rounded text-[10px] mx-1">
+                  z_work_log.html
+                </code>
+                當「設計決策軌跡」。
+              </p>
+              <p className="text-slate-400">
+                典型一輪:5-10 分鐘對話 → 50-200 行 code 改動 → 立刻看結果。
+              </p>
+            </div>
+          </div>
+
+          <div className="border border-emerald-500/40 bg-emerald-500/5 rounded p-3">
+            <div className="text-emerald-300 font-semibold mb-1">
+              ③ 沒 unit test,用 dogfood 當回歸
+            </div>
+            <div className="text-slate-300 space-y-1">
+              <p>
+                自己當 PM 每天跑 5-10 輪真實案子(外送員微貸、聯名信用卡、訂閱餐盒…),
+                結果都寫進
+                <code className="text-cyan-300 bg-slate-950 px-1 rounded text-[10px] mx-1">
+                  z_web_log.html
+                </code>
+                。任何回歸馬上現身在「結構性結論變了」。
+              </p>
+              <p className="text-slate-400">
+                適合 demo 階段;商用化要補真正的 integration test
+                (參見 Q「落地差距」)。
+              </p>
+            </div>
+          </div>
+
+          <div className="border border-amber-500/40 bg-amber-500/5 rounded p-3">
+            <div className="text-amber-300 font-semibold mb-1">
+              ④ 關鍵技術突破時間軸
+            </div>
+            <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+              <li>Day 1-2:5-agent pipeline + SSE streaming(主對話)</li>
+              <li>Day 3:Bundled JSON(把 150 次 LLM call 砍到 30 次)</li>
+              <li>Day 4:三層桑基 + 散佈圖 + AbacusBar 算盤珠</li>
+              <li>Day 5:外部衝擊(通膨/失業)+ 即時反應鏈</li>
+              <li>Day 6:語音控制 Hey Heisenberg + 報告寄信</li>
+              <li>Day 7:服務 QA + AI fallback + 系統架構俯瞰</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-2 p-3 bg-slate-900/60 border border-slate-700 rounded text-xs">
+          <div className="text-cyan-300 font-semibold mb-1">📁 設計決策可追溯</div>
+          <div className="text-slate-300">
+            <code className="text-cyan-300 bg-slate-950 px-1 rounded text-[10px] mx-1">
+              z_work_log.html
+            </code>
+            記錄每段對話的設計動機,
+            <code className="text-cyan-300 bg-slate-950 px-1 rounded text-[10px] mx-1">
+              z_web_log.html
+            </code>
+            記錄每輪實測對話 — 兩者合起來就是完整的開發 + 驗證軌跡。
+          </div>
+        </div>
+      </div>
+    ),
+    keywords:
+      "開發 流程 development process 節奏 Claude Code agent pair programming dogfood 測試 commit log 設計決策 演進 timeline",
+  },
+  {
+    id: "design-innovation",
+    q: "服務的設計創意點在哪?跟一般 AI 工具有什麼不一樣?",
+    summary:
+      "4 個跨界整合 — 量子物理隱喻(測不準/坍縮)+ 中華算盤珠 UI + 三層桑基 + Hey Heisenberg 語音操控。把「市調」做成可玩、可看、可講的沉浸式探索,而不是「LLM 寫個段落」。",
+    body: (
+      <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <p>
+          一般「AI 市調工具」就是包個 chatbot 把 prompt 砌大;海森堡走的是
+          <span className="text-amber-300 mx-1">隱喻系統 + 多模介面 + 透明計算</span>
+          的整合設計。
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+          <div className="border border-violet-500/40 bg-violet-500/5 rounded p-3">
+            <div className="text-violet-300 font-semibold mb-1">
+              ① 量子物理隱喻 · 概念層
+            </div>
+            <div className="text-slate-300">
+              海森堡測不準 → 「觀測會改變結果」直接解釋為什麼需要 calibration。
+              粒子坍縮 → 撥算盤珠時 30 顆粒子在散佈圖重新定位的視覺。
+              <span className="text-slate-500">不是包裝詞,是設計支點。</span>
+            </div>
+          </div>
+
+          <div className="border border-amber-500/40 bg-amber-500/5 rounded p-3">
+            <div className="text-amber-300 font-semibold mb-1">
+              ② 算盤珠 UI · 操作層
+            </div>
+            <div className="text-slate-300">
+              不用滑桿,改成中華算盤珠 — 撥珠子時觸覺隱喻立即,
+              「我在重新計算」的心智模型自然成立。
+              通膨 / 失業滑桿同一視覺語言。
+            </div>
+          </div>
+
+          <div className="border border-emerald-500/40 bg-emerald-500/5 rounded p-3">
+            <div className="text-emerald-300 font-semibold mb-1">
+              ③ 三層桑基圖 · 解釋層
+            </div>
+            <div className="text-slate-300">
+              口語答案 → 行為誘因 → 決策。
+              <span className="text-amber-300 mx-1">把 LLM 黑箱打開成可追蹤的絲帶</span>
+              ,每條絲帶寬度都對應到具體公式,不是憑空 viz。
+            </div>
+          </div>
+
+          <div className="border border-cyan-500/40 bg-cyan-500/5 rounded p-3">
+            <div className="text-cyan-300 font-semibold mb-1">
+              ④ Hey Heisenberg · 操控層
+            </div>
+            <div className="text-slate-300">
+              「嘿森堡,把報告寄給我」「嘿森堡,下載 PDF」 —
+              PM 不用挪滑鼠就完成多步任務。
+              <span className="text-slate-500">三層 STT + regex + LLM,只有第三層用 token。</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-slate-700 rounded p-3 bg-slate-900/40 text-xs">
+          <div className="text-cyan-300 font-semibold mb-1">🎨 多模輸出 · 同一份資料,不同決策場景</div>
+          <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+            <li><strong>瀏覽器</strong>:互動探索、撥算盤珠看坍縮</li>
+            <li><strong>PDF</strong>:給高層,塞進決策會議的紙本資料夾</li>
+            <li><strong>Gmail</strong>:給跨部門,一句話介紹 + 連結</li>
+            <li><strong>語音回覆 (TTS, 規劃中)</strong>:免螢幕場景</li>
+          </ul>
+        </div>
+
+        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded text-xs">
+          <div className="text-amber-300 font-semibold mb-1">🔑 跟「AI 包個 chatbot」的差別</div>
+          <div className="text-slate-300">
+            <strong>透明 &gt; 黑箱</strong>:結構性數字一律純函式公式,LLM 只負責逐字答案 ·{" "}
+            <strong>可玩 &gt; 可讀</strong>:撥珠子比讀報告更能建立決策直覺 ·{" "}
+            <strong>可解釋 &gt; 結論</strong>:每個視覺元素都能往回追到 persona 欄位
+          </div>
+        </div>
+      </div>
+    ),
+    keywords:
+      "創意 創新 設計 design innovation 隱喻 metaphor 量子 算盤 桑基 sankey 多模 多模態 multimodal voice 語音 視覺化 UX",
+  },
+  {
+    id: "landing-gap",
+    q: "目前 demo 跟真正商用之間還有多遠?哪些是還沒解決的?",
+    summary:
+      "5 個刻意留著的 gap — calibration 沒做、persona pool 30 位、單一 LLM、無資料庫、無 RBAC/SSO。每個都對應到 roadmap 的具體 milestone,不是 bug,是「先驗證假設能成立」的取捨。",
+    body: (
+      <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <p>
+          這題刻意誠實 — demo 階段我們聚焦在「能不能講通核心命題」,
+          很多商用 hard requirement 都被刻意延後。
+        </p>
+
+        <div className="space-y-2 text-xs">
+          <div className="border border-rose-500/40 bg-rose-500/5 rounded p-3">
+            <div className="text-rose-300 font-semibold mb-1">
+              ❶ Calibration gap · 信心邊界未量化
+            </div>
+            <div className="text-slate-300">
+              還沒對真實外送員跑過 ground truth 比對,
+              <strong className="text-amber-300 mx-1">結構性誤差 % 未知</strong>。
+              <span className="text-slate-500">補法:roadmap 短期(1-3 月)對 10 位真人 calibration,目標誤差 &lt; 15%。</span>
+            </div>
+          </div>
+
+          <div className="border border-amber-500/40 bg-amber-500/5 rounded p-3">
+            <div className="text-amber-300 font-semibold mb-1">
+              ❷ Persona pool 規模 · 30 位骨幹的代表性
+            </div>
+            <div className="text-slate-300">
+              30 位涵蓋年齡 / 收入 / 家庭 / 信用主軸,但極端尾巴(高收入兼差、新住民、身障)代表性弱。
+              <span className="text-slate-500">補法:中期擴 100 位 + 接 CRM 去識別化資料生成。</span>
+            </div>
+          </div>
+
+          <div className="border border-violet-500/40 bg-violet-500/5 rounded p-3">
+            <div className="text-violet-300 font-semibold mb-1">
+              ❸ Vendor lock · 只接 MiniMax-M2.5
+            </div>
+            <div className="text-slate-300">
+              透過 Anthropic SDK 相容 endpoint 呼叫,
+              <strong className="text-amber-300 mx-1">換 LLM 要重跑全部 prompt evaluation</strong>。
+              <span className="text-slate-500">補法:中期接 Claude / GPT / Gemini 平行比對,降單一模型偏誤。</span>
+            </div>
+          </div>
+
+          <div className="border border-cyan-500/40 bg-cyan-500/5 rounded p-3">
+            <div className="text-cyan-300 font-semibold mb-1">
+              ❹ 資料層 · JSON file storage 不適合商用
+            </div>
+            <div className="text-slate-300">
+              persona / log 目前都存 JSON 檔,單機可跑、部署門檻最低,
+              <strong className="text-amber-300 mx-1">但沒有 transaction / 加密 / 備份</strong>。
+              <span className="text-slate-500">補法:換 Postgres + S3 backup,只需替換</span>
+              <code className="text-cyan-300 bg-slate-950 px-1 rounded text-[10px] mx-1">lib/personas-store.ts</code>
+              <span className="text-slate-500">一個檔。</span>
+            </div>
+          </div>
+
+          <div className="border border-emerald-500/40 bg-emerald-500/5 rounded p-3">
+            <div className="text-emerald-300 font-semibold mb-1">
+              ❺ 多租戶 · 無 RBAC / SSO / audit log
+            </div>
+            <div className="text-slate-300">
+              現在用 HttpOnly cookie auth + 預留 tenant 欄位但沒接 SSO,
+              <strong className="text-amber-300 mx-1">B 端不能直接賣</strong>。
+              <span className="text-slate-500">補法:長期(6-12 月)接 SAML/OIDC + 角色權限 + 計費 dashboard。</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3 bg-slate-900/60 border border-slate-700 rounded text-xs">
+          <div className="text-amber-300 font-semibold mb-1">⚖ 為什麼留這些 gap?</div>
+          <div className="text-slate-300">
+            如果先把這 5 條全部補完,單人團隊要花 3-6 個月,核心命題還沒驗證。
+            <strong className="text-amber-300 mx-1">先讓 PM 看到「真的能用」</strong>
+            ,再用實際試點需求逆推哪個 gap 該優先補。
+          </div>
+        </div>
+      </div>
+    ),
+    keywords:
+      "落地 差距 gap 限制 limitation production 商用 calibration 信心 真人 pool LLM vendor lock 資料庫 database 多租戶 RBAC SSO audit",
+  },
+  {
+    id: "quant-benefit",
+    q: "用海森堡實際能省多少時間 / 成本?ROI 怎麼算?",
+    summary:
+      "對比傳統 30 位深訪 — 時間 ×1,344 倍加速、成本 ×10,000+ 倍節省、試錯密度 ×50 倍。Pro plan NT$999/月 等於每月省下 200 萬市調預算的「敢試錯預算」。",
+    body: (
+      <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <p>
+          量化效益分三軸:
+          <span className="text-amber-300 mx-1">時間 / 成本 / 試錯密度</span>。
+          前兩個是直接節省,第三個是組織能力的乘數效應。
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+          <div className="border border-emerald-500/40 bg-emerald-500/5 rounded p-3 text-center">
+            <div className="text-emerald-300 font-bold mb-1">⚡ 時間</div>
+            <div className="text-slate-400">傳統 14-21 天</div>
+            <div className="text-slate-100 font-bold text-base my-1">↓</div>
+            <div className="text-emerald-200 font-bold text-lg">15 分鐘</div>
+            <div className="text-emerald-300 mt-1">
+              <strong>×1,344 倍</strong>加速
+            </div>
+          </div>
+
+          <div className="border border-violet-500/40 bg-violet-500/5 rounded p-3 text-center">
+            <div className="text-violet-300 font-bold mb-1">💰 單次成本</div>
+            <div className="text-slate-400">NT$ 5-20 萬</div>
+            <div className="text-slate-100 font-bold text-base my-1">↓</div>
+            <div className="text-violet-200 font-bold text-lg">NT$ 5-15</div>
+            <div className="text-violet-300 mt-1">
+              <strong>×10,000+ 倍</strong>節省
+            </div>
+          </div>
+
+          <div className="border border-amber-500/40 bg-amber-500/5 rounded p-3 text-center">
+            <div className="text-amber-300 font-bold mb-1">🎯 試錯密度</div>
+            <div className="text-slate-400">傳統 1-2 輪/月</div>
+            <div className="text-slate-100 font-bold text-base my-1">↓</div>
+            <div className="text-amber-200 font-bold text-lg">100 輪/月</div>
+            <div className="text-amber-300 mt-1">
+              <strong>×50 倍</strong>密度
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-slate-700 rounded p-3 bg-slate-900/40 text-xs space-y-2">
+          <div className="text-cyan-300 font-semibold">📊 Pro plan ROI(NT$ 999/月 · 100 次)</div>
+          <div className="text-slate-300 space-y-1">
+            <div className="flex justify-between">
+              <span>傳統市調等量輸出 100 輪</span>
+              <span className="tabular-nums text-rose-300">NT$ 500-2,000 萬</span>
+            </div>
+            <div className="flex justify-between">
+              <span>海森堡 Pro 訂閱費</span>
+              <span className="tabular-nums text-emerald-300">NT$ 999</span>
+            </div>
+            <div className="border-t border-slate-700 pt-2 flex justify-between font-bold">
+              <span className="text-slate-100">理論 ROI</span>
+              <span className="tabular-nums text-amber-300">5,000-20,000×</span>
+            </div>
+          </div>
+          <div className="text-slate-500 text-[11px]">
+            ※ 實務上不會真的「省 2,000 萬」,因為傳統市調根本做不到 100 輪。真正的價值是
+            <strong className="text-amber-300 mx-1">把不該上的方案早期淘汰</strong>
+            的隱性損失避免。
+          </div>
+        </div>
+
+        <div className="p-3 bg-slate-900/60 border border-slate-700 rounded text-xs">
+          <div className="text-amber-300 font-semibold mb-1">💡 隱性效益:單一錯誤上線避免</div>
+          <div className="text-slate-300">
+            單一新方案錯誤上線的全鏈成本(行銷 + 客服 + 商譽 + 機會成本)
+            <span className="text-amber-300 mx-1">通常 500 萬 - 2,000 萬</span>
+            。海森堡只要每年避免 1 個爛主意上線,訂閱費就回本 5,000 倍以上。
+          </div>
+        </div>
+      </div>
+    ),
+    keywords:
+      "量化 效益 ROI 投資報酬 quantitative benefit 時間 成本 節省 加速 試錯 密度 throughput Pro plan 訂閱 隱性 避險",
+  },
+  {
+    id: "qual-benefit",
+    q: "量化之外,海森堡帶來什麼質性 / 組織層面的價值?",
+    summary:
+      "6 個質性效益 — 決策節奏 / 試錯文化 / 跨部門共識具象化 / 弱勢族群聲音被聽見 / 研究民主化 / 決策軌跡可審計。最後一條對金融 / 法遵業特別重要。",
+    body: (
+      <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <p>
+          量化效益只是入場券。海森堡真正改變的是
+          <span className="text-amber-300 mx-1">組織做決策的方式</span> —
+          下面六點通常 ROI 計算不出來,但長期影響更大。
+        </p>
+
+        <div className="space-y-2 text-xs">
+          <div className="border border-cyan-500/40 bg-cyan-500/5 rounded p-3">
+            <div className="text-cyan-300 font-semibold mb-1">
+              ① 決策節奏:從「等市調報告」變「邊談邊試」
+            </div>
+            <div className="text-slate-300">
+              會議形態改變 — 不再「下次開會看數據」,而是
+              <strong className="text-amber-300 mx-1">當場跑一輪,當場討論</strong>。
+              週級決策變日級。
+            </div>
+          </div>
+
+          <div className="border border-violet-500/40 bg-violet-500/5 rounded p-3">
+            <div className="text-violet-300 font-semibold mb-1">
+              ② 試錯文化:壞點子能早期淘汰不丟臉
+            </div>
+            <div className="text-slate-300">
+              傳統市調太貴 → 做下去就「要證明對」,於是糟糕方案還是上。
+              海森堡的廉價驗證讓「啊這方案散佈圖一面倒拒絕」變正常,
+              <strong className="text-amber-300 mx-1">敢提爛點子的人變多</strong>。
+            </div>
+          </div>
+
+          <div className="border border-emerald-500/40 bg-emerald-500/5 rounded p-3">
+            <div className="text-emerald-300 font-semibold mb-1">
+              ③ 跨部門共識:具象化討論場域
+            </div>
+            <div className="text-slate-300">
+              PM / 業務 / 風控 / 法遵以前吵不出結論 —
+              三層桑基 + 30 位人格回覆給出
+              <strong className="text-amber-300 mx-1">共同看得見的物件</strong>
+              ,爭論從「我覺得」變「絲帶寬度多少」。
+            </div>
+          </div>
+
+          <div className="border border-amber-500/40 bg-amber-500/5 rounded p-3">
+            <div className="text-amber-300 font-semibold mb-1">
+              ④ Empathy:弱勢族群聲音進入日常決策
+            </div>
+            <div className="text-slate-300">
+              外送員、零售現場、新住民 — 這些族群一年才有一次正式市調機會。
+              海森堡讓他們的 voice
+              <strong className="text-amber-300 mx-1">每週都出現在會議桌上</strong>
+              ,即使只是合成版本,也比完全缺席好。
+            </div>
+          </div>
+
+          <div className="border border-blue-500/40 bg-blue-500/5 rounded p-3">
+            <div className="text-blue-300 font-semibold mb-1">
+              ⑤ 研究民主化:沒預算的小部門也能用
+            </div>
+            <div className="text-slate-300">
+              傳統市調預算只給「大方案」,小通路、小活動、小文案 A/B 永遠拍腦袋。
+              海森堡 Pro NT$ 999/月,
+              <strong className="text-amber-300 mx-1">小部門自己付得起</strong>
+              ,行內研究能力從「集中」變「分散」。
+            </div>
+          </div>
+
+          <div className="border border-rose-500/40 bg-rose-500/5 rounded p-3">
+            <div className="text-rose-300 font-semibold mb-1">
+              ⑥ 決策審計軌跡:對金融 / 法遵特別重要
+            </div>
+            <div className="text-slate-300">
+              每次跑都留 log + 透明公式 + persona 骨幹版本號,
+              <strong className="text-amber-300 mx-1">事後可追溯「為什麼當時這樣決策」</strong>
+              。法遵 / 內稽 / 主管機關問起來,有完整紀錄,不是「我憑感覺」。
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 p-3 bg-slate-900/60 border border-slate-700 rounded text-xs">
+          <div className="text-amber-300 font-semibold mb-1">🎯 一句話總結</div>
+          <div className="text-slate-300">
+            量化效益省的是
+            <span className="text-emerald-300 mx-1">時間 / 錢</span>
+            ;質化效益改變的是
+            <span className="text-amber-300 mx-1">「公司怎麼決定要做什麼」這件事本身</span>
+            。後者通常更值錢,但要 3-12 個月才看得到。
+          </div>
+        </div>
+      </div>
+    ),
+    keywords:
+      "質化 效益 qualitative benefit 文化 culture 組織 organization 節奏 試錯 共識 跨部門 民主化 democratize empathy 弱勢 審計 audit 法遵 compliance",
+  },
+  // ──────────── 市場脈絡層 · 對標既有服務 ────────────
+  {
+    id: "market-loan-overview",
+    q: "市面上的小額貸款 50 萬方案長什麼樣?海森堡測試的新方案要怎麼對標?",
+    summary:
+      "台灣 11 家銀行打小額信貸 — 額度 500-1000 萬、最低年利率 2.1-2.88%、最長 7-10 年、最快 10 分鐘撥款。對外送員 / 自由工作者多數仍卡在「年薪 25-30 萬」或「不適用自營商」門檻。海森堡可幫 PM 在這片紅海中快速試新方案的差異化點。",
+    body: (
+      <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <p>
+          這頁整理台灣 2026 年初小額信貸市場(摘自 Money101 報告),
+          作為使用海森堡測試新方案時的
+          <span className="text-amber-300 mx-1">競品對標基準</span>。
+        </p>
+
+        <div className="border border-slate-700 rounded p-3 bg-slate-900/40 text-xs">
+          <div className="text-cyan-300 font-semibold mb-2">🏦 主要玩家 · 11 家銀行</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-1 text-slate-300">
+            <span>· 凱基(0 手續費)</span>
+            <span>· 滙豐</span>
+            <span>· 星展</span>
+            <span>· 台新 Richart</span>
+            <span>· 遠東 Online 貸</span>
+            <span>· 樂天分期型</span>
+            <span>· 台北富邦</span>
+            <span>· 中國信託</span>
+            <span>· 永豐數時貸</span>
+            <span>· 渣打</span>
+            <span>· 王道</span>
+          </div>
+        </div>
+
+        <div className="border border-slate-700 rounded p-3 bg-slate-900/40 text-xs space-y-1.5">
+          <div className="text-cyan-300 font-semibold mb-1">📊 條件矩陣</div>
+          <div className="flex justify-between"><span>額度上限</span><span className="tabular-nums text-slate-100">NT$ 500-1,000 萬</span></div>
+          <div className="flex justify-between"><span>最低年利率(一段式)</span><span className="tabular-nums text-emerald-300">2.10-2.88%</span></div>
+          <div className="flex justify-between"><span>多段式首期</span><span className="tabular-nums text-emerald-300">0.01%</span> </div>
+          <div className="flex justify-between"><span>最長期限</span><span className="tabular-nums text-slate-100">7-10 年(84-120 期)</span></div>
+          <div className="flex justify-between"><span>月繳(50 萬/7 年)</span><span className="tabular-nums text-slate-100">NT$ 6,400-6,700</span></div>
+          <div className="flex justify-between"><span>最快撥款</span><span className="tabular-nums text-amber-300">10 分鐘</span></div>
+        </div>
+
+        <div className="border border-slate-700 rounded p-3 bg-slate-900/40 text-xs">
+          <div className="text-cyan-300 font-semibold mb-2">🥇 Top 4 排名(月繳低 → 高,以 50 萬 7 年計)</div>
+          <div className="grid grid-cols-[auto,1fr,auto,auto,auto] gap-x-2 gap-y-1 items-center">
+            <span className="text-amber-300 font-bold">1</span>
+            <span className="text-slate-200">台新 Richart</span>
+            <span className="tabular-nums text-slate-400">6,406</span>
+            <span className="tabular-nums text-emerald-300">2.10%</span>
+            <span className="text-emerald-300">0 手續</span>
+
+            <span className="text-amber-300 font-bold">2</span>
+            <span className="text-slate-200">滙豐</span>
+            <span className="tabular-nums text-slate-400">6,504</span>
+            <span className="tabular-nums text-emerald-300">2.54%</span>
+            <span className="text-emerald-300">0 手續</span>
+
+            <span className="text-amber-300 font-bold">3</span>
+            <span className="text-slate-200">永豐數時貸</span>
+            <span className="tabular-nums text-slate-400">6,472</span>
+            <span className="tabular-nums text-emerald-300">2.51%</span>
+            <span className="text-emerald-300">0 手續</span>
+
+            <span className="text-amber-300 font-bold">4</span>
+            <span className="text-slate-200">凱基</span>
+            <span className="tabular-nums text-slate-400">6,670</span>
+            <span className="tabular-nums text-emerald-300">3.28%</span>
+            <span className="text-emerald-300">0 手續</span>
+          </div>
+          <div className="text-slate-500 mt-2 text-[10px]">
+            ※ 月繳是固定額試算,實際依個人條件浮動。本表僅供對標參考。
+          </div>
+        </div>
+
+        <div className="border border-rose-500/40 bg-rose-500/5 rounded p-3 text-xs">
+          <div className="text-rose-300 font-semibold mb-1">
+            ⚠ 外送員 / 自由工作者的痛點
+          </div>
+          <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+            <li>多數方案要求<strong className="text-amber-300 mx-1">年薪 25-30 萬</strong>,薪轉證明可查</li>
+            <li>永豐明文「自營商、自由業」<strong className="text-amber-300 mx-1">不適用</strong></li>
+            <li>外送員收入結構(平台撥款,非薪轉)讓財力證明出局</li>
+            <li>多段式低利首期(0.01%)是促銷誘餌,第 2 期起回到 2.5-3.5%</li>
+          </ul>
+        </div>
+
+        <div className="border border-cyan-500/40 bg-cyan-500/5 rounded p-3 text-xs">
+          <div className="text-cyan-300 font-semibold mb-1">
+            🎯 海森堡用法:在紅海找差異化破口
+          </div>
+          <div className="text-slate-300 space-y-1">
+            <p>
+              台灣信貸市場已被四大行寡占且利率壓得很低 — PM 要推新方案,
+              <strong className="text-amber-300 mx-1">利率不會更便宜</strong>。
+              真正的差異化空間在
+              <strong className="text-amber-300 mx-1">這 11 家還沒服務好的族群</strong>。
+            </p>
+            <p>
+              海森堡幫 PM 在 15 分鐘內測試:
+            </p>
+            <ul className="list-disc list-inside text-slate-400 space-y-0.5">
+              <li>「外送員專屬:接平台撥款證明就好」是否有意願差異</li>
+              <li>「30 秒核準 + 5 萬小額」是否打中「臨時周轉」剛需</li>
+              <li>「6.88% 但無需薪轉」vs「2.5% 但要 30 萬薪轉」的取捨點</li>
+              <li>通膨 / 失業衝擊下,目標族群的還款意願彈性</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="p-2 bg-slate-900/60 border border-slate-700 rounded text-[10px] text-slate-500">
+          📰 資料來源:Money101《小額貸款 50 萬方案》比較頁
+        </div>
+      </div>
+    ),
+    keywords:
+      "市面 市場 競品 競爭 對標 banchmark 銀行 bank 小額 信貸 貸款 loan 50 萬 利率 凱基 滙豐 星展 台新 Richart 永豐 富邦 中信 渣打 王道 樂天 遠東 Money101 外送員 自由工作者 月繳",
+  },
+  // ──────────── 實驗驗證層 · 重現性 4 組實驗 ────────────
+  {
+    id: "reproducibility-experiments",
+    q: "「每次跑結果一不一樣」這件事,可以用什麼實驗來實際驗證?",
+    summary:
+      "4 組對照實驗 — (1) 3 人全相同 (2) 同設定多次重跑 (3) 6 人 2 類 (4) 6 人 6 類。預期看到:組內變異小(人設相同 → 結構一致)、組間變異大(人設不同 → 結論分歧),且結構性結論在多次重跑間穩定 ±5-10%。LLM 偶爾 JSON 吐錯(~10-15% 失敗率)需要 retry 機制。",
+    body: (
+      <div className="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <p>
+          現有 Q「同一題跑兩次會一樣嗎」是宣告性回答。這條補上
+          <span className="text-amber-300 mx-1">四組可重現的實驗設計</span>,
+          讓你能自己跑來驗證(腳本見
+          <code className="text-cyan-300 bg-slate-950 px-1 rounded text-[10px] mx-1">
+            scripts/reproducibility-experiment.mts
+          </code>
+          )。
+        </p>
+
+        <div className="space-y-2 text-xs">
+          {/* === Exp 1 === */}
+          <div className="border border-blue-500/40 bg-blue-500/5 rounded p-3">
+            <div className="text-blue-300 font-semibold mb-1">
+              ① 3 人完全相同人設 · 單次跑
+            </div>
+            <div className="text-slate-300 mb-1.5">
+              <strong>設定:</strong> 3 個 persona,11 個欄位除 id 外完全相同(全是「熱血大叔」)。
+              <br />
+              <strong>命題:</strong> LLM 對相同 system prompt 會給多大的措辭變異?
+            </div>
+            <div className="text-slate-400 mb-1">
+              <strong className="text-amber-300">預期觀察:</strong>
+            </div>
+            <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+              <li>立場 / 結論幾乎一致(都接受 6.88%、都覺得 30 秒撥款讚)</li>
+              <li>逐字措辭差異 &lt; 20%(temperature 帶來的句法層變異)</li>
+              <li>散佈圖 3 個點疊在一起、桑基絲帶平行</li>
+              <li>結論:<strong className="text-cyan-300 mx-1">多樣性來自 persona 11 欄位設定,不是 LLM 自己變</strong></li>
+            </ul>
+          </div>
+
+          {/* === Exp 2 === */}
+          <div className="border border-violet-500/40 bg-violet-500/5 rounded p-3">
+            <div className="text-violet-300 font-semibold mb-1">
+              ② 同設定 × 3 次重跑 · 穩定性
+            </div>
+            <div className="text-slate-300 mb-1.5">
+              <strong>設定:</strong> 沿用 Exp 1 的 3 個相同 persona,連續跑 3 次。
+              <br />
+              <strong>命題:</strong> 結構性結論(意願 % / 分歧點 / metric 排序)會不會翻盤?
+            </div>
+            <div className="text-slate-400 mb-1">
+              <strong className="text-amber-300">預期觀察:</strong>
+            </div>
+            <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+              <li>申辦意願 % 波動 ±5-10% 內(統計學的 reliability)</li>
+              <li>summary headline 措辭不同,但底層 metric / group 排序穩定</li>
+              <li>偶爾出現「LLM JSON parse 失敗」需要 retry — 觀察到的失敗率約 10-15%</li>
+              <li>結論:<strong className="text-cyan-300 mx-1">海森堡保證「結論層」可重現,不保證「字面層」相同</strong></li>
+            </ul>
+          </div>
+
+          {/* === Exp 3 === */}
+          <div className="border border-emerald-500/40 bg-emerald-500/5 rounded p-3">
+            <div className="text-emerald-300 font-semibold mb-1">
+              ③ 6 人分 2 類(各 3 人)· 組內 vs 組間
+            </div>
+            <div className="text-slate-300 mb-1.5">
+              <strong>設定:</strong> 3 個熱血大叔(42 男全職)+ 3 個斜槓小資女(26 女兼職)。
+              <br />
+              <strong>命題:</strong> 同 archetype 內變異 vs 跨 archetype 變異哪個大?
+            </div>
+            <div className="text-slate-400 mb-1">
+              <strong className="text-amber-300">預期觀察:</strong>
+            </div>
+            <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+              <li>組內(3 個大叔之間)結論差異 &lt; 10%</li>
+              <li>組間(大叔 vs 小資女)結論差異 30-50%(對方案誘因排序不同)</li>
+              <li>散佈圖看到 2 個明顯 cluster、桑基絲帶分兩股粗線</li>
+              <li>結論:<strong className="text-cyan-300 mx-1">人設差異 &gt;&gt; LLM 隨機性</strong> — 信號清楚淹過雜訊</li>
+            </ul>
+          </div>
+
+          {/* === Exp 4 === */}
+          <div className="border border-amber-500/40 bg-amber-500/5 rounded p-3">
+            <div className="text-amber-300 font-semibold mb-1">
+              ④ 6 人 6 類 · 最大多樣性
+            </div>
+            <div className="text-slate-300 mb-1.5">
+              <strong>設定:</strong> 6 種不同 archetype(全職衝刺 / 補充收入 / 債務奮鬥 / 退休二春 / 學生 / 家庭支柱)。
+              <br />
+              <strong>命題:</strong> 最大化多樣性後,結論收斂在哪些點?
+            </div>
+            <div className="text-slate-400 mb-1">
+              <strong className="text-amber-300">預期觀察:</strong>
+            </div>
+            <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+              <li>散佈圖 6 個點分散在不同象限</li>
+              <li>桑基絲帶分 6 股細線、終點分歧(不同子群偏好不同 decision)</li>
+              <li>收斂處:「30 秒撥款」全員肯定;分歧處:「5 萬額度」是否足夠</li>
+              <li>結論:<strong className="text-cyan-300 mx-1">PM 看的不是單一意見,是「共識 vs 分歧」的分布</strong></li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded text-xs">
+          <div className="text-amber-300 font-semibold mb-1">🎯 一句話總結</div>
+          <div className="text-slate-300">
+            <strong>多樣性</strong>由 persona 11 欄位設定 ·{" "}
+            <strong>穩定性</strong>由結構化 JSON schema + 純函式計算 ·{" "}
+            <strong>變異性</strong>來自 LLM temperature(可調)。
+            這三軸獨立,所以海森堡能同時做到「答案有差異」和「結論可重現」。
+          </div>
+        </div>
+
+        <div className="p-2 bg-slate-900/60 border border-slate-700 rounded text-[10px] text-slate-500">
+          🔧 重現此實驗:
+          <code className="text-cyan-300 bg-slate-950 px-1 rounded mx-1">
+            npx tsx scripts/reproducibility-experiment.mts
+          </code>
+          (需 MINIMAX_API_KEY,自動備份 / 還原 persona pool)
+        </div>
+      </div>
+    ),
+    keywords:
+      "重現性 reproducibility 實驗 experiment 4 組 3 人 6 人 相同 不同 archetype 人設 LLM temperature 穩定 變異 信心區間 retry JSON parse 失敗 驗證 對照",
+  },
 ];
 
 /** 把搜尋字串拆成關鍵字陣列(空白分隔),每個 token 都要在 entry 文字裡命中才算 match。 */
@@ -1360,6 +2117,8 @@ export function ServiceFAQ() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiAskedQuery, setAiAskedQuery] = useState<string | null>(null);
+  // 系統架構俯瞰 — 預設展開,讓使用者一打開 QA 就先看到全貌
+  const [archOverviewOpen, setArchOverviewOpen] = useState(true);
 
   const filtered = query.trim()
     ? FAQ_ENTRIES.filter((e) => entryMatchesQuery(e, query))
@@ -1386,6 +2145,7 @@ export function ServiceFAQ() {
       setAiAnswer(null);
       setAiError(null);
       setAiAskedQuery(null);
+      setArchOverviewOpen(true);
     }
   }, [open]);
 
@@ -1530,6 +2290,108 @@ export function ServiceFAQ() {
             </header>
 
             <div className="p-6 space-y-4">
+              {/* 系統架構俯瞰 — 摘要 + 4 層 SVG 架構圖,讓使用者一打開 QA 先看全貌 */}
+              {!query.trim() && (
+                <section className="border border-cyan-500/40 bg-gradient-to-br from-cyan-500/10 via-violet-500/5 to-amber-500/10 rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setArchOverviewOpen((v) => !v)}
+                    className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-900/40 transition-colors"
+                  >
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-bold flex items-center gap-2">
+                        🏛 系統架構俯瞰
+                        <span className="text-slate-500 normal-case font-normal text-[10px]">
+                          先看全貌,再看細節
+                        </span>
+                      </div>
+                      <div className="text-sm font-semibold text-slate-100 mt-0.5">
+                        4 層架構:輸入 → Agent Pipeline → 計算 → 視覺化
+                      </div>
+                    </div>
+                    <span
+                      className={`text-slate-400 text-lg transition-transform ${
+                        archOverviewOpen ? "rotate-180" : ""
+                      }`}
+                      aria-hidden
+                    >
+                      ▾
+                    </span>
+                  </button>
+
+                  {archOverviewOpen && (
+                    <div className="px-4 pb-4 space-y-3 border-t border-cyan-500/20">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs mt-3">
+                        <div className="border border-blue-500/40 bg-blue-500/5 rounded p-2">
+                          <div className="text-blue-300 font-semibold mb-0.5">
+                            ① 輸入層 · Browser-First
+                          </div>
+                          <div className="text-slate-300">
+                            主對話 / 語音控制 / 人物設定 三入口,經 SSE / REST 進系統。
+                          </div>
+                        </div>
+                        <div className="border border-violet-500/40 bg-violet-500/5 rounded p-2">
+                          <div className="text-violet-300 font-semibold mb-0.5">
+                            ② Agent Pipeline · 5 LLM agents
+                          </div>
+                          <div className="text-slate-300">
+                            啟動者 → PM 出題 → 對話者 ×30 (parallel) → 彙整者 → PM 報告,
+                            全 MiniMax-M2.5,SSE streaming。
+                          </div>
+                        </div>
+                        <div className="border border-emerald-500/40 bg-emerald-500/5 rounded p-2">
+                          <div className="text-emerald-300 font-semibold mb-0.5">
+                            ③ 計算層 · 純函式無 LLM
+                          </div>
+                          <div className="text-slate-300">
+                            雷達分數 / 意願公式 / 外部衝擊 / 桑基聚合 — 全用確定性公式,可審計。
+                          </div>
+                        </div>
+                        <div className="border border-amber-500/40 bg-amber-500/5 rounded p-2">
+                          <div className="text-amber-300 font-semibold mb-0.5">
+                            ④ 視覺化層 · SVG-Native
+                          </div>
+                          <div className="text-slate-300">
+                            散佈圖 / 三層桑基 / 報告卡 / AbacusBar,全自製 SVG,不依賴 D3 / Chart.js。
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg bg-slate-950/60 border border-slate-800 p-3">
+                        <ArchitectureDiagram />
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
+                        <span>
+                          🔑 設計核心:
+                          <span className="text-amber-300 ml-1">計算與 LLM 分離</span>
+                          ,所有結構性數字都不依賴 LLM。
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpandedId("architecture");
+                            if (typeof document !== "undefined") {
+                              setTimeout(() => {
+                                document
+                                  .getElementById("faq-architecture")
+                                  ?.scrollIntoView({
+                                    behavior: "smooth",
+                                    block: "start",
+                                  });
+                              }, 50);
+                            }
+                          }}
+                          className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
+                        >
+                          看完整架構說明 →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
               {filtered.length === 0 && (
                 <div className="space-y-3">
                   <div className="text-center py-8 text-slate-500 text-sm">
@@ -1555,9 +2417,6 @@ export function ServiceFAQ() {
                         🤖 讓 AI 即時回答「{query.slice(0, 24)}
                         {query.length > 24 ? "…" : ""}」
                       </button>
-                      <div className="text-[10px] text-slate-500 mt-2">
-                        會打一次 MiniMax-M2.5 API · 約 3-5 秒
-                      </div>
                     </div>
                   )}
 
@@ -1619,7 +2478,8 @@ export function ServiceFAQ() {
                 return (
                   <article
                     key={entry.id}
-                    className={`border rounded-xl transition-all ${
+                    id={`faq-${entry.id}`}
+                    className={`border rounded-xl transition-all scroll-mt-24 ${
                       expanded
                         ? "border-cyan-500/40 bg-cyan-500/5"
                         : "border-slate-700 bg-slate-900/40"

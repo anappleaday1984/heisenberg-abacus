@@ -628,7 +628,14 @@ export function ReportCard({ text, streaming }: Props) {
             onClick={() => openEmailModal()}
             disabled={emailing || downloadingPdf || streaming}
             title="開啟寄信視窗"
-            className="bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm px-4 py-2 rounded-lg font-medium"
+            // disabled 仍含 downloadingPdf(避免 html2canvas 並發抓 DOM 出怪結果),
+            // 但 visually 只在「真正寄信中」或「主對話 streaming 中」才變灰 — 下載時
+            // 寄信按鈕維持原色,讓使用者清楚是哪顆按鈕在動作。
+            className={`text-white text-sm px-4 py-2 rounded-lg font-medium ${
+              emailing || streaming
+                ? "bg-slate-700 text-slate-500"
+                : "bg-amber-600 hover:bg-amber-500"
+            }`}
           >
             ✉ 寄信
           </button>

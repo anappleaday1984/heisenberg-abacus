@@ -153,6 +153,11 @@ export function VoiceControl() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
 
+  // 已顯式請求過 mic 授權 — 避免每次 pointerdown 都重打 getUserMedia(雖然瀏覽器
+  // 第二次起會 cache,但 Safari 有時仍會閃一下提示)。一旦 SR 真的 onstart,就
+  // 標 true;之後 onend 重啟時不需再走 getUserMedia 流程。
+  const micRequestedRef = useRef(false);
+
   // ===== 浮窗動作 =====
 
   const clearTimers = useCallback(() => {
@@ -479,14 +484,21 @@ export function VoiceControl() {
 
     rec.onstart = () => {
       setSrRunning(true);
+      micRequestedRef.current = true;
     };
 
     rec.onerror = (ev) => {
+      if (process.env.NODE_ENV !== "production") {
+        // 把實際錯誤碼印出來,排查 Safari/Firefox 上「點了沒反應」很有用
+        console.debug("[VoiceControl] SR error:", ev.error);
+      }
       if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
         setStatus("muted");
         setSrRunning(false);
-        setResultMsg("麥克風權限被拒，請於瀏覽器設定開啟");
-        recognitionRef.current = null;
+        setResultMsg("麥克風權限被拒,請於瀏覽器設定開啟");
+        // 注意:故意不把 recognitionRef.current 設 null。保留同一個 SR 物件,
+        // 等使用者於瀏覽器設定改授權後(permissions onchange 監聽),可以直接
+        // rec.start() 復活,不必重新整理頁面。
       }
       // network / no-speech / aborted — 由 onend 重啟
     };
@@ -527,18 +539,63 @@ export function VoiceControl() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 使用者點 / 按鍵時嘗試啟動（autoplay / permission 政策可能擋住第一次）。
-  // 不用 once: true — 萬一第一次 start 仍失敗（例如使用者尚未授權麥克風），
-  // 下次互動還能再試。SR 已在跑時 rec.start() 會丟 InvalidStateError，由 catch 吞掉。
+  // 顯式請求 mic 授權 → 再啟動 SR。
+  // 為什麼不直接 rec.start():Chrome 會由 SR 自己彈授權框,但 Safari / Firefox /
+  // iOS 多半要先有一次 getUserMedia 才會彈,否則 rec.start() 靜默失敗、SR 永遠
+  // 不會 onstart、橘點一直亮、使用者怎麼點都沒反應。
+  // 取得 stream 後立刻 stop() 釋放 — SR 內部會自己再開一條,我們不需要佔著。
+  const ensureMicAndStart = useCallback(async () => {
+    const rec = recognitionRef.current;
+    if (!rec || srRunningRef.current) return;
+    if (
+      !micRequestedRef.current &&
+      typeof navigator !== "undefined" &&
+      navigator.mediaDevices?.getUserMedia
+    ) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        stream.getTracks().forEach((t) => t.stop());
+        micRequestedRef.current = true;
+      } catch (err) {
+        const name = err instanceof Error ? err.name : "";
+        if (
+          name === "NotAllowedError" ||
+          name === "SecurityError" ||
+          name === "PermissionDeniedError"
+        ) {
+          setStatus("muted");
+          setSrRunning(false);
+          setResultMsg("麥克風權限被拒,請於瀏覽器設定開啟");
+          return;
+        }
+        if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          setStatus("muted");
+          setSrRunning(false);
+          setResultMsg("找不到麥克風裝置");
+          return;
+        }
+        // 其他錯誤(InvalidStateError 等)— 繼續往下試 rec.start()
+        if (process.env.NODE_ENV !== "production") {
+          console.debug("[VoiceControl] getUserMedia failed:", err);
+        }
+      }
+    }
+    try {
+      rec.start();
+    } catch {
+      /* 已在跑 OR 尚未準備好 — 略過 */
+    }
+  }, []);
+
+  // 使用者點 / 按鍵時嘗試啟動(autoplay / permission 政策可能擋住第一次)。
+  // 不用 once: true — 萬一第一次 start 仍失敗(例如使用者尚未授權麥克風),
+  // 下次互動還能再試。SR 已在跑時 ensureMicAndStart 內 srRunningRef.current 會
+  // 直接 bail,所以重複觸發無成本。
   useEffect(() => {
     function tryStart() {
-      const rec = recognitionRef.current;
-      if (!rec) return;
-      try {
-        rec.start();
-      } catch {
-        /* 已在跑 OR 尚未準備好 — 略過 */
-      }
+      void ensureMicAndStart();
     }
     window.addEventListener("pointerdown", tryStart);
     window.addEventListener("keydown", tryStart);
@@ -546,7 +603,48 @@ export function VoiceControl() {
       window.removeEventListener("pointerdown", tryStart);
       window.removeEventListener("keydown", tryStart);
     };
-  }, []);
+  }, [ensureMicAndStart]);
+
+  // 預檢:若使用者之前已永久拒絕麥克風,立刻顯示 muted 狀態,避免使用者狂點。
+  // 同時監聽 permission 變更 — 使用者在瀏覽器設定改授權後,不必重新整理就能恢復。
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const perms = (navigator as Navigator & {
+      permissions?: {
+        query: (descriptor: { name: string }) => Promise<{
+          state: "granted" | "denied" | "prompt";
+          onchange: (() => void) | null;
+        }>;
+      };
+    }).permissions;
+    if (!perms?.query) return;
+    let cancelled = false;
+    perms
+      .query({ name: "microphone" })
+      .then((perm) => {
+        if (cancelled) return;
+        if (perm.state === "denied") {
+          setStatus("muted");
+          setResultMsg("麥克風權限被拒,請於瀏覽器設定開啟");
+        }
+        perm.onchange = () => {
+          if (perm.state === "granted") {
+            setStatus("idle");
+            setResultMsg(null);
+            void ensureMicAndStart();
+          } else if (perm.state === "denied") {
+            setStatus("muted");
+            setResultMsg("麥克風權限被拒,請於瀏覽器設定開啟");
+          }
+        };
+      })
+      .catch(() => {
+        /* Safari 舊版 / 不支援 'microphone' — 忽略,fallback 到使用者點擊路徑 */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ensureMicAndStart]);
 
   // 鍵盤捷徑 Cmd/Ctrl + . — 一鍵跳過喚醒詞直接進 awake,當「Hey Heisenberg」沒被
   // SR 認出來時的最後 fallback。選 `.` 是因為瀏覽器 / 多數 web app 都沒占用。
@@ -562,17 +660,13 @@ export function VoiceControl() {
   }, []);
 
   // 點擊肥皂的統一進入點：
-  //   1) SR 還沒跑（user gesture 沒給、permission 沒授權）→ 嘗試 start，不直接進
-  //      awake，因為 SR 沒接通前 onresult 不會 fire、講話也沒人聽。
-  //   2) SR 已在跑 → 手動進 awake，當作「跳過喚醒詞」的 fallback（同音字漏網時用）。
+  //   1) SR 還沒跑(user gesture 沒給、permission 沒授權)→ 走 ensureMicAndStart
+  //      顯式請求授權再 start;Safari/Firefox 必經這條路才會彈授權框。不直接進
+  //      awake,因為 SR 沒接通前 onresult 不會 fire、講話也沒人聽。
+  //   2) SR 已在跑 → 手動進 awake,當作「跳過喚醒詞」的 fallback(同音字漏網時用)。
   const handlePillClick = useCallback(() => {
-    const rec = recognitionRef.current;
-    if (rec && !srRunningRef.current) {
-      try {
-        rec.start();
-      } catch {
-        /* 已在 transition 中或 InvalidStateError — 等 onstart 自然回正 */
-      }
+    if (!srRunningRef.current) {
+      void ensureMicAndStart();
       return;
     }
     if (
@@ -580,13 +674,13 @@ export function VoiceControl() {
       statusRef.current === "done" ||
       statusRef.current === "error"
     ) {
-      // 把目前 transcript 全部標成已消化，這樣使用者接下來新講的內容才會被當成
-      // 指令，不會把點擊前的雜訊當 cmd。
+      // 把目前 transcript 全部標成已消化,這樣使用者接下來新講的內容才會被當成
+      // 指令,不會把點擊前的雜訊當 cmd。
       cmdStartIdxRef.current = lastFullRef.current.length;
       wakeConsumedLenRef.current = lastFullRef.current.length;
       enterAwake();
     }
-  }, [enterAwake]);
+  }, [enterAwake, ensureMicAndStart]);
   // 給鍵盤捷徑用的 ref — 不必把 handlePillClick 加進 keydown effect deps,
   // 否則每次 render 都會 re-bind window listener。
   const handlePillClickRef = useRef(handlePillClick);
@@ -624,7 +718,9 @@ function VoicePanel({
   srRunning: boolean;
   onPillClick: () => void;
 }) {
-  const expanded = status !== "idle";
+  // muted 不展開 popup — demo 上不需要看到「麥克風未授權 / 請去瀏覽器設定…」這種
+  // 內部訊息;voice 不能用就靜默,UI 只剩一顆灰點不打擾畫面。
+  const expanded = status !== "idle" && status !== "muted";
   // 點擊有意義的兩種狀態：(a) idle 但 SR 沒跑 → 點擊啟用麥克風；(b) idle/done/error
   // 但 SR 在跑 → 點擊手動進 awake。muted / awake / processing 都不該再接受點擊。
   const clickable =
@@ -633,12 +729,13 @@ function VoicePanel({
     status !== "processing";
 
   // dot tooltip — idle 時是唯一的口語提示（按鈕本身已縮成純色點）
-  // 順帶帶出 Cmd+. 鍵盤捷徑,讓使用者知道有三種觸發路徑(說 / 按鍵 / 點)
+  // 順帶帶出 Cmd+. 鍵盤捷徑,讓使用者知道有三種觸發路徑(說 / 按鍵 / 點)。
+  // muted 也走 idle 同一條提示 — 不顯露「未授權」字眼,demo 友善。
   const dotTooltip =
-    status === "idle"
+    status === "idle" || status === "muted"
       ? srRunning
         ? "說 Hey Heisenberg · 按 ⌘+. · 或點此手動喚醒"
-        : "點此啟用麥克風"
+        : "說 Hey Heisenberg"
       : status === "awake"
         ? "聆聽指令中…"
         : status === "processing"
@@ -647,7 +744,7 @@ function VoicePanel({
             ? (resultMsg ?? "完成")
             : status === "error"
               ? (resultMsg ?? "失敗")
-              : "麥克風未授權";
+              : "";
 
   return (
     <div
@@ -666,9 +763,7 @@ function VoicePanel({
                 ? "bg-slate-900/85 border-violet-400/50"
                 : status === "done"
                   ? "bg-emerald-500/15 border-emerald-400/50"
-                  : status === "error"
-                    ? "bg-red-500/15 border-red-400/60"
-                    : "bg-slate-900/70 border-slate-700/70",
+                  : "bg-red-500/15 border-red-400/60",
           ].join(" ")}
         >
           <div className="px-3.5 py-2 text-[12px] font-medium text-slate-100">
@@ -676,7 +771,6 @@ function VoicePanel({
             {status === "processing" && "判讀中…"}
             {status === "done" && (resultMsg ?? "完成")}
             {status === "error" && (resultMsg ?? "失敗")}
-            {status === "muted" && "麥克風未授權"}
           </div>
 
           {status === "awake" && (
@@ -711,11 +805,6 @@ function VoicePanel({
             </div>
           )}
 
-          {status === "muted" && (
-            <div className="px-3.5 pb-3 pt-0 text-[11px] text-slate-400 leading-snug">
-              點擊網址列左側麥克風圖示授權後重新整理頁面。
-            </div>
-          )}
         </div>
       )}
 
@@ -766,12 +855,13 @@ function StatusIndicator({
   status: Status;
   srRunning: boolean;
 }) {
-  // idle 時依 SR 是否在跑分兩色：未啟用＝橘色（提醒「點此啟用」），listening＝青色脈動。
+  // 顏色策略 — listening 青色脈動 ; 未啟用 / muted 都走靜默灰(不再用橘色警告色,
+  // demo 畫面不顯露麥克風授權相關訊號)。
   const cls =
     status === "idle"
       ? srRunning
         ? "bg-cyan-400"
-        : "bg-amber-400"
+        : "bg-slate-600"
       : status === "awake"
         ? "bg-cyan-400 animate-pulse"
         : status === "processing"

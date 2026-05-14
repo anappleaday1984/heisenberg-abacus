@@ -150,7 +150,7 @@ npm run dev
 │   ├── orchestrator.ts                # Pipeline 主排程，串 productContext 到下游
 │   ├── anthropic.ts                   # SDK client + 全域 semaphore + 429 retry
 │   ├── auth.ts                        # 帳號 + 同時上線追蹤
-│   ├── logger.ts                      # 寫 z_wth_log.md
+│   ├── logger.ts                      # 寫 z_web_log.html(含 TOC + 回頂按鈕,自動 prepend 新對話)
 │   ├── personas-store.ts              # JSON 檔讀寫 + HackMD parser + Markdown 匯出
 │   ├── persona-scores.ts              # 五維啟發式評分 + 購買意願公式 (信貸/保險/信用卡)
 │   ├── persona-flows.ts               # 關鍵字桶 + 行為誘因桶 + 決策桶 + 三層 Sankey flow builder

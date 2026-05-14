@@ -11,6 +11,20 @@ export const HACKMD_PAGE_URL =
 export const HACKMD_DOWNLOAD_URL =
   "https://hackmd.io/oks6Y7BTSJWw3_GvISZujg/download";
 
+/**
+ * HackMD 上可選的 persona 章節 — v1 外送員 / v2 上班族。
+ * key 用於 API / UI 傳遞;title 對應 HackMD 上 H2 標題的字面文字。
+ *
+ * 注意:HackMD 上 v1 章節原本叫「人設設定」,後來改成「人設設定_v1_外送員」以對齊 v2 的命名,
+ * 若 HackMD 之後再改回去要同步調整 title 才能解析得到。
+ */
+export const PERSONA_SECTIONS = {
+  v1: { title: "人設設定_v1_外送員", label: "v1 · 外送員" },
+  v2: { title: "人設設定_v2_上班族", label: "v2 · 上班族" },
+} as const;
+export type PersonaSectionKey = keyof typeof PERSONA_SECTIONS;
+export const DEFAULT_PERSONA_SECTION: PersonaSectionKey = "v1";
+
 function ensureFile(): void {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_PATH)) {
@@ -37,6 +51,26 @@ export function savePersonas(personas: Persona[]): void {
   );
 }
 
+/** RegExp meta-character escape (給 sliceSection 用)。 */
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * 切出 HackMD 上指定章節的內容(該 H2 標題到下一個 sibling H2 之間)。
+ * 找不到該章節回傳 null。
+ */
+export function sliceSection(markdown: string, sectionTitle: string): string | null {
+  const startPattern = new RegExp(`^##\\s+${escapeRegex(sectionTitle)}\\s*$`, "m");
+  const startMatch = startPattern.exec(markdown);
+  if (!startMatch) return null;
+  const bodyStart = startMatch.index + startMatch[0].length;
+  const after = markdown.slice(bodyStart);
+  // 下一個 sibling H2 (^## 後不接 #) — 用 multiline + 否定 lookahead
+  const nextH2 = after.search(/^##\s+(?!#)/m);
+  return nextH2 < 0 ? after : after.slice(0, nextH2);
+}
+
 /**
  * 解析 HackMD 文件，回傳 Persona 陣列。
  * 支援任意數量的人設 — 只要符合下列格式：
@@ -53,11 +87,26 @@ export function savePersonas(personas: Persona[]): void {
  * 既支援目前 HackMD（## 同階）也支援早期版本（### 子標題）。
  *
  * 第二參數 existingPersonas 用來在重新匯入時保留 ID（若 archetype:name 相同）。
+ *
+ * 第三參數 sectionTitle 限制解析範圍只在指定章節內 — 用於切換 v1/v2 兩套 persona。
+ * 找不到該章節會丟錯;若不傳則掃全文(保留舊行為)。
  */
 export function parseHackmdMarkdown(
   markdown: string,
-  existingPersonas: Persona[] = []
+  existingPersonas: Persona[] = [],
+  sectionTitle?: string
 ): Persona[] {
+  // 若指定章節,先切出該章節的範圍;否則掃全文
+  let scope = markdown;
+  if (sectionTitle) {
+    const sliced = sliceSection(markdown, sectionTitle);
+    if (sliced === null) {
+      throw new Error(
+        `HackMD 文件中找不到章節 "## ${sectionTitle}" — 請確認章節標題拼字`
+      );
+    }
+    scope = sliced;
+  }
   // 不再鎖章節 — HackMD 上每個人設用「## N.」與「## 人設設定」同階，
   // 鎖章節反而會把人設切掉。直接掃整份文件抓「##+ 數字. archetype：name」區塊，
   // 區塊邊界落在下一個任意 ##+ 標題或檔尾。
@@ -66,7 +115,7 @@ export function parseHackmdMarkdown(
   const personas: Persona[] = [];
   let m: RegExpExecArray | null;
 
-  while ((m = blockRegex.exec(markdown)) !== null) {
+  while ((m = blockRegex.exec(scope)) !== null) {
     const archetype = m[1].trim();
     const name = m[2].trim();
     const body = m[3];
@@ -128,7 +177,14 @@ export function parseHackmdMarkdown(
   return personas;
 }
 
-export async function fetchPersonasFromHackmd(): Promise<Persona[]> {
+/**
+ * 從 HackMD 抓取並解析 persona。
+ * sectionKey 指定要載入哪個版本 (v1 外送員 / v2 上班族);不傳則掃全文(會抓到兩個版本所有 60 位,
+ * 通常不是預期行為,主要保留給 legacy caller)。
+ */
+export async function fetchPersonasFromHackmd(
+  sectionKey?: PersonaSectionKey
+): Promise<Persona[]> {
   const res = await fetch(HACKMD_DOWNLOAD_URL, {
     headers: { Accept: "text/markdown,text/plain" },
     cache: "no-store",
@@ -138,9 +194,14 @@ export async function fetchPersonasFromHackmd(): Promise<Persona[]> {
   }
   const md = await res.text();
   const existing = fs.existsSync(DATA_PATH) ? getPersonas() : [];
-  const parsed = parseHackmdMarkdown(md, existing);
+  const sectionTitle = sectionKey ? PERSONA_SECTIONS[sectionKey].title : undefined;
+  const parsed = parseHackmdMarkdown(md, existing, sectionTitle);
   if (parsed.length === 0) {
-    throw new Error("從 HackMD 解析到 0 位受訪者 — 請確認文件格式");
+    throw new Error(
+      sectionKey
+        ? `從 HackMD 章節 "${sectionTitle}" 解析到 0 位受訪者 — 請確認文件格式`
+        : "從 HackMD 解析到 0 位受訪者 — 請確認文件格式"
+    );
   }
   return parsed;
 }

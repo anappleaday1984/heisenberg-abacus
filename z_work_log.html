@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 對話工作 Log</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --fg: #1c1917;
+    --muted: #57534e;
+    --accent: #7c3aed;
+    --code-bg: #f1f5f9;
+    --code-fg: #334155;
+    --border: #e7e5e4;
+    --quote-bg: #f5f3ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  h1 {
+    font-size: 2rem;
+    border-bottom: 2px solid var(--fg);
+    padding-bottom: 0.4em;
+    margin-top: 0;
+  }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 2.4em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.3em;
+  }
+  h3 {
+    font-size: 1.15rem;
+    margin-top: 1.8em;
+    color: var(--accent);
+  }
+  blockquote {
+    border-left: 4px solid var(--accent);
+    background: var(--quote-bg);
+    padding: 12px 18px;
+    margin: 1em 0;
+    color: var(--muted);
+    border-radius: 0 6px 6px 0;
+  }
+  blockquote p { margin: 0.3em 0; }
+  hr {
+    border: 0;
+    border-top: 1px dashed var(--border);
+    margin: 3em 0;
+  }
+  code {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 0.88em;
+  }
+  pre code {
+    display: block;
+    padding: 12px 16px;
+    overflow-x: auto;
+  }
+  ul, ol {
+    padding-left: 1.6em;
+  }
+  li { margin: 0.3em 0; }
+  li > p { margin: 0.3em 0; }
+  strong { color: #0c0a09; }
+  a { color: var(--accent); }
+  .service-url {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 1.2em 0 0;
+    padding: 14px 18px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.18);
+  }
+  .service-url .label {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    opacity: 0.85;
+    flex-shrink: 0;
+  }
+  .service-url a {
+    color: #fff;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.92rem;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(255,255,255,0.6);
+    word-break: break-all;
+  }
+  .service-url a:hover { border-bottom-style: solid; }
+  .toc {
+    margin: 2em 0 2em;
+    padding: 18px 22px;
+    background: var(--code-bg);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+  }
+  .toc .toc-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+  .toc ol {
+    margin: 0;
+    padding-left: 1.4em;
+  }
+  .toc li { margin: 0.25em 0; font-size: 0.95rem; }
+  .toc a { color: var(--fg); text-decoration: none; border-bottom: 1px dashed transparent; }
+  .toc a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .back-to-top {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 44px;
+    height: 44px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    z-index: 100;
+    opacity: 0.85;
+    transition: opacity 200ms, transform 200ms;
+  }
+  .back-to-top:hover { opacity: 1; transform: translateY(-2px); }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1917;
+      --fg: #f5f5f4;
+      --muted: #a8a29e;
+      --accent: #a78bfa;
+      --code-bg: #292524;
+      --code-fg: #e7e5e4;
+      --border: #44403c;
+      --quote-bg: #2a1f3d;
+    }
+    strong { color: #fafaf9; }
+  }
+</style>
+</head>
+<body>
+<main>
+<h1>Claude Code 對話工作 Log</h1>
+<blockquote>
+<p>跟 Claude 協作的階段性摘要 — 記錄每段對話完成的事、關鍵決策、改檔/新增/刪除清單。
+跟 <code>z_wth_log.md</code> 不同:那個是 app 運行時的 chat 紀錄、這個是「跟 Claude 寫程式」的後設摘要。
+翻 git log 之外用來看「為什麼這樣改」「我們討論過什麼路徑」。</p>
+</blockquote>
+<div class="service-url">
+  <span class="label">服務網址</span>
+  <a href="https://stoic-thaw-trustee.ngrok-free.dev/" target="_blank" rel="noopener">https://stoic-thaw-trustee.ngrok-free.dev/</a>
+</div>
+<nav class="toc">
+  <p class="toc-title">Table of Contents</p>
+  <ol>
+    <li><a href="#sec-2026-05-15-pdf-export">2026-05-15 — 把 demo-video-v7.html 跟 intro-4pages.html 匯出合併成 PDF(28 頁 = 4 開場 + 24 段截圖)</a></li>
+    <li><a href="#sec-2026-05-14-demo-video-v6">2026-05-14(續 5)— Demo 影片 v6:整檔字體放大 + 移除右下對嘴 widget + 中英切換下架 + 桑基交錯重畫 + 滷肉飯 4 人設反應</a></li>
+    <li><a href="#sec-2026-05-14-intro-4pages-cover">2026-05-14(續 4)— intro-4pages 新增滷肉飯洋芋片封面頁 + The Quote 改「決定資源分配」</a></li>
+    <li><a href="#sec-2026-05-14-intro-pdf-shadow">2026-05-14(續 3)— intro-3pages.pdf 修數字方塊重疊 bug(移除 text-shadow blur)</a></li>
+    <li><a href="#sec-2026-05-14-demo-video-v5">2026-05-14(續 2)— Demo 影片 v5:修復 v4 六個 bug(HUD 6:00 / 對嘴關閉 / 旅遊保險卡片文案 / portrait 重編碼 / 10→30 / Sankey 交錯)</a></li>
+    <li><a href="#sec-2026-05-14-demo-video-v4">2026-05-14(續)— Demo 影片 v4:6 分鐘 24 場景 / 隱藏字幕 / sceneEl 多 slot 復用 / 架構頁 + script.md + timeline.json 外部檔</a></li>
+    <li><a href="#sec-2026-05-14-demo-video-v3">2026-05-14 — Demo 影片 v3:雙語 AI 旁白 + 對嘴人像 + 滷肉飯非金融場景 + LIVE iframe + 30 受訪者</a></li>
+    <li><a href="#sec-2026-05-13-demo-video-v2">2026-05-13(續)— Demo 影片 v2:真實 UI 操作版(模擬游標 + 12 個實際畫面)</a></li>
+    <li><a href="#sec-2026-05-13-demo-video">2026-05-13 — 5 分鐘 Demo 影片(動畫式 HTML)規劃與建檔</a></li>
+    <li><a href="#sec-2026-05-11-3">2026-05-11(再續 3) — 市場脈絡 FAQ + 重現性實驗 4 組</a></li>
+    <li><a href="#sec-2026-05-11-2">2026-05-11(再續 2) — QA 介面強化 + 全站字體 +20% + 麥克風授權修復</a></li>
+    <li><a href="#sec-2026-05-11-1">2026-05-11(再續) — 改善語音觸發率</a></li>
+    <li><a href="#sec-2026-05-11-qa">2026-05-11(續) — 服務 QA 面板:17 筆問答、搜尋、AI fallback、語音整合</a></li>
+    <li><a href="#sec-2026-05-11-sprint">2026-05-11 — Demo 前衝刺:模擬艙擴充、桑基三層化、本機備援</a></li>
+  </ol>
+</nav>
+<hr>
+<h2 id="sec-2026-05-11-sprint">2026-05-11 — Demo 前衝刺:模擬艙擴充、桑基三層化、本機備援</h2>
+<h3>主要任務(時序大致依完成順序)</h3>
+<ol>
+<li><p><strong>手機觸控 UI 修復</strong> — LabEntrance 登入閘在 ngrok 手機網址打不開:</p>
+<ul>
+<li>加隱藏 input + <code>visualViewport</code> API 追蹤鍵盤跳出後的可視範圍</li>
+<li>鎖 body scroll 避免 iOS 滑動;<code>waiting</code> 階段加 tap-to-enter 給觸控裝置</li>
+<li>viewport meta 鎖縮放(<code>userScalable: false</code>)避免 input focus 時被 zoom</li>
+</ul>
+</li>
+<li><p><strong>名人 portrait 重生 + 模糊</strong> — <code>generate-portraits.mjs</code> 內 CELEBRITY_LIKENESS 補上胡漢龑(吊車大王第 6 位)、其他 5 位描述改成「臉部特徵」而非職業避免 Flux 套公關照低調光,重生 6 張 techlife 風格 portrait,SpectrumSwitcher 內名人 img 套 <code>filter: blur(8px) saturate(0.85)</code>。</p>
+</li>
+<li><p><strong>圖表字體放大</strong> — PhaseTransitionMap / DecisionSankey 內 SVG text fontSize 全面拉大,座標軸刻度 9→13、軸標題 11→15、Zone 標籤 9→14。</p>
+</li>
+<li><p><strong>Y 軸標題重排</strong> — <code>購買意願度 →</code> 從中間旋轉 -90 → 水平放在左上角(x=8, y=14),用 ↑ 箭頭表達方向,不擋作圖區。</p>
+</li>
+<li><p><strong>三維模擬空間嘗試</strong>(後來大半移除):</p>
+<ul>
+<li>一度建了 RevenueSweetSpot / CLVProjection / SeasonalStressTest 三大面板</li>
+<li>抽出 <code>lib/persona-projections.ts</code> 計算庫(applyShocks / projectCLV / buildSweetSpotCurve)</li>
+<li>後續使用者陸續刪掉 Sweet Spot 與 Stress Test,最後連 CLV 也移除</li>
+<li>留下 <code>applyShocks</code> 與 <code>ShockState</code> 給其他面板使用</li>
+</ul>
+</li>
+<li><p><strong>外部衝擊共享 state</strong> — 通膨 + 失業作為 shocks 拉到 ProductParamsContext:</p>
+<ul>
+<li>散佈圖 / 桑基 / CLV 全部接同一份 shocks,任何 slider 拉動,所有面板臨界點同步偏移</li>
+<li>拆出 <code>components/ShockSliders.tsx</code> 共用元件</li>
+<li>AbacusBar 改雙欄(左主算盤珠 + 右 shocks)</li>
+<li>預設值 inflation=3% / unemployment=4% 對齊 2026 台灣現況</li>
+<li>後來移除 pandemic 第三項</li>
+</ul>
+</li>
+<li><p><strong>桑基圖三層化(重點)</strong> — 從 keyword → decision 加上中間「行為誘因」層:</p>
+<ul>
+<li><code>lib/persona-flows.ts</code> 新增 INCENTIVE_BUCKETS:剛性節流 / 安全感建構 / 機會型成長 / 便利速度 / 風險規避 + fallback</li>
+<li><code>buildThreeLayerFlows(entries)</code> 把每位受訪者 (keyword, incentive, decision) 三元組拆成兩段 segment</li>
+<li>DecisionSankey 全面重寫:三欄(KEYWORD_X / INCENTIVE_X / DECISION_X)、兩段 ribbon</li>
+<li>每桶獨立色:keyword 9 桶 / incentive 6 桶各有 hex,避開右側 decision 三色</li>
+<li>Ribbon 用 SVG <code>&lt;linearGradient&gt;</code> 從來源節點色漸層到目的節點色,fillOpacity 0.55 製造淺色感</li>
+<li>Hover dim 對比拉到 0.08</li>
+</ul>
+</li>
+<li><p><strong>重點發現上限</strong> — <code>lib/agents/pm.ts</code> prompt 規則 + slice 上限改為最多 4 項。</p>
+</li>
+<li><p><strong>Spectrum 開放模式 voice 大改造</strong>:</p>
+<ul>
+<li>之前 <code>generateOpenVoice(p)</code> 只有 12 條粗略分支,30 位多人撞句(都「家裡靠我撐著...」)</li>
+<li>改為 <code>generateOpenVoice(p, context)</code>:14 分支 × 每分支 3 模板 = 42 變體</li>
+<li>加 <code>extractContextNoun(context)</code> 從問題抓「訂閱/健身/餐盒/家電」等 10 組 pattern 對應名詞,inline 到句子裡</li>
+<li>加 <code>pidHash(id)</code> 讓同 persona 選 deterministic 變體</li>
+<li>句子大量塞 <code>${p.age} 歲</code> / <code>年收 ${wan} 萬</code> / <code>${p.archetype}</code> 等 persona 自身錨點</li>
+</ul>
+</li>
+<li><p><strong>用字微調</strong> — header「30 位受訪者的整體口吻」改「30 位受訪者的基本介紹」(僅開放模式;產品模式仍用「『信貸』口吻」)。</p>
+</li>
+<li><p><strong>Layer 1 本機備援 runbook</strong> — <code>docs/local-demo-backup.md</code>:寫給 Claude Code 在 demo 機讀的步驟手冊,涵蓋 clone / install / env / personas 帶入 / smoke test / 故障排除 / cheat sheet。</p>
+</li>
+</ol>
+<h3>改/新增/刪除檔案</h3>
+<p><strong>新增</strong></p>
+<ul>
+<li><code>lib/persona-projections.ts</code> — applyShocks / projectCLV / ShockState / NO_SHOCKS / DEFAULT_SHOCKS</li>
+<li><code>lib/celebrity-ids.ts</code> — 6 位名人 ID set + isCelebrity()</li>
+<li><code>lib/agents/voice-intent.ts</code> — 語音 intent 路由(較早完成)</li>
+<li><code>lib/report-markdown.ts</code> — 報告轉 markdown(較早完成)</li>
+<li><code>components/ShockSliders.tsx</code> — 通膨/失業共用滑桿</li>
+<li><code>components/VoiceControl.tsx</code> — 語音控制 UI(較早完成)</li>
+<li><code>app/api/email-report/route.ts</code> + <code>app/api/voice/intent/route.ts</code> — 較早完成</li>
+<li><code>docs/local-demo-backup.md</code> — Layer 1 備援 runbook</li>
+<li><code>z_work_log.md</code> — 這個檔本身</li>
+<li>6 張重生的名人 portrait + 其他 ~100 張 personas 系列 PNG(已推 git)</li>
+<li>scripts/generate-portraits.mjs 等多支 mjs 工具</li>
+</ul>
+<p><strong>改動</strong></p>
+<ul>
+<li><code>app/layout.tsx</code> — viewport meta 鎖縮放</li>
+<li><code>components/AbacusBar.tsx</code> — 雙欄佈局,接 ShockSliders</li>
+<li><code>components/ChatInterface.tsx</code> — phase-map 訊息傳 productContext</li>
+<li><code>components/DecisionSankey.tsx</code> — 整支重寫,三欄 + 漸變 ribbon + 每桶獨立色</li>
+<li><code>components/EntranceGate.tsx</code> — 通過閘門時清 session</li>
+<li><code>components/LabEntrance.tsx</code> — 手機觸控支援(visualViewport + 隱藏 input)</li>
+<li><code>components/MessageBubble.tsx</code> — 較早完成的小調整</li>
+<li><code>components/PersonaQAExplorer.tsx</code> — 較早完成的小調整</li>
+<li><code>components/PhaseTransitionMap.tsx</code> — Y 軸水平左上、字體放大、接 shocks</li>
+<li><code>components/ReportCard.tsx</code> — 較早完成</li>
+<li><code>components/SimulationLab.tsx</code> — 雙欄佈局(行為相變 + 桑基),三維模擬區塊整段移除</li>
+<li><code>components/SpectrumSwitcher.tsx</code> — generateOpenVoice 大改造 + 名人 blur</li>
+<li><code>lib/agents/persona.ts</code> / <code>personas-data.ts</code> / <code>pm.ts</code> / <code>summary.ts</code> / <code>types.ts</code> — 較早完成</li>
+<li><code>lib/orchestrator.ts</code> — 較早完成</li>
+<li><code>lib/persona-flows.ts</code> — 加 INCENTIVE_BUCKETS + buildThreeLayerFlows</li>
+<li><code>lib/product-params-context.tsx</code> — 加 shocks 狀態 + DEFAULT_SHOCKS</li>
+<li><code>scripts/generate-portraits.mjs</code> — 名人 hint 改成臉部特徵 + 加 celebrity 額外 tone 指示</li>
+<li><code>README.md</code> — 反映三層桑基 + AbacusBar 雙欄 + SimulationLab + lib 新檔案</li>
+<li><code>.env.local.example</code> — 較早完成</li>
+<li><code>package.json</code> / <code>package-lock.json</code> — 較早完成</li>
+</ul>
+<p><strong>刪除</strong>(在這段對話中)</p>
+<ul>
+<li><code>components/RevenueSweetSpot.tsx</code> — 使用者要求移除甜蜜點面板</li>
+<li><code>components/SeasonalStressTest.tsx</code> — 使用者要求移除壓力測試面板</li>
+<li><code>components/CLVProjection.tsx</code> — 使用者要求移除 CLV 面板</li>
+</ul>
+<h3>關鍵決策</h3>
+<ul>
+<li><strong>Ribbon 漸變 vs 單色</strong>:選擇漸變,因為三層每桶獨立色已經很多顏色,漸變能讓「從 X 流到 Y」的語意一眼看出來。</li>
+<li><strong>Incentive 中間層的 5 個分類</strong>:剛性節流 / 安全感建構 / 機會型成長 / 便利速度 / 風險規避 — 從行銷實務直覺出發,而非心理學嚴格分類,以利 demo 解說。</li>
+<li><strong>預設 shocks 用 2026 真實值</strong>:避免使用者打開 demo 看到「無衝擊樂觀情境」,直接看到當下環境壓力。</li>
+<li><strong>三維模擬全部移除</strong>:使用者覺得太花,demo 焦點回到「散佈圖 + 桑基」雙視角。</li>
+<li><strong>保留 <code>lib/persona-projections.ts</code></strong>:雖然 CLV / Sweet Spot 都刪了,<code>applyShocks</code> 仍被散佈圖 / 桑基使用,屬於核心工具。</li>
+<li><strong>Open mode voice 大改造</strong>:14 分支 × 3 模板 + persona 自帶資料 + context noun,目標每張卡都「看起來像 specifically 在講他」。</li>
+</ul>
+<h3>Git commits 本日</h3>
+<ul>
+<li><code>bab5d4f</code> 擴充模擬艙:三層桑基、外部衝擊、名人模糊、語音控制與電郵報告</li>
+<li><code>698bb41</code> 新增本機 demo 備援 runbook 與開放模式口吻</li>
+</ul>
+<h3>跟使用者討論到 / 待後續處理</h3>
+<ul>
+<li>Layer 2 LLM 回應 cache replay(若 demo 時 LLM 端點掛掉時的最後保險)— 還沒實作,使用者表示有需要再做</li>
+<li>是否把三題非金融 demo 範例(訂閱健身 app / 智慧家電 / 訂閱餐盒)加進 ChatInterface 的 PRODUCT_EXAMPLES 第二排 — 已給文字、等使用者決定要不要加</li>
+<li><code>data/personas.json</code> 從 server → demo 機 的搬移流程 — 已說明選項,使用者要選 scp / AirDrop / <code>/admin</code> 重匯哪一種</li>
+</ul>
+<hr>
+<h2 id="sec-2026-05-11-qa">2026-05-11(續) — 服務 QA 面板:17 筆問答、搜尋、AI fallback、語音整合</h2>
+<h3>主要任務(時序)</h3>
+<ol>
+<li><strong>建立 ServiceFAQ 元件 + 掛到 admin 頂右</strong> — 第一筆問答「Hey Heisenberg 用什麼語音模型」,附 4 工序示意圖。FAQ_ENTRIES 是可擴充的陣列。</li>
+<li><strong>新增 5 個聽眾高度興趣問答</strong> — 30 位受訪者哪來 / 14 天→15 分鐘 / 千篇一律怎麼避 / 散佈圖數字算法 / 海森堡名字由來,每筆附獨立 SVG diagram(personas-origin / time-comparison / diversity-layer / math-explainability / heisenberg-metaphor)。</li>
+<li><strong>加搜尋 bar</strong> — 即時過濾 q + summary + keywords,空白分隔 AND match。打開 modal 自動 autoFocus 搜尋框,Esc 先清搜尋、再次 Esc 才關 modal。預設不展開任何一筆,使用者主動點才開。</li>
+<li><strong>8 筆業務 + 系統問答</strong>(批次補上) — credibility / value-beyond-classification / target-users / roadmap / summary-bias / reproducibility / cost / multi-tenant。每筆都誠實標示限制邊界(不能做什麼 vs 適合什麼),配 5 張新 SVG。</li>
+<li><strong>第 15 筆 即時反應鏈</strong> — live-reactivity:從 slider onChange → Context → useMemo → SVG transition 的三段事件流,配 ReactivityFlowDiagram。</li>
+<li><strong>第 16 筆 服務架構</strong>(<code>architecture</code>) — 4 層俯瞰:輸入 → Agent Pipeline → 計算 → 視覺化,搭配 Tech Stack 12 項 + 設計取捨 4 項。配 ArchitectureDiagram SVG。</li>
+<li><strong>語音控制接 FAQ</strong> — <code>open_service_faq</code> 新 voice action,跨頁觸發走 sessionStorage flag + router.push。在 /admin 直接 dispatch event。LLM SYSTEM prompt 加入觸發例句「打開 FAQ / 服務 QA / 常見問題 / show FAQ」。</li>
+<li><strong>AI fallback 答覆</strong> — <code>POST /api/faq-ask</code>:搜尋 0 命中時可一鍵讓 MiniMax-M2.5 即時答,System prompt 灌服務全 context,150-300 字回應。需登入 + 500 字限 + 全域 LLM semaphore。UI 三狀態:CTA / loading 紫框 / 答案紫卡。</li>
+<li><strong>SpectrumSwitcher 開放口吻大改造</strong> — 14 分支 × 3 模板 = 42 變體,從 productContext extract noun(訂閱/健身/餐盒/家電...)inline 進句子,pidHash 讓同 persona deterministic 取變體。header「整體口吻」→「基本介紹」。</li>
+<li><strong>配套修補</strong> — Q1「6 種 action」→「7 種 action」、加入新筆 keywords 對齊搜尋。</li>
+</ol>
+<h3>改/新增/刪除檔案</h3>
+<p><strong>新增</strong></p>
+<ul>
+<li><code>components/ServiceFAQ.tsx</code> — 17 筆 FAQ + 11 個 inline SVG diagrams + 搜尋 + AI fallback UI</li>
+<li><code>app/api/faq-ask/route.ts</code> — AI 即時答覆 endpoint,System prompt 灌服務 context</li>
+<li><code>docs/local-demo-backup.md</code>(更早建立) — Layer 1 備援 runbook</li>
+</ul>
+<p><strong>改動</strong></p>
+<ul>
+<li><code>app/admin/page.tsx</code> — header 右上角加 <code>&lt;ServiceFAQ /&gt;</code></li>
+<li><code>components/VoiceControl.tsx</code> — 加 <code>open_service_faq</code> action 處理,VOICE_OPEN_FAQ_EVENT / SESSION_KEY export</li>
+<li><code>components/SpectrumSwitcher.tsx</code> — generateOpenVoice 大改 + extractContextNoun + pidHash,header 文字</li>
+<li><code>lib/agents/voice-intent.ts</code> — VoiceAction 加 <code>open_service_faq</code>,system prompt + validActions + fallbackMessage 同步</li>
+<li><code>README.md</code> — 加 ServiceFAQ / VoiceControl 兩列</li>
+</ul>
+<h3>關鍵決策</h3>
+<ul>
+<li><strong>FAQ 預設全收合</strong> — 使用者反饋:搜尋後不自動展開,讓 demo 主控者點選想講的那筆才打開。</li>
+<li><strong>AI fallback 走「明確按鈕」而非自動觸發</strong> — 避免每次搜尋都打 LLM,使用者主動點才呼叫 API,成本可控。</li>
+<li><strong>跨頁開啟用 sessionStorage flag</strong>:純 client-side 解,不污染 URL,ServiceFAQ mount 後讀完即清。</li>
+<li><strong>架構問答放在「名字由來」之後</strong> — demo 敘事 metaphor → 實作架構 → 細節,順序自然。</li>
+<li><strong>誠實標示限制</strong> — 4 筆 credibility/summary-bias/reproducibility/cost 都明確列出「不能做什麼」,不過度承諾。</li>
+</ul>
+<h3>Git commits 本日延伸</h3>
+<ul>
+<li><code>8147e02</code> 新增服務 QA 面板與 AI fallback,語音可控,人物口吻改造(7 files, +3124/-27)</li>
+</ul>
+<h3>待後續處理</h3>
+<ul>
+<li>三題非金融 demo 範例(訂閱健身 app / 智慧家電 / 訂閱餐盒)是否加進 ChatInterface PRODUCT_EXAMPLES 第二排 — 還沒決定</li>
+<li>語音 query 整合:「Hey Heisenberg, 服務 QA 桑基」直接帶查詢字串開啟並觸發 AI fallback — 已提案、等使用者決定要不要做</li>
+</ul>
+<hr>
+<h2 id="sec-2026-05-11-1">2026-05-11(再續) — 改善語音觸發率</h2>
+<h3>主要任務</h3>
+<ol>
+<li><strong>診斷「Hey Heisenberg 觸發不到」常見原因</strong> — mic 權限、HTTPS、Firefox 不支援、zh-TW SR 把英文人名轉成漏網變體、SR continuous race window 等 7 種可能。</li>
+<li><strong>放寬 WAKE_RE</strong> — 中文分支第三字(堡/伯/博/保/包/抱/勃/柏/寶)改成 optional,「嘿森」「海森」兩字組合即觸發。英文分支多吃 ay/eh/oh 前綴 + sam/zhen 中段 + bird/burgur 末段。</li>
+<li><strong>新增 Cmd/Ctrl + . 鍵盤捷徑</strong> — handlePillClickRef 包 callback 給 keydown listener 用,避免每次 render re-bind window listener。使用者按 ⌘+. 一鍵跳過喚醒詞直接進 awake。</li>
+<li><strong>Tooltip 補上多路徑提示</strong> — 「說 Hey Heisenberg · 按 ⌘+. · 或點此手動喚醒」,讓 hover dot 就看到三條觸發路徑。</li>
+<li><strong>嘗試加 inline 文字標籤 (Hey Heisenberg / Cmd+. / 點此)</strong> — 使用者反饋「只要保留圓點」,改回純 dot 樣式,但 regex / 捷徑 / tooltip 三項背後改善仍生效。</li>
+</ol>
+<h3>改/新增/刪除檔案</h3>
+<p><strong>改動</strong></p>
+<ul>
+<li><code>components/VoiceControl.tsx</code> — WAKE_RE 放寬 + 新增 Cmd+. keydown effect + handlePillClickRef + dotTooltip 多路徑文案</li>
+</ul>
+<h3>關鍵決策</h3>
+<ul>
+<li><strong>第三字 optional</strong> 是 zh-TW SR 觸發率主因 — 實測 SR 常把「Heisenberg」念出來只剩「嘿森」兩字,「-berg」尾音被吃掉。</li>
+<li><strong>選 <code>Cmd+.</code> 為捷徑</strong> — 瀏覽器 / 多數 web app 都沒占用,Mac 上是 Word 的 AutoCorrect 鍵,衝突極少。</li>
+<li><strong>UI 維持 dot only</strong>(依使用者反饋) — 簡潔優先,觸發路徑藏在 tooltip + regex + 鍵盤捷徑,不污染 header。</li>
+</ul>
+<h3>Git commits 本日延伸</h3>
+<ul>
+<li><code>4082d03</code> 改善語音控制觸發率:放寬喚醒詞 regex + Cmd+. 鍵盤捷徑(1 file, +28/-7)</li>
+</ul>
+<hr>
+<h2 id="sec-2026-05-11-2">2026-05-11(再續 2) — QA 介面強化 + 全站字體 +20% + 麥克風授權修復 + 簡報層 FAQ</h2>
+<h3>主要任務</h3>
+<ol>
+<li><strong>移除 FAQ AI fallback 按鈕下方「會打一次 MiniMax-M2.5 API · 約 3-5 秒」說明</strong> — 使用者覺得是雜訊。</li>
+<li><strong>QA 介面新增「系統架構俯瞰」摘要區塊</strong> — 可收合(預設展開),4 卡摘要 + 重用 <code>ArchitectureDiagram</code> SVG,搜尋時自動隱藏。內含「看完整架構說明 →」連結直接展開並 scrollIntoView 對應 FAQ(<code>#faq-architecture</code>)。<code>&lt;article&gt;</code> 加上 <code>id={faq-${entry.id}}</code> 與 <code>scroll-mt-24</code>。</li>
+<li><strong>全站預設字體放大 120%</strong> — 用 <code>html { font-size: 120% }</code>,所有 rem-based Tailwind text utility 自動 ×1.2。刻意絕對 px 寫死的小字 (text-[10px]/[11px] 等 137 處)與 SVG 內 <code>&lt;text fontSize=...&gt;</code> 自動維持原樣 — 完全對應使用者要求「不需調整的部分保持原大小」。</li>
+<li><strong>修復麥克風沒有授權的問題</strong> — 根本原因:從未顯式 <code>getUserMedia</code> 觸發瀏覽器授權框。Chrome 上 <code>rec.start()</code> 會自己彈,但 Safari / Firefox / iOS 必須先有顯式 getUserMedia 才會彈,否則 SR 靜默失敗、橘點一直亮、使用者怎麼點都沒反應。<ul>
+<li>新增 <code>ensureMicAndStart()</code> helper:先 <code>getUserMedia({audio:true})</code> 拿到 stream 立刻釋放,再 <code>rec.start()</code></li>
+<li>pointerdown / keydown / handlePillClick 全部改走 ensureMicAndStart</li>
+<li>新增 <code>navigator.permissions.query({ name: &#39;microphone&#39; })</code> 預檢 + <code>onchange</code> 監聽 — 永久拒絕者 mount 時立刻 muted、瀏覽器設定改授權後不必重新整理就能恢復</li>
+<li><code>not-allowed</code> 時<strong>不再</strong> <code>recognitionRef.current = null</code> — 保留 SR 物件讓恢復路徑可直接 <code>rec.start()</code> 復活</li>
+<li><code>micRequestedRef</code> flag 避免重複 getUserMedia</li>
+<li>細分錯誤碼(NotAllowedError / SecurityError / NotFoundError)分別給訊息</li>
+</ul>
+</li>
+<li><strong>新增 6 條「簡報層」FAQ 對應 hackathon 評審標準</strong> — problem-motivation / dev-process / design-innovation / landing-gap / quant-benefit / qual-benefit。<ul>
+<li>兩個 parent 標題(解決方案、商業模式)不單獨拆 entry,只做 6 個 leaf-level</li>
+<li>沒新增 diagram,純文字 + 既有色塊風格</li>
+</ul>
+</li>
+</ol>
+<h3>改/新增/刪除檔案</h3>
+<p><strong>改動</strong></p>
+<ul>
+<li><code>app/globals.css</code> — 加 <code>html { font-size: 120% }</code> + 設計取捨註解</li>
+<li><code>components/ServiceFAQ.tsx</code> — 移除「打 API · 3-5 秒」說明字 / 新增系統架構俯瞰 banner + archOverviewOpen state / <code>&lt;article&gt;</code> 加 id + scroll-mt-24 / 新增 6 條簡報層 FAQ entries</li>
+<li><code>components/VoiceControl.tsx</code> — ensureMicAndStart helper / permissions API 預檢 + onchange / 不 null 化 ref / micRequestedRef / 細分錯誤訊息</li>
+</ul>
+<h3>關鍵決策</h3>
+<ul>
+<li><strong>字體放大走 <code>html</code> root font-size 而非 body 或 utility 覆寫</strong> — 因為 Tailwind text-* 都是 rem,改 root 一行解決所有 rem-based 文字 + 間距(間距也跟著放大保比例,避免文字大但行間擠在一起)。刻意小的 absolute px 字(text-[10px] 等)自然不受影響,完美對應使用者「不需調整的保持原樣」需求。</li>
+<li><strong>系統架構俯瞰預設展開</strong> — QA 一打開先看全貌,符合「先看全貌再看細節」的閱讀順序。搜尋時自動收(避免干擾)。</li>
+<li><strong>重用既有 <code>ArchitectureDiagram</code></strong> — 不重畫第二個 SVG,維持單一真相來源。</li>
+<li><strong>麥克風修復:保留 SR 物件不 null 化</strong> — 是「permission 從 denied 變 granted 後能無刷新恢復」這個 UX 的前提。先前的 null 化是防禦性過頭,讓 onend 那邊的 <code>statusRef.current !== &quot;muted&quot;</code> 守門就夠了。</li>
+<li><strong>6 條簡報 FAQ 對應 6 個 leaf-level topic</strong> — 沒幫 parent(解決方案、商業模式)單獨拆 entry,避免冗餘。每條都用既有色塊風格,沒加 diagram(時間成本不划算)。</li>
+</ul>
+<h3>待後續處理</h3>
+<ul>
+<li>README 是否要因為「字體放大 120%」「系統架構俯瞰 banner」「6 條新 FAQ」「麥克風授權修復」這四項而更新 — 需 check</li>
+<li>6 條新 FAQ 是否要排到 array 前段(讓 demo 評審先看到)— 目前都放在 array 末尾</li>
+<li>麥克風 onchange 自動恢復 idle 時,是否要 toast 通知「已重新啟用」— 目前只悄悄改狀態</li>
+</ul>
+<hr>
+<h2 id="sec-2026-05-11-3">2026-05-11(再續 3) — 市場脈絡 FAQ + 重現性實驗 4 組(部分實測 + demo 截止)</h2>
+<h3>主要任務</h3>
+<ol>
+<li><strong>摘要 Money101 小額貸款 50 萬比較頁 → 新 FAQ 條目 <code>market-loan-overview</code></strong> — 11 家銀行清單、條件矩陣、Top 4 排名表(台新/滙豐/永豐/凱基)、外送員痛點、海森堡用法(在紅海找差異化破口)。資料源用 [10px] 字標明。</li>
+<li><strong>重現性 4 組實驗腳本 <code>scripts/reproducibility-experiment.mts</code></strong> — 備份 → 寫 personas pool → 跑 orchestrate → 還原。4 組共 7 次跑(exp1 ×3 + exp2 ×2 + exp3 ×2)。dry run 機制(<code>DRY=1</code> 環境變數)先驗證 import + env。</li>
+<li><strong>啟動實驗背景跑</strong> — 進行到 exp1 第 3 次時 demo 時程拉警報,使用者要求 kill 並改寫「設計版」QA。</li>
+<li><strong>手動還原 persona pool</strong> — kill 後 finally 沒跑到,personas.json 還停在 3-人狀態(73 行 vs 完整 367 行),手動 cp backup 還原。</li>
+<li><strong>新增「實驗驗證層」FAQ <code>reproducibility-experiments</code></strong> — 4 組實驗的設定 / 命題 / 預期觀察 + 部分實測 anchor(Exp 1 第 1 次跑成功 105s headline 完整、第 2 次跑 PM JSON 失敗 25s 崩潰)。誠實標示「剩餘觀察點為架構推導,不是直接實測」。</li>
+</ol>
+<h3>改/新增/刪除檔案</h3>
+<p><strong>新增</strong></p>
+<ul>
+<li><code>scripts/reproducibility-experiment.mts</code> — 重現性實驗腳本(備份/還原機制、DRY mode、4 組設定、orchestrate 流式消費)</li>
+</ul>
+<p><strong>改動</strong></p>
+<ul>
+<li><code>components/ServiceFAQ.tsx</code> — 新增 2 條 FAQ:<code>market-loan-overview</code> + <code>reproducibility-experiments</code></li>
+</ul>
+<p><strong>意外</strong></p>
+<ul>
+<li><code>data/personas.json</code> — 實驗中被改成 3-人,kill 後手動還原為原始 367 行 pool</li>
+<li><code>data/personas.backup.json</code> — 實驗腳本建立,kill 後手動清掉</li>
+</ul>
+<h3>關鍵決策</h3>
+<ul>
+<li><strong>DRY mode 先驗證</strong> — 動態 import lib/orchestrator.ts 在 tsx 下會把 named exports 包進 <code>.default</code>(CJS/ESM interop),script 加 <code>m.orchestrate ?? m.default?.orchestrate</code> 雙路徑撈。DRY=1 不跑 LLM 先驗證 import 鏈,省 token。</li>
+<li><strong>finally 還原 pool 不夠保險</strong> — kill -TERM 在 generator 中執行時可能跳過 finally;教訓:跑這類侵入式 script 時,要在 script 外也存一份備份檔讓人類可手動還原。我事後手動 cp 還原 + 移除 backup file。</li>
+<li><strong>demo 時程衝突的取捨</strong> — 使用者問「demo 快開始,還要多久」,給 4 個選項讓他選。他選了「kill + 寫設計版 QA」,我尊重選擇沒爭辯。</li>
+<li><strong>誠實標示「分析推導 vs 實測」</strong> — 新 FAQ 條目的「部分實測 anchor」區塊明確區分:Exp 1 第 1-2 次是實測、其他都是架構推導。slate-500 字加 ※ 註記「剩餘為推導,有時間再補」。</li>
+<li><strong>partial data 也是有價值的觀察</strong> — Exp 1 第 2 次跑 LLM JSON 失敗 25s 崩潰,我把這個失敗當「reproducibility 真實風險」寫進 FAQ(LLM ~10-15% 失敗率,實務需要 retry)。失敗不是 bug,是訊號。</li>
+</ul>
+<h3>待後續處理</h3>
+<ul>
+<li>完整跑 4 組 ×7 次實驗,把實測數據(申辦意願 % 波動、metric 排序穩定度、桑基絲帶寬度差異)填回 <code>reproducibility-experiments</code> FAQ 條目,把「預期」改成「實測」</li>
+<li>把腳本的 LLM 失敗 retry 機制做出來 — 觀察到 ~15% PM JSON 失敗率,實務應該有 1-2 次 retry + output validator(<code>lib/output-validator.ts</code> 已存在但不確定有沒有套到 PM agent)</li>
+<li>是否要把 <code>market-loan-overview</code> 和 <code>reproducibility-experiments</code> 排到 array 前段讓 demo 先看到 — 目前都堆在末尾</li>
+</ul>
+
+<hr>
+<h2 id="sec-2026-05-13-demo-video">2026-05-13 — 5 分鐘 Demo 影片(動畫式 HTML)規劃與建檔</h2>
+<h3>主要任務</h3>
+<ol>
+<li><strong>確認目標來源 z_setting.md</strong> — 重點:寫入 z_work_log.html / z_web_log.html、html 頁面要有 TOC + 右下回頂按鈕、線上網址 <code>https://stoic-thaw-trustee.ngrok-free.dev/</code>。把 TOC + 回頂按鈕 + 正式網址兩條補進 auto-memory(<code>feedback_html_log_structure</code> + <code>reference_demo_url</code>)。</li>
+<li><strong>規劃 5 分鐘 / 12 場景分鏡</strong> — 黑客松評審觀眾,動畫式 HTML 自動播放:Cold open(15s)→ 痛點(20s)→ 解法(20s)→ Prompt 輸入(30s)→ Pipeline 點火(30s)→ Persona 並行(30s)→ Phase Map 誕生(30s)→ 算盤滑桿(30s)→ Sankey 三層(30s)→ ReportCard 降落(30s)→ 技術亮點(20s)→ 結語塌縮(15s)。</li>
+<li><strong>建立 <code>docs/pitch/demo-video.html</code></strong> — 1677 行單檔。CSS keyframes + JS scene engine(<code>requestAnimationFrame</code> 推進 elapsed、根據秒數切換 <code>.active</code> class、字幕跟著 scene 換)。HUD:播放/暫停、上/下一場景、重播、進度條(可點擊 seek)、12 個場景錨點。鍵盤:Space 暫停、←→ 切場景、Home 回頭。</li>
+<li><strong>retrofit z_work_log.html</strong> — 補 TOC + 右下角浮動回頂按鈕(<code>.back-to-top</code> + <code>scrollTo</code> JS),所有既有 h2 加 <code>id="sec-*"</code> 錨點,新章節也跟上。</li>
+</ol>
+<h3>新增檔案</h3>
+<ul>
+<li><code>docs/pitch/demo-video.html</code> — 5 分鐘自動播放 demo 影片(12 場景 / 動畫式 HTML / 1677 行)。風格沿用 <code>slides.html</code> 深藍 + 青綠科技調。可在瀏覽器全螢幕後用 QuickTime 螢幕錄影輸出 mp4。</li>
+</ul>
+<h3>改動檔案</h3>
+<ul>
+<li><code>z_work_log.html</code> — 新增 <code>.toc</code> + <code>.back-to-top</code> CSS,所有 h2 加錨點 id,新增今日章節。</li>
+<li><code>.claude/projects/.../memory/MEMORY.md</code> + <code>feedback_html_log_structure.md</code> + <code>reference_demo_url.md</code> — 補兩條 memory。</li>
+</ul>
+<h3>關鍵決策</h3>
+<ul>
+<li><strong>選「動畫式 HTML」而非影片檔</strong> — 評審現場展示時,HTML 可暫停、可後退、可全螢幕、不會被卡頓影響觀感;之後要錄成 mp4 也很容易(QuickTime / OBS 螢幕錄影)。比 Runway / Sora 路線可控且零成本。</li>
+<li><strong>scene engine 用單一 <code>elapsed</code> 秒數驅動</strong> — 不用每個 scene 各自有 timer,所有 scene 排成 <code>scenes[]</code> 陣列(<code>{ id, start, end, caption }</code>),每幀根據 <code>elapsed</code> 找 active scene。好處是 seek / pause / 切場景全部用同一個機制,進度條也只是讀 elapsed。</li>
+<li><strong>side effects 分離</strong> — scene 4 的打字機、scene 5 的 pipeline 依序高亮、scene 8 的算盤滑桿動畫不是純 CSS 能做(需要序列性 JS 動作),抽成 <code>runSceneSideEffects(id)</code> 在 scene 切換時觸發,避免污染 CSS keyframes。</li>
+<li><strong>視覺一致性</strong> — 嚴格沿用 <code>slides.html</code> 的色票(<code>--bg #0b1736 / --cyan #00e5ff / --green #3cf07a</code>)、字體(Helvetica Neue + PingFang TC + JetBrains Mono)、邊框光標(corner brackets)、術語(ψ、ΔxΔp ≥ ℏ/2、observer、collapse),讓影片跟 pitch deck 看起來是同一個世界。</li>
+<li><strong>retrofit logs 的時機點</strong> — 原本 z_work_log.html 沒 TOC / 回頂按鈕(早期建檔時還沒有這個 spec),既然今天記了 <code>feedback_html_log_structure</code> 這條 memory,順手把舊章節加 id + 加 TOC nav + 加浮動按鈕。一勞永逸,以後 append 只要在 TOC <code>&lt;ol&gt;</code> 最前面加一個 <code>&lt;li&gt;</code> 即可。</li>
+</ul>
+<h3>待後續處理</h3>
+<ul>
+<li>用瀏覽器全螢幕(F11)實際播完一輪,確認字幕時序、動畫順序、scene 切換沒有閃爍 — 預期會微調 1-2 場景的 delay。</li>
+<li>用 QuickTime 螢幕錄影(<code>⌘ + ⇧ + 5</code> → 錄整個螢幕)輸出 mp4 / 5 分鐘版本供上傳社群 / 提交評審。</li>
+<li>若要做語音旁白版,可走 ElevenLabs / MiniMax TTS 拿 12 段台詞配音,或在 demo-video.html 加 <code>&lt;audio&gt;</code> 元素掛 mp3,跟 elapsed 同步播放。</li>
+<li>z_setting.md 的「html 頁面要有 TOC + 回頂按鈕」這條規則,未來新建任何 z_*.html 都要記得套(memory 已記)。</li>
+</ul>
+
+<hr>
+<h2 id="sec-2026-05-13-demo-video-v2">2026-05-13(續)— Demo 影片 v2:真實 UI 操作版(模擬游標 + 12 個實際畫面)</h2>
+<h3>主要任務</h3>
+<ol>
+<li><strong>保留 v1、新增 v2</strong> — 使用者要求 v1(<code>docs/pitch/demo-video.html</code>)不動,v2 改用「真實操作介面」呈現。v2 落腳 <code>docs/pitch/demo-video-v2.html</code>。</li>
+<li><strong>用 Explore agent 一次掃完 14 個 UI 元件</strong> — AuthForm / LabEntrance / ChatInterface / PipelineStatus / MessageBubble / AgentBadge / PhaseTransitionMap / DecisionSankey / AbacusBar / ShockSliders / ReportCard / ServiceFAQ / VoiceControl / PersonaQAExplorer / SimulationLab。拿回外框 / sub-element 結構 / 色票 / 字級 / 互動元素 / 視覺標記六個面向的結構化報告,直接當 CSS 規格用。</li>
+<li><strong>建 demo-video-v2.html (2813 行)</strong> — 同 scene engine + 同 HUD,但每個場景換成 pixel-faithful HTML/CSS UI mockup,加 macOS 風格 browser frame(三色 dot + URL bar 跟著場景換)、加模擬白色箭頭游標(SVG drop-shadow)、加 click ring 動畫。</li>
+<li><strong>12 個場景對應 12 個真實畫面</strong>:
+<ol>
+<li>LabEntrance — CRT 掃描線 + 暈影 + 量子方程式打字</li>
+<li>AuthForm — 一鍵 demo admin 高亮、自動填入帳密、送出脈動</li>
+<li>主介面 + 三張範例卡片 — 游標移到「機車保險」hover → click → 觸發 prompt prefill 打字機效果</li>
+<li>PipelineStatus + AgentBadge 串流訊息 — 5 階段 dot 依序高亮、agent 文字切換、entry / pm 兩個訊息泡泡逐個 streaming</li>
+<li>PersonaQAExplorer — 藍框 question card + Q2 4 題進度 + 6 張色彩編碼 answer 卡片依序 fade-in,HighlightedText 仿真</li>
+<li>PhaseTransitionMap — 三色 stat 卡 + SVG 散布圖 + 游標 hover 出 tooltip(persona 名 + 五維 score)</li>
+<li>SimulationLab AbacusBar 拖滑桿 — 游標移到 handle → dragging 光暈 → handle 從 60% 拉到 32% → 10 個粒子 spring ease 飛入 BUY 區 + 變色 + KPI 數字跳到 67%</li>
+<li>DecisionSankey — 三層節點 + 6 條 ribbon 從左漸層流到右 + hover detail panel</li>
+<li>ReportCard — gradient icon + headline box + 4 個 finding 卡片(positive/neutral/warning 三色)+ PDF 按鈕脈動</li>
+<li>VoiceControl pill — 從圓形 collapsed → 320px expanded 卡片 + 11 條 wave bar 隨機跳 + transcript 打字機 + 識別意圖 action 條</li>
+<li>三張 tech card 快閃</li>
+<li>B/A 對比 + 召喚機率雲結語 + QR + URL</li>
+</ol>
+</li>
+</ol>
+<h3>新增檔案</h3>
+<ul>
+<li><code>docs/pitch/demo-video-v2.html</code> — 真實 UI 操作版,2813 行 / 102KB。比 v1 大 50%,主要在每個場景的 UI mockup CSS。</li>
+</ul>
+<h3>改動檔案</h3>
+<ul>
+<li><code>z_work_log.html</code> — TOC 加 v2 條目、append v2 章節。</li>
+</ul>
+<h3>關鍵決策</h3>
+<ul>
+<li><strong>UI 重建 vs 真實截圖</strong> — 沒走「啟動 dev server + screencapture」路徑。原因:重建後場景時序、游標位置、滑桿動畫都可控,評審看的是「劇本演出」而不是「實際操作錄影」;若要真實錄影最後還是要找人手動點。重建版可重播、可暫停、不受 dev server 死活影響。</li>
+<li><strong>browser frame 包外殼</strong> — 加上 macOS 三色 dot + URL bar(每個場景 URL 跟著切到 <code>/login</code> / <code>/simulation</code>),讓觀眾下意識把這當「真實瀏覽器操作」而不是「動畫」。</li>
+<li><strong>模擬游標</strong> — SVG 箭頭 + drop-shadow,移動用 800-1000ms cubic-bezier 接近人類滑鼠速度,click 用一個 ring 擴散動畫表示按下。每個場景在 <code>runSceneActions(id)</code> 用 <code>delay()</code> 串時序,可重播。</li>
+<li><strong>Tailwind 色票直接 import</strong> — 把 slate / blue / violet / emerald / amber / rose / cyan 全套 hex 在 <code>:root</code> 宣告,避免每個 inline style 再算一次,跟原 app 配色 1:1 對齊。</li>
+<li><strong>app font-size 120% 用 root-level 處理</strong> — 原 app 在 <code>html { font-size: 120% }</code> 把所有 rem 字級放大,v2 直接用絕對 px 寫死(因為 demo 場景空間有限),沒沿用 120% 規則,以避免文字溢出 browser frame。</li>
+<li><strong>scene 7(算盤)動畫成本最高</strong> — handle 拖拉同步 fill width / 數字跳 / 10 顆粒子 spring ease 飛位 / 變色 / KPI 數字 / 游標跟隨,六件事在 1500-2000ms 內完成才像「真實互動」。用單一 setTimeout chain + CSS transition 1800ms cubic-bezier(.34,1.56,.64,1) 來做出 spring 感。</li>
+</ul>
+<h3>v1 vs v2 差異對照</h3>
+<ul>
+<li><strong>v1</strong> = 抽象 / 海報式:每場景重點在動畫概念(粒子塌縮、ribbon 流動)、適合在 30 秒 hook 影片中各取 3-5 秒;沒有 UI 操作真實感。</li>
+<li><strong>v2</strong> = 寫實 / 操作式:每場景重現該頁面在真實 app 中的長相,模擬使用者點擊輸入,評審看完會覺得「我已經看過這個產品怎麼用了」。</li>
+<li>兩個版本走同樣 12 場景 + 5 分鐘 + 同 scene engine,可以按用途切換(對外短影片用 v1,黑客松評審展示用 v2)。</li>
+</ul>
+<h3>待後續處理</h3>
+<ul>
+<li>全螢幕實際播一輪,確認 browser frame 在小螢幕(13") 不會被 HUD 蓋到 — 預期 inset 28/28/84/28 已留夠空間,要實測。</li>
+<li>scene 4 (pipeline) 訊息字數較多,前 30 秒可能塞不下三段 streaming,需要實測決定要不要砍 PM 訊息一半。</li>
+<li>scene 7 (算盤) 粒子飛位的時序可能跟 fill width 不同步,若看起來「卡」要把 transition duration 從 1800ms 調到 1500ms。</li>
+<li>v2 適合錄成 5 分鐘 mp4 評審展示用(<code>⌘ + ⇧ + 5</code>),v1 比較適合做 30 秒社群短影片(把粒子塌縮跟 ReportCard 降落剪出來)。</li>
+</ul>
+
+<hr>
+<h2 id="sec-2026-05-14-demo-video-v3">2026-05-14 — Demo 影片 v3:雙語 AI 旁白 + 對嘴人像 + 滷肉飯非金融場景 + LIVE iframe + 30 受訪者</h2>
+<h3>主要任務</h3>
+<ol>
+<li><strong>v3 規格 (來自 z_setting.md):</strong> 5 分鐘 demo、中英文 AI 旁白、對嘴人像、HTML 預留 <code>data-scene</code> 標記與腳本 map 結構、人物顯影動畫、最後一題用「滷肉飯口味餅乾」(102克/49元) 證明非金融商品也適用、30 個人設範例、適度嵌入服務網頁畫面 (<code>stoic-thaw-trustee.ngrok-free.dev</code>)。</li>
+<li><strong>從 v2 衍生</strong> — <code>cp demo-video-v2.html demo-video-v3.html</code> 開頭,保留 12 scene 結構與 scene engine,改寫 scene 10 + 加新 widget。</li>
+<li><strong>新增 SCRIPT_MAP 結構</strong> — <code>SCRIPT_MAP = { zh: { 1..12: { kicker, line, audio: null, video: null } }, en: {...} }</code>。每 scene 對應一段中英文旁白文字、預留 audio (mp3) 與 video (對嘴 mp4) 路徑,實際檔案之後 D-ID / HeyGen / ElevenLabs / Synthesia 生成完掛進去。</li>
+<li><strong>narrator widget</strong> — fixed 在右下角的圓形對嘴框 (168px),預設掛動畫 SVG 頭像 (圓臉 + 雙眼 + 動態嘴部 0.22s alternate),scene 切換時若 SCRIPT_MAP 有 <code>video</code> 路徑就改用 <code>&lt;video&gt;</code> 對嘴,有 <code>audio</code> 路徑同步播放 mp3,沒有就 fallback SVG。框邊有 cyan 光暈,說話時 <code>.speaking</code> class 觸發脈動。</li>
+<li><strong>HUD 中/EN 語言切換</strong> — <code>&lt;button id="lang-zh"&gt;中&lt;/button&gt; / &lt;button id="lang-en"&gt;EN&lt;/button&gt;</code> 一組 toggle。切換時 <code>setLang()</code> 重渲染當前 scene 的 caption + narrator media + 重打 scene 10 滷肉飯 prompt (才看得到中英文差異)。</li>
+<li><strong>scene 10 替換 voice control → 滷肉飯餅乾</strong> — 拆掉 v2 的 Hey Heisenberg 語音場景 (那個 demo 後期已較弱),改成「不只金融商品」主題:左欄打字機 prompt + 商品 spec 卡 (🥔 102g / NT$49 / 鹹甜醬油風味),右欄 4 KPI + 3 條 persona reaction (用 techlife portrait 當小頭像)。typed 文字會跟著語言切換重播。voice control demo 留在 scene 11 tech card 三選一中。</li>
+<li><strong>LIVE iframe widget</strong> — 浮動視窗 (右上角,380×280px) 可隨時打開,iframe <code>https://stoic-thaw-trustee.ngrok-free.dev/</code>。HUD 新增「⌬ LIVE」按鈕 toggle。Lazy load (首次打開才設 iframe src),含 ngrok warning 提示文字 (首次需點 Visit Site)。</li>
+<li><strong>30 受訪者升級</strong> — scene 4 (pipeline) 對話者 ×10 → ×30、樣本 N=10 → N=30;scene 5 (PersonaQA) 進度文字「10 位受訪者中」→「30 位中精選 6 位」;scene 6 (phase map) SVG 散布圖從 10 顆粒子加到 30 顆;scene 7 (abacus) SVG 同步從 10 加到 30,JS <code>moves</code> 陣列也擴成 30 個座標,拖滑桿時全部飛入 BUY 區。</li>
+<li><strong>人物顯影動畫</strong> — 新增 <code>.persona-bg</code> CSS + <code>initPersonaBg()</code> JS,scene 10 灑 14 張 techlife portrait 浮動小頭像 (12s loop / fade up-down),透明度 0.18 當背景,強化「30 種生活型態都被觀測」的視覺。PORTRAIT_POOL 撈了 23 個非名人 ID,確保不會出現臉。</li>
+<li><strong>所有 scene 加 <code>data-scene="N"</code> attribute</strong> — sed 一次掃完 12 個 <code>&lt;section class="scene" id="scene-N"&gt;</code>,給後續外部腳本 hook 用。</li>
+</ol>
+<h3>新增檔案</h3>
+<ul>
+<li><code>docs/pitch/demo-video-v3.html</code> — 3363 行 (比 v2 多 ~550 行,主要在 SCRIPT_MAP / narrator widget / LIVE iframe / 滷肉飯 scene CSS+HTML+JS / 30 粒子 SVG)。可在 file:// 直接開,所有 persona portrait 走 <code>../../public/personas-techlife/{id}.png</code> 相對路徑。</li>
+</ul>
+<h3>改動檔案</h3>
+<ul>
+<li><code>z_work_log.html</code> — TOC 加 v3 條目、append 本節。</li>
+</ul>
+<h3>關鍵決策</h3>
+<ul>
+<li><strong>SCRIPT_MAP 而非把字幕綁在 scene 物件</strong> — 雙語 narration 抽到獨立 map 結構,scene 物件只負責時間軸與 url,caption / audio / video 全部從 SCRIPT_MAP[lang][sceneId] 撈。後續使用者要產雙語旁白音檔只需填這個 map 的 audio/video 欄位,不必動 scene 引擎本體。預留結構符合 z_setting.md 的「HTML 生成時只需預留 data-scene 標記與腳本 map 結構」。</li>
+<li><strong>對嘴 SVG 是 fallback</strong> — 沒有真實對嘴影片時 SVG 嘴部會動 (純動畫,不對齊音訊),純粹維持「視覺上有人在講」的存在感。SVG 路徑寫死,沒做使用者選臉的功能 — 評審 demo 不需要,有就減一個 distraction。</li>
+<li><strong>LIVE iframe 但不強迫</strong> — 嵌入服務網頁的需求用「按需打開」處理而不是強塞進 scene 流。理由:(1) ngrok-free 有 browser warning 第一次需點,塞進 scene 流會卡 demo;(2) 評審若想看實際服務隨時開啟,不想看就忽略;(3) iframe 可能因 X-Frame-Options 或 ngrok cookie 失效時白屏,獨立 widget 不影響主 demo。</li>
+<li><strong>滷肉飯 scene 用 quick result 而非完整 pipeline</strong> — 已經在 scene 4-9 跑過完整管線一次,scene 10 只是「換個 prompt 也能跑」的證明點,不必再走 30 秒完整流程。一個 35 秒的場景就夠:打字 (~10s) → 商品卡 (~5s) → KPI (~10s) → reaction 三條 (~10s)。</li>
+<li><strong>portrait pool 不含名人</strong> — <code>PORTRAIT_POOL</code> 排除 nv_jensen_true / chin_blue_500 / 等 6 個名人 ID,避免在 demo 影片背景隨機出現黃仁勳臉部 (即使有 blur 也不適合)。</li>
+<li><strong>30 受訪者粒子手 hardcode 座標而非隨機生成</strong> — 隨機生成每次播放 demo 都會跳不同位置,評審看影片會分心。固定座標保證每次播放視覺一致,而且座標分布上 BUY / WATCH / REJECT 三區比例對應 38/34/28% KPI。</li>
+<li><strong>檔案路徑用 <code>../../public/...</code></strong> — 為了 file:// 直接開可用,放棄 Next.js 的 <code>/personas-techlife/...</code> 絕對路徑。Trade off:這個 file 不能在 dev server 透過 <code>http://localhost:3000/docs/pitch/demo-video-v3.html</code> 直接打開,但本來也沒這需求,評審展示走 file:// 全螢幕即可。</li>
+</ul>
+<h3>後續可做</h3>
+<ul>
+<li>實際生成 12 段雙語旁白音檔 (ElevenLabs / MiniMax TTS),填入 SCRIPT_MAP[lang][n].audio 路徑。建議目錄結構 <code>/sound/v3/zh/scene1.mp3</code> ~ <code>scene12.mp3</code> 兩語各一套。</li>
+<li>若預算允許,跑 D-ID / HeyGen 生成 12 段對嘴影片 mp4,填入 SCRIPT_MAP[lang][n].video。</li>
+<li>scene 10 動畫順序若評審覺得太快可調 fadeUp 各 delay (6000ms / 7500-9000ms / 9500-10500ms)。</li>
+<li>LIVE iframe 若 ngrok warning 阻擋太煩,改為一張預先截圖 png + 連結 (簡單但失去互動感)。</li>
+<li>把 v3 路徑寫進 README,跟 v1 v2 並陳供評審依場景選版本。</li>
+</ul>
+
+<hr>
+<h2 id="sec-2026-05-14-demo-video-v4">2026-05-14(續)— Demo 影片 v4:6 分鐘 24 場景 / 隱藏字幕 / sceneEl 多 slot 復用 / 架構頁 + script.md + timeline.json 外部檔</h2>
+<h3>主要任務</h3>
+<ol>
+<li><strong>v4 規格 (來自 z_setting.md 最新)</strong> — 24 段畫面、6 分鐘 (360s)、嵌入服務網頁、N 個人設 (沿用 30)、最後簡介系統架構、移除「真的讓 demo 跑得動的決定」頁、預留 data-scene 與 script map、其中一段加人物顯影動畫、移除畫面字幕並存成外部腳本檔。</li>
+<li><strong>cp v3 衍生 v4</strong> — <code>docs/pitch/demo-video-v4.html</code> 3822 行,沿用 v3 scene engine / HUD / narrator widget / LIVE iframe / 中英 lang switch。</li>
+<li><strong>新增 3 個專用 scene</strong>:<code>scene-title</code> (標題塌縮)、<code>scene-persona-show</code> (30 顆 techlife 頭像 5×6 grid pop-in)、<code>scene-arch</code> (5 段管線 + 4 張 spec card 系統架構)。</li>
+<li><strong>scene engine 升級為 sceneEl-driven</strong> — 從原本「scene.id 對應 HTML id <code>scene-N</code>」改為「scene.sceneEl 指定 HTML id」,讓多個 slot 可共用一個 scene element (只更新旁白、不重觸發進場動畫)。lastSceneEl 比對:targetEl 改變才切 <code>.active</code>、跑 <code>runSceneElActions</code>。</li>
+<li><strong>24 個 slot 對應 14 個實體 scene element</strong> — scene-3 (主介面) 用 2 次、scene-4 (pipeline) 用 2 次、scene-5 (QA) 用 2 次、scene-6 (phase map) 用 2 次、scene-7 (abacus) 用 2 次、scene-9 (report) 用 2 次、scene-10 (滷肉飯) 用 3 次、scene-12 (closing) 用 3 次,合計 14 個 element 撐起 24 段旁白。</li>
+<li><strong>移除 tech highlights (v3 scene 11)</strong> — 不在新 scenes 陣列裡引用,CSS 跟 HTML 留著當死碼 (沒被 active 過所以不影響)。改由 scene-arch 接替「系統架構」位置,但是用「客觀架構描述」取代「我們把 demo 跑得動的工程巧思」這種炫技口吻。</li>
+<li><strong>caption 隱藏</strong> — CSS <code>.caption { display: none }</code>,新增 <code>body.captions-on .caption</code> opt-in。SCRIPT_MAP 還是有完整字幕文字,只是不秀在畫面上,留給 narrator widget 的對嘴 video / audio 與外部 script.md 使用。</li>
+<li><strong>外部 script + timeline 兩個檔</strong>:
+<ul>
+<li><code>demo-video-v4-script.md</code> — 183 行,9 個 section 24 個 scene,每個 scene 條目寫中英文旁白 + sceneEl + 時間範圍 + visual note。底部附 TTS / 對嘴生成備忘 + 場景復用對照表。</li>
+<li><code>demo-video-v4-timeline.json</code> — 39 行,每 scene 一個 object,含 id / sceneEl / start / end / kicker / url / zh / en,機器可讀。可拿去餵 TTS / D-ID 批次生成 mp3 / mp4,再 mapping 回 SCRIPT_MAP。</li>
+</ul>
+</li>
+<li><strong>runPersonaShow()</strong> — scene-persona-show 進場時呼叫,把 30 位 persona 頭像依 5×6 grid + 隨機偏移 4% 動態 append 到 ps-cloud,每張 60ms 間隔 pop-in (透過 animationDelay),800ms 後標籤名字泡泡跟著 fadeIn,2000ms 後底部統計列(外送員 30 / 上班族 30)出現。</li>
+</ol>
+<h3>新增檔案</h3>
+<ul>
+<li><code>docs/pitch/demo-video-v4.html</code> — 3822 行,base 從 v3 (3392) 加 ~430 行 (3 個新 scene CSS + HTML + JS runPersonaShow + scenes 陣列重組)。</li>
+<li><code>docs/pitch/demo-video-v4-script.md</code> — 183 行旁白大綱 (中英對照,9 sections / 24 scenes)。</li>
+<li><code>docs/pitch/demo-video-v4-timeline.json</code> — 39 行機器可讀時間軸。</li>
+</ul>
+<h3>改動檔案</h3>
+<ul>
+<li><code>z_work_log.html</code> — TOC 加 v4 條目、append 本節。</li>
+</ul>
+<h3>關鍵決策</h3>
+<ul>
+<li><strong>24 段 ≠ 24 個 HTML scene</strong> — 用 sceneEl 機制讓「同一個 UI 畫面但旁白不同」可以分成多個 slot。實體 scene element 只增加 3 個,工作量比 24 個完全不同的 scene 少 70%,而且觀眾從 UI 上不會看到「閃畫面」(因為 sceneEl 不換、進場動畫不重播),只感覺旁白持續。</li>
+<li><strong>移除字幕但留 SCRIPT_MAP</strong> — z_setting 明確要求「移除畫面中 scene 的文字說明」,但完全刪除 SCRIPT_MAP 會讓 narrator audio 沒著力點。折衷:CSS 隱藏 caption 元素 + body.captions-on opt-in toggle,讓 demo 主畫面乾淨,但開發 / debug 時可手動加 class 看字幕。SCRIPT_MAP 文字也是 TTS 之後生成音檔的根本來源。</li>
+<li><strong>tech-highlights 不刪 HTML / CSS,只從 scenes 陣列移除</strong> — z_setting 說「移除真的讓 demo 跑得動的決定頁」,我把它從 scenes timeline 拉掉。但 HTML+CSS 留著,因為 (a) 刪掉會破壞 scene-11 後續 ID 引用、(b) 留著未來想換回去只要在 scenes 陣列加一行 sceneEl: 'scene-11'。當前 24 段沒人 reference 它就不會顯示。</li>
+<li><strong>scene-arch 用「客觀架構描述」取代「我們把 demo 跑得動的炫技」</strong> — 一樣顯示 multi-agent pipeline + 技術細節,但口吻從「這就是我們的厲害之處」改成「系統長這樣 / 這些是技術組件」,降低自吹氣息,適合給比較嚴肅的展示場合 (升等審查、客戶 demo 等)。</li>
+<li><strong>外部 script + timeline 兩個檔分流</strong> — script.md 給人讀 (review 旁白措辭、決定要不要重寫),timeline.json 給機器讀 (cron / batch 跑 TTS 生 mp3、HeyGen 批次生對嘴 mp4)。兩者內容一致但格式分流避免雙重維護成本 — 改 timeline.json 時順手更新 script.md 即可。</li>
+<li><strong>persona-show 用 5×6 grid + 隨機偏移</strong> — 30 個頭像如果完全規整會像表格,完全隨機又會擠在一起;5×6 (cw=16.67%, rh=20%) + ±4% jitter 折衷,看起來自然分布又不會重疊。每個頭像 60ms 間隔 pop-in 不會所有同時跳出來造成視覺混亂。</li>
+</ul>
+<h3>後續可做</h3>
+<ul>
+<li>跑 ElevenLabs / MiniMax TTS 批次生成 24×2=48 段音檔 (zh+en),路徑填回 SCRIPT_MAP[lang][n].audio。可寫一個 mts 腳本讀 timeline.json 自動丟給 TTS API、回填 SCRIPT_MAP。</li>
+<li>對嘴影片若要做,建議只生 narrator widget 用的圓形小視頻 (168×168px),不需要全螢幕 mp4。D-ID 個別 scene 大概各 10-20 秒夠用。</li>
+<li>scene-persona-show 目前在 60-90s 中段共 30s,可能對觀眾來說資訊量太密集 (30 個臉一起認不完)。若評審反饋說「太花」,可考慮 (a) 縮到 20s, 60-80s、(b) 改成漸進式 highlight 一個一個介紹 (用 querySelectorAll + classList.add('hl') 輪流 1s)。</li>
+<li>scene-arch 的 5 個管線方塊跟 v3 slides.html 的 pipeline 設計部分重覆,可以重剪用同一張靜態圖,但目前 SVG-less HTML 重做也只多 100 行,先讓它各自獨立。</li>
+<li>v3 vs v4 並陳:把 demo-video-v3.html 留給「pitch 競賽 / 短講」用 (5 分鐘有 voice control 亮點),demo-video-v4.html 留給「正式展示 / 完整流程」用 (6 分鐘有架構頁 + 外部腳本檔可後製)。在 README 加一段「demo 影片版本對照」幫評審找到最適合的版本。</li>
+</ul>
+
+<hr>
+<h2 id="sec-2026-05-14-demo-video-v5">2026-05-14(續 2)— Demo 影片 v5:修復 v4 六個 bug(HUD 6:00 / 對嘴關閉 / 旅遊保險卡片文案 / portrait 重編碼 / 10→30 / Sankey 交錯)</h2>
+<h3>修復清單(來自 z_setting.md v5 規格)</h3>
+<ol>
+<li><strong>Bug 0:00 HUD 總時數顯示 5:00 → 6:00</strong> — 三個地方:HTML 預設文字 <code>&lt;div class="time"&gt;0:00 / 6:00&lt;/div&gt;</code> 跟 JS <code>tick()</code> + <code>seek()</code> 兩處 <code>timeEl.textContent = `${fmt(elapsed)} / 5:00`</code>。一律改 6:00。</li>
+<li><strong>Bug 0:00 移除對嘴動畫</strong> — <code>narrator-svg .mouth</code> 移除 <code>animation: speakMouth 220ms infinite alternate</code>,改成 <code>transform: scaleY(0.45)</code> 靜止;<code>@keyframes speakMouth</code> 整段刪。理由:沒有真實音檔時的假對嘴看起來很廉價,反而暴露「這是動畫不是真人」。SCRIPT_MAP[lang][n].video 之後填真實對嘴影片,narrator widget 會自動切到 <code>&lt;video&gt;</code> 不走 SVG。</li>
+<li><strong>Bug 0:50 ex-2 卡片文案</strong> — v4 ex-name 寫「機車保險」但 desc 卻講旅遊保險,前後矛盾。改:<code>🛡 機車保險</code> → <code>✈️ 旅遊保險信用卡</code>,desc 同步釐清。</li>
+<li><strong>Bug 1:03 returning_mom / ex_engineer portrait 沒顯示</strong> — root cause:這兩張 <code>.png</code> 副檔名實際是 JPEG 編碼 (跟 28 張其他 portrait 一樣),但 Chrome 在 file:// 環境下這兩張特定 file 拒絕當 PNG 解析(可能跟特定 magic byte 差異有關)。修法:<code>sips -s format png</code> 把這兩張重編碼為真 PNG,768×768 non-interlaced。原始 JPEG 備份到 <code>z_archive/personas-techlife-orig/</code>。</li>
+<li><strong>Bug 3:00 殘留 10 位受訪者</strong> — v4 還有兩處沒升級:phase map 標題 <code>10 位受訪者的行為相變散布</code>、scene-9 ReportCard sub <code>10 位虛擬受訪者 · 並行訪談 87 秒</code>。一律改成 30 位。另一處 sankey head 「10 位受訪者 · 7 個 segment」也改成「30 位受訪者 · 8 個 segment」(因為 ribbon 從 6 條增為 12 條,間接增加 segment)。</li>
+<li><strong>Bug 3:57 Sankey ribbon 改為交錯</strong> — v4 原本 6 條 1→1 直線 ribbon(省錢→回饋率、便利→保額、安全感→年費),完全沒有交錯,看不出來「動機混合」。改成 12 條:col1→col2 6 條,col2→col3 6 條,每個 col 節點都連到 2-3 個對方節點,從節點不同 y 子位置出發形成楔形分支。具體:省錢動機主要走「回饋率」但有 thin ribbon 拉到「年費敏感」;安全感主要走「保額」但也有走「年費敏感」;col2→col3 同樣方式交錯。動畫 delay 從 r1=500ms 到 r12=2250ms,150ms 一條依序露出。</li>
+</ol>
+<h3>新增 / 改動檔案</h3>
+<ul>
+<li>新增 <code>docs/pitch/demo-video-v5.html</code> — base 從 v4 cp,3856 行(對嘴 keyframe 刪 + Sankey ribbon 從 6 增為 12 + 多處字 6/30/旅遊保險信用卡)。</li>
+<li>新增 <code>docs/pitch/demo-video-v5-script.md</code> — 同 v4 sed 改路徑,加開頭一段 bug 修復摘要。</li>
+<li>新增 <code>docs/pitch/demo-video-v5-timeline.json</code> — <code>"version": "v5"</code>,fileBindings 跟 audio/video root 改成 <code>sound/v5/</code>。</li>
+<li>改動 <code>public/personas-techlife/returning_mom.png</code> 與 <code>public/personas-techlife/ex_engineer.png</code> — 用 sips 重編碼為真 PNG。原檔備份到 <code>z_archive/personas-techlife-orig/{filename}.jpg</code>。</li>
+<li>改動 <code>z_work_log.html</code> — TOC 加 v5 條目、append 本節。</li>
+</ul>
+<h3>關鍵決策</h3>
+<ul>
+<li><strong>Portrait 修法選擇:重編碼而非換圖</strong> — 兩個選項:(a) 把 NAMES 陣列裡 returning_mom / ex_engineer 換成其他能正常顯示的 persona ID;(b) 重編碼這兩張檔案讓它們真的是 PNG。選 (b) 是因為 (a) 會打破 archetype 對照(這兩個是有意義的人格代表,不能用 anon 替換),(b) 一次修完原始檔不只影響 demo video 也讓主 app 的 SpectrumSwitcher 渲染更穩定。</li>
+<li><strong>對嘴動畫整段移除而非只關掉</strong> — 原本想用 <code>animation-play-state: paused</code> 暫停,但 SVG 的 transform 還是停在中間位置看起來像「嘴半開」奇怪。乾脆把 <code>animation</code> 整行刪掉,改成 <code>transform: scaleY(0.45)</code> 固定一個「半閉合」的形狀,看起來像正常嘴部、不再有任何動。</li>
+<li><strong>Sankey 12 條 vs 9 條</strong> — 想過 9 條(3×3 全連接)但實際畫出來太密,觀眾很難跟住 ribbon 走向。12 條 = 每個 col 節點連 2-3 個對象 + 寬度有粗有細(粗的 22px 是主流、細的 9px 是副流),自然引導視線。</li>
+<li><strong>留下 .paused class 的 JS</strong> — narrator JS 還有 <code>narratorSvg.classList.add('paused')</code> 等呼叫,但因為 CSS 中對應的 <code>.paused .mouth</code> rule 已經拿掉,這些呼叫變 no-op。沒清掉是因為改 JS 風險比改 CSS 大,而且看起來不會視覺上有差。</li>
+</ul>
+<h3>v4 → v5 字字對照</h3>
+<table>
+<tr><th>位置</th><th>v4</th><th>v5</th></tr>
+<tr><td>HUD time</td><td><code>0:00 / 5:00</code> ×3 處</td><td><code>0:00 / 6:00</code></td></tr>
+<tr><td>對嘴 keyframe</td><td><code>animation: speakMouth 220ms infinite</code></td><td>整段刪 + 嘴部固定 scaleY(0.45)</td></tr>
+<tr><td>ex-2 卡片</td><td>🛡 機車保險</td><td>✈️ 旅遊保險信用卡</td></tr>
+<tr><td>portrait 格式</td><td>JPEG-as-PNG(returning_mom / ex_engineer)</td><td>真 PNG,768×768 RGB</td></tr>
+<tr><td>scene-6 標題</td><td>10 位受訪者的行為相變散布</td><td>30 位受訪者的行為相變散布</td></tr>
+<tr><td>scene-9 sub</td><td>10 位虛擬受訪者 · 並行訪談 87 秒</td><td>30 位虛擬受訪者 · 並行訪談 87 秒</td></tr>
+<tr><td>scene-8 sankey head</td><td>10 位受訪者 · 7 個 segment</td><td>30 位受訪者 · 8 個 segment</td></tr>
+<tr><td>scene-8 ribbon 數</td><td>6 條 1→1 直線</td><td>12 條交錯(每節點連 2-3 個對象)</td></tr>
+<tr><td>start-screen v-tag</td><td>V4 · 24 SCENES</td><td>V5 · BUG FIXES · LIP-SYNC OFF · SANKEY CROSSED</td></tr>
+</table>
+
+<hr>
+<h2 id="sec-2026-05-14-intro-pdf-shadow">2026-05-14(續 3)— intro-3pages.pdf 修數字方塊重疊 bug(移除 text-shadow blur)</h2>
+<h3>使用者回報</h3>
+<p>「intro-3pages.pdf 第 1 頁和第 3 頁會有重疊的方格」,並列出方塊內看到的文字:「14 天 天 / 30–50 萬 萬 / ×N ×N輪 輪」「90 90秒 秒 / −99 % % / 0 0 PII」。看起來像同樣的數字 + 單位被覆寫兩次。</p>
+<h3>根因</h3>
+<p>用 sips + Swift+PDFKit 把 PDF 渲染成 PNG 後肉眼確認:每個 <code>.stat .v</code> / <code>.gain .v</code> 數字旁邊都被一塊跟字差不多寬的紅 / 綠實心矩形蓋住,單位字(天 / 萬 / 輪 / 秒 / % / PII / 次)看起來「卡」在數字旁邊像被重描了一次。</p>
+<p>實際原因是 CSS 裡這兩條 <code>text-shadow: 0 0 12px rgba(...)</code> 想做光暈,但 Chrome headless 印 PDF 時把 12px 大半徑模糊光柵化成一個實心 fill 矩形,單位字的位置剛好落在矩形範圍內,被覆蓋一半,視覺上像「方塊重疊」。</p>
+<h3>修法</h3>
+<ul>
+<li><code>docs/pitch/intro-3pages.html</code>:刪 <code>.stat .v</code> 和 <code>.gain .v</code> 兩條 <code>text-shadow</code>。其他 6px 小範圍 text-shadow(<code>.pain-list li::before</code> ✕ 符號、<code>.stage::after</code> → 箭頭)留著,實測沒有相同 artefact。</li>
+<li>用 Chrome headless 重印 PDF:<code>"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=...</code>,輸出 1.49 MB。</li>
+<li>第 1 頁(14天 / 30-50萬 / ×N輪)、第 3 頁(90秒 / -99% / 0 PII / ∞次)PDFKit 重繪後確認矩形消失,單位字完整可讀。</li>
+</ul>
+<h3>新增 / 改動檔案</h3>
+<ul>
+<li>改動 <code>docs/pitch/intro-3pages.html</code> — 刪 2 條 text-shadow。</li>
+<li>改動 <code>docs/pitch/intro-3pages.pdf</code> — Chrome headless 重新匯出。</li>
+<li>改動 <code>z_work_log.html</code> — TOC + 本節。</li>
+</ul>
+<h3>觀察</h3>
+<ul>
+<li><strong>Chrome PDF 對大半徑 text-shadow 的 artefact</strong> — <code>0 0 12px</code> 以上的 blur 半徑用在小字體 + 中文字混排時容易渲染成方塊。要做光暈,改用 <code>box-shadow</code> 套在容器上、或 <code>filter: drop-shadow</code> 比較穩。</li>
+<li><strong>怎麼確認 PDF 內部</strong> — 沒裝 poppler 時可用 <code>sips -s format png</code>(只能拿第 1 頁)+ Swift+PDFKit(可取任意頁)的組合,不需要額外裝套件。</li>
+</ul>
+
+<hr>
+<h2 id="sec-2026-05-14-intro-4pages-cover">2026-05-14(續 4)— intro-4pages 新增滷肉飯洋芋片封面頁 + The Quote 改「決定資源分配」</h2>
+<h3>使用者需求</h3>
+<ul>
+<li>原 <code>intro-3pages.html</code> / <code>.pdf</code> 不要動,前面新增一頁封面頁,大標題「你會想試試滷肉飯口味的洋芋片嗎?」並產 PDF。</li>
+<li>後續追加最後頁 The Quote 文案調整為「資訊是<strong>決定資源分配</strong>的關鍵因素。」(原句缺「資源」)。</li>
+</ul>
+<h3>實作</h3>
+<ul>
+<li><code>docs/pitch/intro-4pages.html</code> — 從 v3 版複製,head title 改「開場四頁」,新增 SLIDE 0 cover CSS(<code>.slide.cover</code> flex 置中、<code>.cover-headline</code> 56pt、<code>.product-card</code> 2 欄資訊卡)。</li>
+<li>cover 內容:kicker「市場驗證 · DEMO 場景」+ 主標分行「你會想試試 <span style="color:#3cf07a">滷肉飯口味</span> 的 <span style="color:#00e5ff">洋芋片</span> 嗎?」+ 副標把 14 天壓到 90 秒 + 商品卡(102 公克 / NT$ 49 / N 位 AI persona)+ 底部 strapline「一句話 → 90 秒 → 一份決策報告」。</li>
+<li>用 Chrome headless 印 PDF:<code>"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=docs/pitch/intro-4pages.pdf file:///.../intro-4pages.html</code>。輸出約 1.95MB,4 頁。</li>
+<li>最後頁 The Quote 從「資訊是<code>決定分配</code>的關鍵因素」改成「資訊是<code>決定資源分配</code>的關鍵因素」(僅 accent span 內容加「資源」二字),重印 PDF。</li>
+</ul>
+<h3>新增 / 改動檔案</h3>
+<ul>
+<li>新增 <code>docs/pitch/intro-4pages.html</code>(以 intro-3pages.html 為底加 cover 頁 + slide-0 CSS)。</li>
+<li>新增 <code>docs/pitch/intro-4pages.pdf</code>(Chrome headless 匯出)。</li>
+<li><code>intro-3pages.html</code> / <code>.pdf</code> 沒動。</li>
+<li>改動 <code>z_work_log.html</code> — TOC + 本節。</li>
+</ul>
+<h3>備忘</h3>
+<ul>
+<li>headless Chrome --print-to-pdf 接 file:// 直接生成,無需 puppeteer/poppler。Chrome.app 已裝就可用。</li>
+<li>z_setting.md 中提到「跟知名滷肉飯聯名的洋芋片餅乾,102 克售價 49 元」的範例,商品卡就用這套規格 — 之後 demo-video-v6 scene-10 也是同一商品。</li>
+</ul>
+
+<hr>
+<h2 id="sec-2026-05-14-demo-video-v6">2026-05-14(續 5)— Demo 影片 v6:整檔字體放大 + 移除右下對嘴 widget + 中英切換下架 + 桑基交錯重畫 + 滷肉飯 4 人設反應</h2>
+<h3>使用者需求(z_setting.md 第 14-28 行)</h3>
+<ul>
+<li>v6 修復清單 12 項,核心是「一定要移除右下角對嘴的人物動畫」。</li>
+<li>整個檔案字體放大、總時數 6:00、LIVE 點擊跳服務介面 + 預設卡片立即可見、移除中英文按鈕、人物臉照片放大、名人模糊、二度就業媽媽 / 前科技工程師頭像顯示修復、「30 位 / 10 位 受訪者」全部改 N 位、桑基要有第一-二層 + 第二-三層交錯影響、4:45 新增不同人設對於產品的想法。</li>
+</ul>
+<h3>實作(以 subagent 並行處理大檔多項 fix)</h3>
+<table>
+<tr><th>項目</th><th>v5 → v6</th></tr>
+<tr><td>narrator widget</td><td>HTML(28 行)+ CSS(76 行)+ JS 全砍;<code>narratorEl</code> / <code>Video</code> / <code>Svg</code> / <code>Audio</code> / <code>LangTag</code> 保留為 <code>null</code> 防呆 const;<code>SCRIPT_MAP</code> 純資料保留供 TTS。最終 0 個 <code>id="narrator*"</code> / <code>class="narrator*"</code>。</td></tr>
+<tr><td>字體放大</td><td><code>.browser { zoom: 1.18; }</code> 一條解決,HUD 額外手動加碼(按鈕 38→44px、時間 12→15px、HUD 高 64→72px、<code>.browser</code> 下緣 inset 84→92px)。</td></tr>
+<tr><td>HUD 總時數</td><td>三處 <code>/ 6:00</code>(<code>TOTAL=360</code>)— v5 已正確,v6 確認。</td></tr>
+<tr><td>LIVE 點擊</td><td><code>liveBtn</code> handler 補 <code>seek(scenes.find(s=&gt;s.sceneEl==='scene-3').start)</code>(<code>elapsed &lt; 1</code> 時觸發),三張卡片 <code>#ex-1/2/3</code> 無 <code>opacity:0</code> 故立即顯示;檔內無「grok」殘留。</td></tr>
+<tr><td>ZH/EN 切換</td><td><code>&lt;div class="lang-switch"&gt;</code> + 2 按鈕刪,<code>setLang()</code> 移除,<code>currentLang</code> 改 <code>const = 'zh'</code>,start-screen「右下切換 中/EN」字串改寫。SCRIPT_MAP.en 資料保留。</td></tr>
+<tr><td>scene 6 / 4 卡片</td><td>0 個「機車」,卡片 2 = 旅遊保險信用卡 — v5 已修,v6 確認。</td></tr>
+<tr><td>人物頭像放大</td><td><code>.ps-avatar</code> 64→92px(+44%)、<code>.pavatar</code>(scene-10 背景)56→78px、<code>#scene-10 .reaction .avatar</code> 28→44px。</td></tr>
+<tr><td>名人模糊</td><td>新增 <code>.celeb-blur { filter: blur(8px) saturate(1.05); }</code> 套在新加的 <code>.ps-face</code> 子元素(不套父層,讓名字標籤保持銳利)+ <code>::after</code> 加「肖像模糊」浮水印標示。6 個名人 ID(<code>nv_jensen_true</code> / <code>chin_blue_500</code> / <code>mizuki_official</code> / <code>greg_han_01</code> / <code>persona_motn8zh9</code> / <code>persona_motn96at</code>)在 <code>runPersonaShow</code> 內自動標記。</td></tr>
+<tr><td>returning_mom / ex_engineer</td><td>路徑 <code>../../public/personas-techlife/{returning_mom,ex_engineer}.png</code> 正確,實際出現在 <code>NAMES</code>(persona-show)、<code>PORTRAIT_POOL</code>(scene-10 背景)、新加的 scene-10 reactions panel 三處,放大尺寸生效。</td></tr>
+<tr><td>30 / 10 位 → N 位</td><td>UI 8 處 + SCRIPT_MAP zh 4 處 + script.md 5 處 + timeline.json 5 處同步。技術參數(<code>concurrency=6</code> / <code>60 種 persona</code> / <code>30-45 歲</code>)未動。</td></tr>
+<tr><td>桑基交錯</td><td>14 條 ribbon(7 條 col1↔col2 + 7 條 col2↔col3),新增 <code>r2b</code>(省錢動機→保額充足)、<code>r10b</code>(保額充足→拒絕)兩條跨層橋,bezier 控制點推到 x=200/340/660/790 讓曲線扇開,Layer-1 每節點 2-3 個 Layer-2 目標、Layer-2 每節點 2 個 Layer-3 目標,兩處 gap 都看得到交錯。</td></tr>
+<tr><td>scene-10 4 人設反應</td><td>原 3 個 generic reaction 換成 4 位指定人設 — 外送員(<code>gen_morj9z1s_1.png</code>)、上班族(<code>gen_morlsj36_1.png</code> 竹科阿豪)、二度就業媽媽(<code>returning_mom.png</code>)、前科技工程師(<code>ex_engineer.png</code>),各一句 opinion bubble。動畫加 <code>nth-child(4)</code> 11000ms delay + 紫色邊框。</td></tr>
+</table>
+<h3>新增 / 改動檔案</h3>
+<ul>
+<li>新增 <code>docs/pitch/demo-video-v6.html</code>(3739 行,v5 是 3844 行,淨 -105 行)。</li>
+<li>新增 <code>docs/pitch/demo-video-v6-script.md</code>(v5 內容 + v6 修復摘要 + 「30/10 位 → N 位」5 處替換 + scene-20 加 4 人設反應描述)。</li>
+<li>新增 <code>docs/pitch/demo-video-v6-timeline.json</code>(版本 v6 / fileBindings 改 v6 / videoRoot=null / 5 處旁白「30 → N」)。</li>
+<li>改動 <code>z_work_log.html</code> — TOC + 本節。</li>
+</ul>
+<h3>備忘 / 後續</h3>
+<ul>
+<li>未來 TTS 用 <code>SCRIPT_MAP.zh[id].audio</code> 掛 <code>/sound/v6/zh/sceneN.mp3</code> 即可。對嘴影片 slot(<code>.video</code>)雖保留但已無 widget 渲染,實際填了也不會出現在畫面。</li>
+<li><code>.lang-switch</code> CSS 還在但 DOM 已移除 — 屬於 dead style,不影響渲染,清理優先序低。</li>
+<li>JS 用 <code>new Function(scriptBody)</code> 驗證 parse 乾淨,沒有 runtime error。</li>
+<li>整檔放大用 CSS <code>zoom</code> 是最低改動成本路線(取代逐 selector 改 px),Chrome / Safari / Firefox 126+ 都吃。若要走更標準的路徑,可改 <code>transform: scale + transform-origin: top left</code>,但會影響佈局尺寸計算,放在後續清理。</li>
+</ul>
+
+<hr>
+<h2 id="sec-2026-05-15-pdf-export">2026-05-15 — 把 demo-video-v7.html 跟 intro-4pages.html 匯出合併成 PDF(28 頁 = 4 開場 + 24 段截圖)</h2>
+<h3>主要任務</h3>
+<ol>
+<li><p><strong>需求演進</strong> — 一開始只是把 <code>docs/pitch/demo-video-v7.html</code> 匯出成 PDF;這份是 24 個 slot / 6 分鐘的動畫式 demo,直接 Chrome print 只會抓到第一幀。確認方向後改成「每個 unique scene 一頁(landscape)」,輸出 <code>docs/pitch/demo-video-v7.pdf</code>(14 頁 1920×1080)。</p></li>
+<li><p><strong>追加需求</strong> — 中途使用者改規格:要把 <code>intro-4pages.html</code> 跟 v7 結合,而且 v7 部分要拆成 <strong>24 段 slot 起始畫面截圖</strong>(不是 14 個 unique scene),呼應原始 timeline。</p></li>
+<li><p><strong>Print 路徑 v1(14 頁版,留作備份)</strong> — <code>/tmp/demo-video-v7-print.html</code>:複製 <code>.stage</code> 14 次、每份 clone 只保留指定 scene 的 <code>.active</code>,用 <code>@page { size: 1920px 1080px }</code> + <code>page-break-after: always</code> 拆頁,Chrome <code>--headless --print-to-pdf</code> 一次輸出。</p></li>
+<li><p><strong>Screenshot 路徑(最終 24 頁版)</strong>:</p>
+<ul>
+<li>原始 HTML 已有 <code>?scene=N</code> deep-link 但 JS 寫的是 <code>classList.add('hidden')</code>,CSS 卻只定義 <code>.start-screen.hide</code> — bug 導致截圖會看到 start-screen 蓋住場景。/tmp/demo-video-v7-shot.html 補了 <code>.start-screen.hidden { display: none !important }</code> 和 <code>body.shot-mode</code>(藏 HUD / caption / live-preview / cursor)。</li>
+<li>跑 24 次 <code>chrome --headless=new --window-size=1920,1080 --virtual-time-budget=6000 --screenshot=... ?scene=N</code>,每次 <code>--user-data-dir</code> 隔離。</li>
+<li><strong>踩到的 chrome --headless=new 已知 hang</strong>:PNG 寫出後 process 不退,父層 <code>wait</code> 永遠回不來。先批 1-6 卡住、後續 batch 用背景任務避開,最後 <code>pkill -f "Chrome --headless"</code> 才把整串釋放。下次要在每個 chrome 前面加 <code>timeout 15s</code> 防呆。</li>
+</ul>
+</li>
+<li><p><strong>合併</strong> — <code>/tmp/pdfmerge</code> 暫存 <code>npm install pdf-lib</code>,寫 <code>merge.mjs</code>:</p>
+<ul>
+<li>先 <code>copyPages</code> 把 intro-4pages.pdf 的 4 頁 A4 landscape 接進來。</li>
+<li>再 loop 24 個 PNG,每張 <code>embedPng</code> 到一個新增的 1920×1080 page,<code>drawImage(x:0, y:0)</code> 滿版。</li>
+<li>輸出 <code>docs/pitch/intro-and-demo-video-v7-24segments.pdf</code>(28 頁 / 6.3 MB)。</li>
+</ul>
+</li>
+</ol>
+<h3>檔案變動</h3>
+<ul>
+<li>新增 <code>docs/pitch/demo-video-v7.pdf</code> — 14 頁版(每 unique scene 一頁,留作備份用途)。</li>
+<li>新增 <code>docs/pitch/intro-and-demo-video-v7-24segments.pdf</code> — 28 頁正式版(4 開場 + 24 段)。</li>
+<li>暫存檔(未進 repo,放 /tmp):<code>demo-video-v7-print.html</code>(14 頁打印版)、<code>demo-video-v7-shot.html</code>(deep-link 修補 + screenshot 模式)、<code>pdfmerge/merge.mjs</code>(pdf-lib 合併腳本)、<code>pdfmerge/shots/scene-01~24.png</code>。</li>
+<li>改動 <code>z_work_log.html</code> — TOC + 本節。</li>
+</ul>
+<h3>備忘 / 後續</h3>
+<ul>
+<li>原始 HTML 的 <code>handleDeepLink</code> 把 start-screen <code>classList.add('hidden')</code> 是個 bug — CSS 沒定義 <code>.hidden</code>。下次 v8 時記得改成 <code>.hide</code> 或補 <code>.hidden</code> CSS,不然 <code>?scene=N</code> 還是會被 start-screen 蓋住。</li>
+<li>24 段裡有 4 組共用同一個 <code>sceneEl</code>(scene 7/8 都是 scene-4、19/20 都是 scene-10、22/23/24 都是 scene-12),demo HTML 註解寫「同 sceneEl 不同 slot 的微動作(目前略)」,所以那幾組畫面內容相同。要做出差異需要在 HTML 內補對應 slot 的子動畫。</li>
+<li>scene-title(slot 2 / t=12)的中文標題截圖會呈現 blur 狀態 — 這是「塌縮」入場動畫的中間幀,不是 bug。</li>
+<li>合併工具下次也可直接裝 <code>brew install qpdf</code> 用 <code>qpdf --empty --pages a.pdf b.pdf -- merged.pdf</code>,不必每次 <code>npm install pdf-lib</code>。</li>
+</ul>
+
+</main>
+<button class="back-to-top" id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到最上面">↑</button>
+</body>
+</html>

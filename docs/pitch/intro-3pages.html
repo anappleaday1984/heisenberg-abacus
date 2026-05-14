@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<title>海森堡的算盤 · 開場三頁 — 產業痛點 / 實作邏輯 / 預期效益</title>
+<style>
+  :root {
+    --bg: #0b1736;
+    --bg-2: #142244;
+    --bg-deep: #06112a;
+    --ink: #eaf2ff;
+    --muted: #8aa0c2;
+    --dim: #5a708f;
+    --green: #3cf07a;
+    --cyan: #00e5ff;
+    --red: #ff5670;
+    --amber: #ffc857;
+    --line: rgba(0, 229, 255, 0.20);
+  }
+
+  @page { size: A4 landscape; margin: 0; }
+  html, body { margin: 0; padding: 0; background: #000; }
+  body {
+    font-family: "Helvetica Neue", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, ui-monospace, monospace; }
+
+  .slide {
+    width: 297mm;
+    height: 210mm;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 50% 38%, rgba(0,229,255,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse at 92% 92%, rgba(60,240,122,0.06) 0%, transparent 50%),
+      linear-gradient(180deg, #0d1c40 0%, #0a1632 60%, #07112a 100%),
+      repeating-linear-gradient(0deg, rgba(0,229,255,0.035) 0px, rgba(0,229,255,0.035) 1px, transparent 1px, transparent 4px);
+    page-break-after: always;
+    box-sizing: border-box;
+    padding: 14mm 16mm;
+  }
+  .slide:last-child { page-break-after: auto; }
+
+  .slide::before, .slide::after {
+    content: "";
+    position: absolute;
+    width: 22px; height: 22px;
+    border-color: var(--cyan);
+    border-style: solid;
+    opacity: 0.7;
+  }
+  .slide::before { top: 8mm; left: 8mm; border-width: 1.5px 0 0 1.5px; }
+  .slide::after  { bottom: 8mm; right: 8mm; border-width: 0 1.5px 1.5px 0; }
+
+  .top-label {
+    position: absolute; top: 8mm; left: 16mm; right: 16mm;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 9pt; letter-spacing: 0.32em; color: var(--dim);
+    text-transform: uppercase;
+  }
+  .top-label .right { color: var(--cyan); }
+  .pageno {
+    position: absolute; bottom: 8mm; left: 16mm;
+    font-size: 9pt; letter-spacing: 0.3em; color: var(--dim);
+  }
+  .pageno b { color: var(--cyan); font-weight: 600; }
+
+  h1.kicker {
+    font-size: 11pt; letter-spacing: 0.4em; color: var(--cyan);
+    margin: 0 0 6mm 0; font-weight: 500; text-transform: uppercase;
+  }
+  h2.headline {
+    font-size: 32pt; line-height: 1.1; font-weight: 800; margin: 0 0 4mm 0;
+    color: var(--ink); letter-spacing: -0.01em;
+  }
+  h2.headline .accent { color: var(--cyan); }
+  h2.headline .danger { color: var(--red); }
+  h2.headline .ok { color: var(--green); }
+  .subtitle {
+    font-size: 12pt; color: var(--muted); margin: 0 0 8mm 0;
+    line-height: 1.55; max-width: 240mm;
+  }
+  .pill {
+    display: inline-block; font-size: 8.5pt; letter-spacing: 0.18em;
+    border: 1px solid var(--line); color: var(--cyan);
+    padding: 2px 8px; border-radius: 999px;
+    text-transform: uppercase;
+  }
+
+  /* === SLIDE 1 — PAIN === */
+  .pain-hero {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 10mm;
+    margin-top: 4mm;
+  }
+  .pain-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm;
+    margin: 5mm 0 7mm;
+  }
+  .stat {
+    border: 1px solid rgba(255, 86, 112, 0.30);
+    background: linear-gradient(180deg, rgba(255,86,112,0.06), rgba(6,17,42,0.65));
+    padding: 4mm 4mm 5mm; border-radius: 4px;
+    text-align: center;
+  }
+  .stat .v {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, ui-monospace, monospace;
+    font-size: 26pt; font-weight: 700; color: var(--red);
+    letter-spacing: -0.01em; line-height: 1;
+  }
+  .stat .v .u {
+    font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    font-size: 13pt; color: var(--muted); margin-left: 2mm; font-weight: 600;
+  }
+  .stat .lbl {
+    font-size: 8.5pt; letter-spacing: 0.22em; color: var(--muted);
+    text-transform: uppercase; margin-top: 2.5mm;
+  }
+  .pain-list {
+    list-style: none; padding: 0; margin: 0;
+  }
+  .pain-list li {
+    padding: 3mm 0 3mm 9mm; position: relative;
+    border-bottom: 1px dashed rgba(255,255,255,0.07);
+    font-size: 10.5pt; color: var(--ink); line-height: 1.55;
+  }
+  .pain-list li:last-child { border: 0; }
+  .pain-list li::before {
+    content: "✕";
+    position: absolute; left: 0; top: 3.5mm;
+    color: var(--red); font-weight: 800;
+    font-family: "JetBrains Mono", monospace;
+    width: 6mm; text-align: center;
+    text-shadow: 0 0 6px rgba(255,86,112,0.5);
+  }
+  .pain-list b { color: var(--red); font-weight: 600; }
+  .pain-list code {
+    color: var(--amber); font-family: "JetBrains Mono", monospace;
+    font-size: 9pt; background: rgba(255,200,87,0.06);
+    padding: 0 4px; border-radius: 3px;
+  }
+
+  .pain-stage {
+    background: linear-gradient(180deg, #03091a, #050f24);
+    border: 1px solid rgba(255,86,112,0.30);
+    border-radius: 6px; height: 100%;
+    position: relative; overflow: hidden;
+    box-shadow: inset 0 0 60px rgba(255,86,112,0.05);
+    padding: 5mm 6mm 4mm;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9pt;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .pain-stage .hdr {
+    display: flex; justify-content: space-between;
+    color: var(--dim); font-size: 8pt; letter-spacing: 0.18em;
+    margin-bottom: 3mm;
+  }
+  .pain-stage .hdr b { color: var(--red); }
+  .pain-stage .ln { color: var(--muted); }
+  .pain-stage .ln .w { color: var(--ink); }
+  .pain-stage .ln .r { color: var(--red); }
+  .pain-stage .ln .a { color: var(--amber); }
+  .pain-stage .ln .c { color: var(--cyan); }
+  .pain-stage .blink {
+    color: var(--red); letter-spacing: 0.18em; font-weight: 700;
+    margin-top: 4mm;
+  }
+  .pain-stage .cost-chart {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 56mm;
+    background:
+      linear-gradient(180deg, transparent, rgba(255,86,112,0.08)),
+      linear-gradient(0deg, rgba(255,86,112,0.35) 1px, transparent 1px) 0 100% / 12mm 12mm,
+      linear-gradient(90deg, rgba(255,86,112,0.35) 1px, transparent 1px) 0 100% / 12mm 12mm;
+    border-top: 1px solid rgba(255,86,112,0.25);
+  }
+  .pain-stage .cost-chart::before {
+    content: "COST CURVE · CALENDAR DAYS × BUDGET";
+    position: absolute; top: 3mm; left: 4mm;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7.5pt; letter-spacing: 0.22em; color: var(--red); opacity: 0.85;
+  }
+  .pain-stage .cost-chart .bar {
+    position: absolute; bottom: 0; width: 6mm;
+    background: linear-gradient(180deg, var(--red), rgba(255,86,112,0.2));
+    border-top: 2px solid var(--red);
+    box-shadow: 0 0 12px rgba(255,86,112,0.35);
+  }
+
+  /* === SLIDE 2 — HOW === */
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4mm; margin-top: 6mm;
+  }
+  .stage {
+    border: 1px solid rgba(0,229,255,0.22);
+    background: rgba(6, 17, 42, 0.78);
+    border-radius: 4px; padding: 4mm 4mm 5mm; position: relative;
+    min-height: 50mm;
+  }
+  .stage .num {
+    color: var(--cyan); font-family: "JetBrains Mono", monospace;
+    font-size: 9pt; letter-spacing: 0.25em;
+  }
+  .stage .name {
+    color: var(--ink); font-weight: 700; font-size: 12.5pt;
+    letter-spacing: 0.04em; margin: 1.5mm 0 1mm;
+  }
+  .stage .role {
+    color: var(--muted); font-size: 8.5pt; line-height: 1.45;
+    margin-bottom: 2.5mm;
+  }
+  .stage .meta {
+    color: var(--green); font-family: "JetBrains Mono", monospace;
+    font-size: 7.8pt; letter-spacing: 0.06em; line-height: 1.55;
+  }
+  .stage.fan {
+    background:
+      linear-gradient(135deg, rgba(60,240,122,0.10), rgba(0,229,255,0.05)),
+      rgba(10,24,40,0.55);
+    border-color: rgba(60,240,122,0.35);
+  }
+  .stage.fan .name { color: var(--green); }
+  .stage::after {
+    content: "→"; position: absolute; right: -3.5mm; top: 50%;
+    transform: translateY(-50%); color: var(--cyan); font-size: 11pt;
+    text-shadow: 0 0 6px var(--cyan);
+  }
+  .stage:last-child::after { content: ""; }
+
+  .s2-grid {
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 8mm;
+    margin-top: 8mm;
+  }
+  .feat-list { list-style: none; padding: 0; margin: 0; }
+  .feat-list li {
+    padding: 3mm 0; border-bottom: 1px dashed rgba(255,255,255,0.07);
+    font-size: 10pt; color: var(--ink); line-height: 1.55;
+  }
+  .feat-list li:last-child { border: 0; }
+  .feat-list code {
+    color: var(--green); font-family: "JetBrains Mono", monospace;
+    font-size: 9pt; background: rgba(60,240,122,0.08);
+    padding: 0 4px; border-radius: 3px;
+  }
+  .feat-list b { color: var(--cyan); font-weight: 600; }
+
+  .stack-card {
+    border: 1px solid rgba(0,229,255,0.25);
+    background: rgba(3, 10, 26, 0.75);
+    padding: 5mm 6mm; border-radius: 4px;
+  }
+  .stack-card h3 {
+    margin: 0 0 3mm; font-size: 9.5pt; letter-spacing: 0.3em;
+    color: var(--cyan); font-weight: 500; text-transform: uppercase;
+  }
+  .badges { display: flex; flex-wrap: wrap; gap: 2mm 2mm; }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: 8.5pt;
+    border: 1px solid rgba(255,255,255,0.20); padding: 1.4mm 3mm;
+    color: var(--ink); border-radius: 3px;
+    background: rgba(255,255,255,0.02);
+  }
+  .badge.hot { border-color: var(--cyan); color: var(--cyan); }
+  .scale-callout {
+    margin-top: 4mm; padding: 4mm 5mm;
+    border-left: 3px solid var(--green); color: var(--ink);
+    font-size: 10pt; line-height: 1.55;
+    background: rgba(60,240,122,0.06);
+  }
+  .scale-callout b { color: var(--green); font-family: "JetBrains Mono", monospace; }
+
+  /* === SLIDE 3 — IMPACT === */
+  .gain-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm;
+    margin: 2mm 0 3mm;
+  }
+  .gain {
+    border: 1px solid rgba(60,240,122,0.30);
+    background: linear-gradient(180deg, rgba(60,240,122,0.06), rgba(6,17,42,0.65));
+    padding: 4mm 4mm 5mm; border-radius: 4px;
+    text-align: center;
+  }
+  .gain .v {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, ui-monospace, monospace;
+    font-size: 26pt; font-weight: 700; color: var(--green);
+    letter-spacing: -0.01em; line-height: 1;
+  }
+  .gain .v .u {
+    font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    font-size: 13pt; color: var(--muted); margin-left: 2mm; font-weight: 600;
+  }
+  .gain .lbl {
+    font-size: 8.5pt; letter-spacing: 0.22em; color: var(--muted);
+    text-transform: uppercase; margin-top: 2.5mm;
+  }
+
+  .ba-table {
+    display: grid;
+    grid-template-columns: 24% 38% 38%;
+    border: 1px solid rgba(0,229,255,0.20);
+    border-radius: 4px; overflow: hidden;
+    margin-top: 2mm;
+  }
+  .ba-table .row { display: contents; }
+  .ba-table .cell {
+    padding: 2.8mm 4.5mm;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    font-size: 10.8pt; line-height: 1.45;
+  }
+  .ba-table .cell:nth-child(3n) { border-right: 0; }
+  .ba-table .row:last-child .cell { border-bottom: 0; }
+  .ba-table .head {
+    background: rgba(0,229,255,0.08);
+    color: var(--cyan); font-weight: 700;
+    letter-spacing: 0.18em; font-size: 10.5pt; text-transform: uppercase;
+  }
+  .ba-table .axis {
+    color: var(--ink); font-weight: 600;
+    background: rgba(3, 10, 26, 0.65);
+  }
+  .ba-table .before {
+    color: var(--muted);
+    background: rgba(255, 86, 112, 0.05);
+    border-left: 2px solid rgba(255, 86, 112, 0.3);
+  }
+  .ba-table .after {
+    color: var(--ink);
+    background: rgba(60, 240, 122, 0.05);
+    border-left: 2px solid var(--green);
+  }
+  .ba-table .after b { color: var(--green); }
+
+  .impact-foot {
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 8mm;
+    margin-top: 3mm;
+  }
+  .scenario h3, .closing h3 {
+    margin: 0 0 3mm; font-size: 9.5pt; letter-spacing: 0.3em;
+    color: var(--cyan); font-weight: 500; text-transform: uppercase;
+  }
+  .scenario p, .closing p {
+    margin: 0 0 2mm; font-size: 10pt; color: var(--ink);
+    line-height: 1.6;
+  }
+  .scenario .tags { margin-top: 3mm; }
+  .scenario .tags .badge { margin-right: 1.5mm; }
+
+  .closing {
+    border: 1px solid var(--cyan);
+    background: linear-gradient(135deg, rgba(0,229,255,0.10), rgba(60,240,122,0.05));
+    padding: 5mm 6mm; border-radius: 4px;
+  }
+  .closing .quote {
+    font-size: 17pt; font-weight: 800; color: var(--ink);
+    line-height: 1.25; margin: 0 0 3mm; letter-spacing: -0.01em;
+  }
+  .closing .quote .accent { color: var(--cyan); }
+  .closing .meta {
+    color: var(--muted); font-size: 9pt; line-height: 1.6;
+    margin-top: 3mm; padding-top: 3mm;
+    border-top: 1px dashed rgba(255,255,255,0.15);
+    font-family: "JetBrains Mono", monospace;
+  }
+  .closing .meta a { color: var(--cyan); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- =================== SLIDE 1 — 產業痛點 =================== -->
+<section class="slide">
+  <div class="top-label">
+    <span>AIA × Claude Code · Demo Showcase</span>
+    <span class="right">開場 01 — 產業痛點 / Industry Pain</span>
+  </div>
+
+  <div class="pain-hero">
+    <div>
+      <h1 class="kicker">產業痛點 — Why Now</h1>
+      <h2 class="headline">問了 <span class="danger">14 天</span>，<br/>還沒問對<span class="accent">人</span>。</h2>
+      <p class="subtitle">
+        在金融業，每一個新商品上市前都要打一場「市場調查戰」：兩週的訪談、五十萬的預算、
+        最後拿到一份逐字稿，但<b style="color:var(--red)">參數一改、整輪重來</b>。
+        產品經理被迫在「等資料」和「拍腦袋」之間二選一 —
+        而消費者真正的偏好，從來沒被連續觀測過。
+      </p>
+
+      <div class="pain-stats">
+        <div class="stat">
+          <div class="v">14<span class="u">天</span></div>
+          <div class="lbl">驗證週期</div>
+        </div>
+        <div class="stat">
+          <div class="v">30–50<span class="u">萬</span></div>
+          <div class="lbl">單輪預算</div>
+        </div>
+        <div class="stat">
+          <div class="v">×N<span class="u">輪</span></div>
+          <div class="lbl">參數變動</div>
+        </div>
+      </div>
+
+      <ul class="pain-list">
+        <li><b>樣本錯位</b> — 問得到的人 ≠ 你要懂的人；高價值族群往往不接電訪、不填問卷。</li>
+        <li><b>參數鎖死</b> — 利率 / 保額 / 回饋率改一個參數，整輪招募作廢，<code>重跑成本 ≈ 一輪預算</code>。</li>
+        <li><b>隱私瓶頸</b> — 真人 PII、同意書、合規流程；資料一旦敏感就無法跨團隊重用。</li>
+        <li><b>交付失真</b> — 100 頁逐字稿傳給 PM、設計、行銷，每一手都壓縮、每一手都失真。</li>
+      </ul>
+    </div>
+
+    <div class="pain-stage">
+      <div class="hdr">
+        <span>LEGACY-RESEARCH · v1.0</span>
+        <span><b>STATUS: BOTTLENECK</b></span>
+      </div>
+      <div class="ln">&gt; <span class="w">survey.recruit</span>(<span class="a">n=400</span>)</div>
+      <div class="ln">&gt; <span class="a">awaiting panel provider…</span></div>
+      <div class="ln">&gt; ETA: <span class="r">9 days</span></div>
+      <div class="ln">&gt; <span class="w">focus_group.schedule</span>()</div>
+      <div class="ln">&gt; <span class="a">awaiting room booking…</span></div>
+      <div class="ln">&gt; ETA: <span class="r">+3 days</span></div>
+      <div class="ln">&gt; <span class="w">transcribe</span>(audio) → 100 pages</div>
+      <div class="ln">&gt; <span class="w">summarize</span>(...) → slide deck</div>
+      <div class="ln">&gt; PM: <span class="c">"可以把利率調 0.5% 再跑一次嗎?"</span></div>
+      <div class="ln">&gt; <span class="r">ERR: budget_exceeded · recruit_again_required</span></div>
+      <div class="ln blink">▌ BLOCKED · CALENDAR=14d · BUDGET=NT$420K</div>
+
+      <div class="cost-chart">
+        <div class="bar" style="left: 8mm; height: 12mm;"></div>
+        <div class="bar" style="left: 28mm; height: 22mm;"></div>
+        <div class="bar" style="left: 48mm; height: 30mm;"></div>
+        <div class="bar" style="left: 68mm; height: 38mm;"></div>
+        <div class="bar" style="left: 88mm; height: 46mm;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pageno">SLIDE <b>01</b> / 03 · 產業痛點</div>
+</section>
+
+<!-- =================== SLIDE 2 — Claude Code 實作邏輯 =================== -->
+<section class="slide">
+  <div class="top-label">
+    <span>AIA × Claude Code · Demo Showcase</span>
+    <span class="right">開場 02 — 實作邏輯 / Built with Claude Code</span>
+  </div>
+
+  <h1 class="kicker">Claude Code 實作邏輯 — How</h1>
+  <h2 class="headline">下達一個指令，<span class="accent">六個專家團隊</span>接力完成任務。</h2>
+  <p class="subtitle">
+    Claude API 串成五段管線、每段 streaming 回前端；N 位 persona 並行作答（worker pool concurrency = 6），
+    PM Plan / Summary / Report 全部開 <span class="mono" style="color:var(--green)">thinking: adaptive</span>，
+    system prompt 一律 <span class="mono" style="color:var(--green)">cache_control: ephemeral</span>。
+  </p>
+
+  <div class="pipeline">
+    <div class="stage">
+      <div class="num">01 / ENTRY</div>
+      <div class="name">需求驗證</div>
+      <div class="role">把使用者一句話的 Brief 結構化，輸出 [STATUS:READY] 或追問。</div>
+      <div class="meta">stream · 1k tokens</div>
+    </div>
+    <div class="stage">
+      <div class="num">02 / PM · PLAN</div>
+      <div class="name">研究問題</div>
+      <div class="role">產 4–6 題訪談題目 + 範圍與摘要。</div>
+      <div class="meta">adaptive · 4k · JSON</div>
+    </div>
+    <div class="stage fan">
+      <div class="num">03 / PERSONA × N</div>
+      <div class="name">並行訪談</div>
+      <div class="role">N 位 AI 受訪者各自 streaming 第一人稱回答；五維人格分數即時計算。</div>
+      <div class="meta">parallel·6 · 1.5k each</div>
+    </div>
+    <div class="stage">
+      <div class="num">04 / SUMMARY</div>
+      <div class="name">洞察萃取</div>
+      <div class="role">共識 / 分歧 / 風險 / metric 結構化萃取,含族群比較。</div>
+      <div class="meta">adaptive · 12k · JSON</div>
+    </div>
+    <div class="stage">
+      <div class="num">05 / PM · REPORT</div>
+      <div class="name">決策報告</div>
+      <div class="role">關鍵發現、行動建議、優先序,前端可直接下載 PDF。</div>
+      <div class="meta">adaptive · 16k · JSON</div>
+    </div>
+  </div>
+
+  <div class="s2-grid">
+    <ul class="feat-list">
+      <li><b>串流到底</b> — 每個 agent 都用 <code>messages.stream()</code>；前端用 SSE 同步看到打字動畫,不用等整段。</li>
+      <li><b>並行 persona</b> — Promise pool 控制併發 6,N 位 persona 在 60–90 秒內全部問完。</li>
+      <li><b>JSON 安全網</b> — <code>json-extractor.ts</code> 4 種候選擷取 × 6 種修補 × 24 次重試,模型偶爾回髒 JSON 也能自救。</li>
+      <li><b>繁中口語護欄</b> — <code>LANG_RULE</code> 共享 prompt 焊進每支 agent;<code>opencc-js</code> 二次保險把簡轉繁,撥款 / 申辦等台灣詞鎖死。</li>
+      <li><b>產品光譜可拖</b> — 算盤珠 slider 即時改變 persona 評分權重,UI 不重 fetch、純前端 reduce 重算 phase map。</li>
+    </ul>
+
+    <div>
+      <div class="stack-card">
+        <h3>Stack</h3>
+        <div class="badges">
+          <span class="badge hot">Anthropic SDK</span>
+          <span class="badge hot">Adaptive Thinking</span>
+          <span class="badge hot">Prompt Caching</span>
+          <span class="badge">Next.js 14</span>
+          <span class="badge">TypeScript</span>
+          <span class="badge">Tailwind</span>
+          <span class="badge">SSE Streaming</span>
+          <span class="badge">jsPDF · html2canvas</span>
+          <span class="badge">opencc-js</span>
+        </div>
+      </div>
+      <div class="scale-callout">
+        <b>61 TS files · ~8.7K LOC · 5 段管線 · 6 個 Claude 並行</b><br/>
+        從 commit #1 到 Demo-ready,全程用 <span style="color:var(--cyan)">Claude Code</span> 配對寫成。
+      </div>
+    </div>
+  </div>
+
+  <div class="pageno">SLIDE <b>02</b> / 03 · 實作邏輯</div>
+</section>
+
+<!-- =================== SLIDE 3 — 預期效益 =================== -->
+<section class="slide">
+  <div class="top-label">
+    <span>AIA × Claude Code · Demo Showcase</span>
+    <span class="right">開場 03 — 預期效益 / Expected Impact</span>
+  </div>
+
+  <h1 class="kicker">預期效益 — Impact</h1>
+  <h2 class="headline">把市場調查,<br/>從<span class="danger">瓶頸</span> 變成 <span class="ok">滑桿</span>。</h2>
+  <p class="subtitle">
+    產品經理一個假設，過去要排兩週、燒 30–50 萬預算才驗得了；
+    現在<b style="color:var(--green)">一句話、90 秒、無真人 PII</b>。
+    PM、設計、行銷、信用模型團隊在同一個畫面上透過算盤輸入外在變因，
+    看 N 種客群粒子在三個決策區之間跳動，當場下決策！
+  </p>
+
+  <div class="gain-stats">
+    <div class="gain">
+      <div class="v">90<span class="u">秒</span></div>
+      <div class="lbl">驗證一輪</div>
+    </div>
+    <div class="gain">
+      <div class="v">−99<span class="u">%</span></div>
+      <div class="lbl">時程壓縮</div>
+    </div>
+    <div class="gain">
+      <div class="v">0<span class="u">PII</span></div>
+      <div class="lbl">真人資料</div>
+    </div>
+    <div class="gain">
+      <div class="v">∞<span class="u">次</span></div>
+      <div class="lbl">參數重跑</div>
+    </div>
+  </div>
+
+  <div class="ba-table">
+    <div class="row">
+      <div class="cell head axis">維度</div>
+      <div class="cell head" style="color:var(--red)">傳統市場調查 — BEFORE</div>
+      <div class="cell head" style="color:var(--green)">海森堡的算盤 — AFTER</div>
+    </div>
+    <div class="row">
+      <div class="cell axis">驗證一個假設</div>
+      <div class="cell before">14 天問卷 + 焦點訪談,30–50 萬預算</div>
+      <div class="cell after"><b>90 秒</b>並行訪談,N 位 persona 同步作答</div>
+    </div>
+    <div class="row">
+      <div class="cell axis">參數調整</div>
+      <div class="cell before">每換一次利率 / 保額,整輪重招募</div>
+      <div class="cell after">拖算盤珠,phase map <b>即時重新塌縮</b></div>
+    </div>
+    <div class="row">
+      <div class="cell axis">樣本與隱私</div>
+      <div class="cell before">問得到的人 ≠ 你要懂的人;同意流程繁瑣</div>
+      <div class="cell after"><b>完全合成資料、零真人 PII</b>;persona 可手刻 / AI 生成</div>
+    </div>
+    <div class="row">
+      <div class="cell axis">交付物</div>
+      <div class="cell before">逐字稿 + 摘要簡報,跨團隊傳遞失真</div>
+      <div class="cell after">決策報告卡 + Sankey意圖分析 + Phase Map相變圖,<b>直接下載PDF / 報告寄到信箱</b></div>
+    </div>
+  </div>
+
+  <div class="impact-foot">
+    <div class="scenario">
+      <h3>Scenarios</h3>
+      <p>金融商品概念驗證:小額信貸、機車險、聯名卡回饋;新產品定價敏感度;行銷文案 A/B 預演;風險族群放款條件壓力測試。</p>
+      <div class="tags">
+        <span class="badge hot">小額信貸</span>
+        <span class="badge hot">機車保險</span>
+        <span class="badge hot">信用卡回饋</span>
+        <span class="badge hot">定價敏感度</span>
+        <span class="badge hot">壓力測試</span>
+      </div>
+    </div>
+
+    <div class="closing">
+      <h3>The Quote</h3>
+      <p class="quote">資訊是<span class="accent">決定分配</span>的關鍵因素。</p>
+      <div class="meta">
+        Live Demo: <a href="https://stoic-thaw-trustee.ngrok-free.dev/">stoic-thaw-trustee.ngrok-free.dev</a><br/>
+        Repo: github.com/anappleaday1984/heisenberg-abacus
+      </div>
+    </div>
+  </div>
+
+  <div class="pageno">SLIDE <b>03</b> / 03 · 預期效益</div>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+{
+    "livePreview.defaultPreviewPath": "/docs/pitch/demo-video-v5.html",
+    "livePreview.openPreviewTarget": "External Browser",
+    "livePreview.customExternalBrowser": "Chrome"
+}

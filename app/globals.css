@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 全站預設字體放大 120% — 透過 root font-size 讓所有 rem-based Tailwind text utility
+ * (text-xs / sm / base / lg / xl / 2xl …) 一起縮放。
+ * 刻意用絕對 px 寫死的小字 (text-[10px]/[11px]/[12px]/[13px]/[9px]) 與 SVG 內
+ * <text fontSize=...> 不受影響,維持原始比例 — 那些是 footnote / 徽章 / 圖表標籤,
+ * 美觀上不該被拉大。 */
+html {
+  font-size: 120%;
+}
+
 html, body {
   height: 100%;
   background: #0b1020;

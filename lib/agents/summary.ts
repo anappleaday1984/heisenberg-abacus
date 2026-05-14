@@ -110,7 +110,10 @@ ${responses
   const response = await callLLM(() =>
     anthropic.messages.create({
       model: MODEL,
-      max_tokens: 12000, // 給 thinking + JSON 充足空間（25+ 受訪者場景）
+      max_tokens: 16000, // 給 adaptive thinking + JSON 充足空間。
+      // 12000 在 25+ 受訪者場景偶爾被截斷(thinking 吃掉 8K+ token、剩給 JSON 不夠
+      // 寫完 metrics array),且 MiniMax stop_reason 未必正確回 "max_tokens",
+      // extractor 的 auto-close 已蓋一層救援、但根因還是要把 budget 拉大。
       thinking: { type: "adaptive" },
       system: [
         {
