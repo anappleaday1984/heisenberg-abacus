@@ -159,45 +159,66 @@ const PRODUCT_LABEL: Record<ProductType, string> = {
 export const productLabel = (t: ProductType) => PRODUCT_LABEL[t];
 
 /**
+ * 五維人格「接受傾向偏移」— 不分產品類型的<b>共用基底</b>。任何問題（信貸／保險／
+ * 信用卡／開放式）都先用這個算每位受訪者相對中性的接受傾向。
+ * 中性受訪者（五維皆 50）回傳 0，範圍約 ±40。五個維度全部參與，正負號代表該特質
+ * 對「接受一個新提案／產品」的普遍方向：
+ *
+ *   風險偏好  +0.30  願意嘗試新事物 → 接受度↑
+ *   數位熟練  +0.15  對新型／線上／數位提案的早期採用 → ↑
+ *   借貸需求  +0.15  有未滿足需求、在找解法 → 對提案更敏感 → ↑
+ *   信用狀態  +0.10  財務／信用穩健、敢承諾 → 行動門檻低 → ↑
+ *   經濟壓力  −0.20  經濟壓力大 → 對要花錢／長期承諾的決策更保守 → ↓
+ *
+ * 各情境（金融產品 / 開放式）再於此偏移上疊加自己的「中性錨點」與專屬驅動因子。
+ */
+export function computeIntentBias(scores: RadarScores): number {
+  return (
+    (scores.riskPreference - 50) * 0.3 +
+    (scores.digitalFluency - 50) * 0.15 +
+    (scores.loanNeed - 50) * 0.15 +
+    (scores.creditStatus - 50) * 0.1 -
+    (scores.economicPressure - 50) * 0.2
+  );
+}
+
+/**
  * 推算單一受訪者在給定參數下的「購買意願度」(0-100)。
- * 三種產品類型各有不同的核心驅動因子：
- *   - 信貸：低利率推升、高利率打壓
- *   - 保險：低月費推升 + 經濟壓力族需求高 + 健康/家庭責任有關
- *   - 信用卡：高回饋推升 + 數位熟練度有關
+ * = 五維共用基底 computeIntentBias + 金融情境中性錨點(35) + 產品專屬核心驅動因子：
+ *   - 信貸：低利率推升、高利率打壓 + 借貸需求/信用加權
+ *   - 保險：低月費推升 + 經濟壓力族(家庭責任)需求高
+ *   - 信用卡：高回饋推升 + 信用/數位熟練度加權
  */
 export function computePurchaseIntent(
   scores: RadarScores,
   params: ProductParams
 ): number {
-  // 共用基底
-  let intent = scores.loanNeed * 0.4 + scores.riskPreference * 0.3;
+  // 五維共用基底 + 金融情境中性錨點（維持原本中性≈35 的校準）
+  let intent = 35 + computeIntentBias(scores);
 
   if (params.type === "loan") {
     // 利率敏感度（5% 中性）
     intent += (params.interestRate - 5) * -3;
-    // 信用狀態：差 = 怕被拒
-    intent += (scores.creditStatus - 50) * 0.18;
-    // 經濟壓力曲線
+    // 信貸特別吃「借貸需求」與「信用狀態(怕被拒)」，在共用基底之上再加權
+    intent += (scores.loanNeed - 50) * 0.25;
+    intent += (scores.creditStatus - 50) * 0.08;
+    // 經濟壓力曲線（非單調，倒 U：中壓需週轉、極高壓退縮）
     if (scores.economicPressure > 80) intent -= 15;
     else if (scores.economicPressure > 50) intent += 6;
-    intent += (scores.digitalFluency - 50) * 0.05;
   } else if (params.type === "insurance") {
     // 月費敏感度（200 元中性，每多 100 元 -5 intent）
     intent += (200 - params.monthlyFee) / 20;
-    // 改成「家庭責任 + 經濟壓力」推動：有家有責任的人更需要保險
-    intent += scores.economicPressure * 0.15; // 高壓力族更需保
+    // 保險特例：家庭責任 + 經濟壓力「推升」需求，蓋過共用基底對壓力的保守扣分
+    intent += 8 + (scores.economicPressure - 50) * 0.3;
     // 但太窮買不起
     if (scores.economicPressure > 85) intent -= 18;
-    // 信用無關保險，不加分
-    intent += (scores.digitalFluency - 50) * 0.08;
   } else {
     // creditcard
     // 回饋率敏感（3% 中性，每多 1% +10）
     intent += (params.cashbackRate - 3) * 10;
-    // 信用越好越容易核卡 → 意願較高
-    intent += (scores.creditStatus - 50) * 0.3;
-    // 數位熟練度推升（要會用 app、線上消費）
-    intent += (scores.digitalFluency - 50) * 0.25;
+    // 核卡看信用、用卡看數位熟練，在共用基底之上再加權
+    intent += (scores.creditStatus - 50) * 0.2;
+    intent += (scores.digitalFluency - 50) * 0.1;
     // 經濟壓力過高的會擔心循環利息
     if (scores.economicPressure > 75) intent -= 12;
   }
@@ -206,23 +227,21 @@ export function computePurchaseIntent(
 }
 
 /**
- * 開放式問題的通用「行為傾向」計算。
- * stress (0-100) 代表外在變因強度；高壓力族群更早被推離「會購買區」。
- * 基底 60 確保 50% 中性壓力時平均落在「觀望」與「會購買」邊界，方便看出相變。
+ * 開放式問題（非信貸/保險/信用卡，例如氣泡飲定價）的「行為傾向」計算。
+ * = 同一份五維共用基底 computeIntentBias + 開放情境中性錨點(60) + 情境壓力驅動。
+ * stress (0-100) 代表外在變因強度；高壓力族群更早被推離「會行動區」。
+ * 錨點 60 使 50% 中性壓力時、中性受訪者落在「觀望／會行動」邊界，方便看出相變。
  */
 export function computeOpenIntent(
   scores: RadarScores,
   stress: number
 ): number {
-  let intent = 60;
+  // 五維共用基底（與金融產品同一份）+ 開放情境中性錨點
+  let intent = 60 + computeIntentBias(scores);
   // 壓力 > 50 = 客群開始猶豫；< 50 = 行動傾向上升
   intent -= (stress - 50) * 0.6;
-  // 風險偏好高 → 對外在變因鈍感
-  intent += (scores.riskPreference - 50) * 0.18;
-  // 經濟壓力大的人在高情境壓力時更快放棄（交互作用）
+  // 經濟壓力大的人在高情境壓力時更快放棄（交互作用，共用基底之外的非線性項）
   intent -= ((scores.economicPressure - 50) * (stress - 50)) / 110;
-  // 數位熟練度小幅推升（接觸到變因更快做決定）
-  intent += (scores.digitalFluency - 50) * 0.05;
   return Math.max(0, Math.min(100, Math.round(intent)));
 }
 
