@@ -74,16 +74,35 @@ const GENERIC_PRICE_SLIDER_CONFIG: SliderConfig = {
  */
 export function resolveOpenSliderConfig(context: string): SliderConfig {
   const c = context ?? "";
-  if (/飲料|手搖|手摇|咖啡|奶茶|拿鐵|拿铁|果汁|茶飲|茶饮|飲品|飲品|含糖|無糖|無糖飲|杯飲/.test(c)) {
-    return DRINK_SLIDER_CONFIG;
+  // 飲料：含氣泡飲 / 汽水 / 碳酸 / 可樂等，避免「水果氣泡飲」被誤判成泛價格
+  if (
+    /飲料|饮料|手搖|手摇|咖啡|奶茶|拿鐵|拿铁|果汁|茶飲|茶饮|飲品|饮品|含糖|無糖|无糖|杯飲|杯饮|氣泡飲|气泡饮|氣泡水|气泡水|氣泡|气泡|汽水|碳酸|可樂|可乐|雪碧|蘇打|苏打/.test(
+      c
+    )
+  ) {
+    return withParsedPrice(c, DRINK_SLIDER_CONFIG);
   }
   if (/便當|便当|餐點|餐点|套餐|早餐|午餐|晚餐|宵夜|外送|外帶|外带/.test(c)) {
-    return MEAL_SLIDER_CONFIG;
+    return withParsedPrice(c, MEAL_SLIDER_CONFIG);
   }
   if (/價格|价格|價位|价位|售價|售价|定價|定价|價錢|价钱|多少錢|多少钱|幾元|几元|幾百|幾千|塊錢|塊/.test(c)) {
-    return GENERIC_PRICE_SLIDER_CONFIG;
+    return withParsedPrice(c, GENERIC_PRICE_SLIDER_CONFIG);
   }
   return OPEN_SLIDER_CONFIG;
+}
+
+/**
+ * 從問題文字抽出「N 元」當作算盤珠的起始值（例：售價 99 元 → 算盤珠從 99 開始），
+ * 夾在該滑桿的 min/max 範圍內。抽不到價格就維持該類別預設值。
+ * 讓動態模擬一開始就對齊商品實際定價，而不是顯示無關的類別預設（如泛價格 200 元）。
+ */
+function withParsedPrice(context: string, base: SliderConfig): SliderConfig {
+  const m = context.match(/(\d{1,5})\s*元/);
+  if (!m) return base;
+  const price = Number(m[1]);
+  if (!Number.isFinite(price)) return base;
+  const def = Math.max(base.min, Math.min(base.max, price));
+  return { ...base, default: def };
 }
 
 export const SLIDER_CONFIGS: Record<ProductType, SliderConfig> = {

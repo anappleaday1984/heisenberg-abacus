@@ -9,7 +9,9 @@ import {
   type DecisionKey,
   type FlowSegment,
 } from "@/lib/persona-flows";
+import { resolveOpenSliderConfig, SLIDER_CONFIGS } from "@/lib/abacus-config";
 import {
+  computeOpenIntent,
   computePurchaseIntent,
   computeRadarScores,
   productLabel,
@@ -77,17 +79,39 @@ type HoverKey = {
 
 export function DecisionSankey({ entries }: Props) {
   const [hover, setHover] = useState<HoverKey | null>(null);
-  const { type, paramValue, shocks, buildParams } = useProductParams();
+  const { type, paramValue, isOpen, openContext, shocks, buildParams } =
+    useProductParams();
+
+  // 開放式問題（不是信貸／保險／信用卡，例如氣泡飲定價）改用「情境壓力」意願公式，
+  // 與行為相變散佈圖一致。否則沿用 buildParams() 返回的金融產品參數會把開放式滑桿值
+  // （如飲料定價 60 元）誤當成利率 60% 餵進信貸公式，導致全員意願飽和到 0、桑基圖
+  // 不隨算盤珠變動。這裡把算盤珠值正規化為 0-100 的外在壓力 stress。
+  const config = isOpen
+    ? resolveOpenSliderConfig(openContext)
+    : SLIDER_CONFIGS[type];
 
   const data = useMemo(() => {
     const params = buildParams();
+    const range = config.max - config.min || 1;
+    const stress = ((paramValue - config.min) / range) * 100;
     return buildThreeLayerFlows(entries, (entry) => {
       const scores = computeRadarScores(entry.persona);
-      const baseIntent = computePurchaseIntent(scores, params);
+      const baseIntent = isOpen
+        ? computeOpenIntent(scores, stress)
+        : computePurchaseIntent(scores, params);
       const intent = applyShocks(baseIntent, scores, shocks);
       return decisionFromIntent(intent);
     });
-  }, [entries, type, paramValue, shocks, buildParams]);
+  }, [
+    entries,
+    type,
+    paramValue,
+    isOpen,
+    config.min,
+    config.max,
+    shocks,
+    buildParams,
+  ]);
 
   const {
     keywordToIncentive,
@@ -254,9 +278,11 @@ export function DecisionSankey({ entries }: Props) {
             {total} 位 · {keywordToIncentive.length + incentiveToDecision.length} 段路徑
           </div>
           <div className="text-violet-400 font-semibold tabular-nums">
-            🧮 {type === "loan" ? `${paramValue.toFixed(2)}%` :
-                type === "insurance" ? `${paramValue} 元/月` :
-                `${paramValue.toFixed(1)}% 回饋`}
+            🧮 {config.icon}{" "}
+            {config.step < 1
+              ? paramValue.toFixed(2)
+              : paramValue.toLocaleString()}
+            {config.unit}
           </div>
         </div>
       </div>
@@ -540,7 +566,7 @@ export function DecisionSankey({ entries }: Props) {
 
       <footer className="mt-3 pt-2 border-t border-slate-800 text-[10px] text-slate-500 text-center">
         中間層揭示動機差異 — 同樣「願意」,行銷文案要對「省錢族」打加油回饋,對「便利族」打快速核卡
-        ;依{productLabel(type)}算盤即時更新
+        ;依{isOpen ? config.label : productLabel(type)}算盤即時更新
       </footer>
     </div>
   );
