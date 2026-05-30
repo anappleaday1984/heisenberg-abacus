@@ -22,6 +22,9 @@ export function LoginButton() {
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
+    // 登出後直接導回入口（/），強制 EntranceGate 重新驗證 → 從一開始的開機動畫進入，
+    // 不需使用者自己手動重新整理。
+    window.location.href = "/";
   }
 
   if (user) {
