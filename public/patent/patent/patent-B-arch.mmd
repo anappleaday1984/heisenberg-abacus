@@ -1,0 +1,60 @@
+flowchart TB
+
+  subgraph InputLayer["輸入層　來自發明 A（一次性，有 LLM）"]
+    direction LR
+    Answers["每位虛擬數位分身\n文字答案 answers[]"]
+    Fields["受訪者結構欄位\n年收入 · 家庭 · 資產與變故\n年齡 · 性格"]
+  end
+
+  subgraph DistillLayer["蒸餾層　純函式 · 零 LLM · 結果可 cache"]
+    Distill["computeRadarScores(persona)\nlib/persona-scores.ts\n\n輸出五維分數（0–100）\n經濟壓力 · 風險偏好 · 數位熟練\n借貸需求 · 信用狀態\n\n數值基底 ＋ 年齡項 ＋ 關鍵字加減 → clamp(0,100)\nsweep / 拖滑桿皆不重算此步"]
+  end
+
+  subgraph ComputeLayer["即時計算層　毫秒級 · 零模型成本 · 完全可重現"]
+    direction LR
+    subgraph IntentComp["購買意願計算　lib/persona-scores.ts"]
+      Bias["computeIntentBias()\n五維共用基底\n中性受訪者 = 0，範圍 ±40"]
+      Intent["computePurchaseIntent()\n信貸 · 保險 · 信用卡\n中性錨點 35 ＋ 專屬驅動因子\n門檻效應 · 交互非線性項"]
+      OpenIntent["computeOpenIntent()\n開放式情境\n中性錨點 60 ＋ 情境壓力"]
+    end
+    subgraph ShockComp["外部衝擊投影　lib/persona-projections.ts"]
+      Shocks["applyShocks()\n通膨扣分：打高經濟壓力族\n失業扣分：打『信用差×高壓』雙弱族\n所有視圖共用 → 臨界點一致偏移"]
+      CLV["projectCLV()\n10 年客戶留存 × 年貢獻\n留存率啟發式：信用好留越久"]
+      Sweep["buildSweetSpotCurve()\n28 點利率掃描\n收益 × 滲透率 trade-off"]
+    end
+    subgraph SankeyComp["桑基分類　lib/persona-flows.ts"]
+      Keywords["classifyPrimaryKeyword()\n8 語意脈絡桶 ＋ fallback\n取命中數最多者為主桶"]
+      Incentive["classifyPrimaryIncentive()\n5 行為誘因桶 ＋ fallback"]
+      Decision["classifyDecision() / decisionFromIntent()\n願意 · 觀望 · 拒絕\n平手保守序：拒絕 > 觀望 > 願意"]
+    end
+  end
+
+  subgraph StateLayer["狀態管理層　React Context"]
+    Context["product-params-context.tsx\n\n算盤珠 params\n信貸=年利率 / 保險=月費\n信用卡=回饋率 / 開放式=情境壓力\n\n外部衝擊 shocks\n通膨（0–10%）· 失業（2–15%）\n預設 {3, 4} ≈ 2026 台灣實際量級\n\n拖動一次 → 所有面板同步重算"]
+  end
+
+  subgraph ViewLayer["視覺化層　React 元件（前端純運算）"]
+    direction LR
+    Scatter["相變散佈圖\nX = 經濟壓力\nY = 購買意願\n臨界線 60 願意 / 40 觀望"]
+    Sankey["三層決策桑基圖\n語意脈絡 → 行為誘因 → 決策\n節點高度 = 受訪者人數（守恆）"]
+    RadarChart["五維人格雷達圖\n每位受訪者獨立色"]
+    CLVChart["CLV 10 年曲線\n留存人數 × 年貢獻"]
+  end
+
+  subgraph ParamInput["使用者即時輸入"]
+    direction LR
+    Beads["算盤珠滑桿\n（依產品類型綁定）"]
+    ShockSliders["外部衝擊滑桿\n通膨 · 失業"]
+  end
+
+  InputLayer    -->|"結構欄位"         | DistillLayer
+  DistillLayer  -->|"五維分數（cache）"| ComputeLayer
+  ParamInput    -->|"params / shocks"  | StateLayer
+  StateLayer    -->|"驅動重算"         | ComputeLayer
+  ComputeLayer  -->|"intent / flows"   | ViewLayer
+
+  classDef once   fill:#3b1a1a,stroke:#f87171,color:#fecaca,rx:6
+  classDef pure   fill:#1a3b2a,stroke:#34d399,color:#a7f3d0,rx:6
+  classDef state  fill:#1e2a3b,stroke:#60a5fa,color:#bfdbfe,rx:6
+  classDef view   fill:#2a1e3b,stroke:#a78bfa,color:#e9d5ff,rx:6
+  classDef input  fill:#3b2e1a,stroke:#fbbf24,color:#fef3c7,rx:6

@@ -189,6 +189,14 @@ function AdminContent() {
         <div className="flex items-center gap-3">
           <ServiceFAQ />
           <LoginButton />
+          <a
+            href="/patent/index.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
+          >
+            📄 專利文件
+          </a>
           <Link href="/" className="text-sm text-blue-400 hover:text-blue-300">
             ← 回對話介面
           </Link>

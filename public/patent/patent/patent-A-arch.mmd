@@ -1,0 +1,78 @@
+flowchart TB
+
+  subgraph Client["用戶端　Browser"]
+    direction LR
+    UI_Input["研究命題輸入\n自然語言 + 產品規格"]
+    UI_Stream["SSE 串流接收器\n打字機即時顯示"]
+    UI_Report["報告視覺化 / 匯出\nPDF · PNG · Email"]
+  end
+
+  subgraph Gateway["入口層　API Gateway"]
+    direction LR
+    Auth["身分驗證模組\nlib/auth.ts\nHttpOnly Cookie Session"]
+    Limit["並行上線控管\n≤ 3 人同時 · 閒置 1hr 釋放"]
+    RouteMain["POST /api/chat\nSSE ReadableStream"]
+    RouteAux["輔助路由\n/api/chat/query\n/api/voice/intent\n/api/email-report\n/api/faq-ask"]
+  end
+
+  subgraph Orchestration["編排層　lib/orchestrator.ts"]
+    direction LR
+    Generator["Async Generator\norchestrate()\n逐 yield StreamEvent"]
+    ZhConv["出口繁中轉換\ntoTraditional()"]
+    Logger["串流結束日誌\n耗時 · 受訪者數 · 摘要"]
+  end
+
+  subgraph AgentPool["Agent 池"]
+    direction TB
+    subgraph MainPipeline["主訪談管線（5 段）"]
+      direction LR
+      A1["Entry Agent\nlib/agents/entry.ts\n啟動判斷 READY/CLARIFY"]
+      A2["Planner Agent\nlib/agents/pm.ts\n量化題組生成（規格保真）"]
+      A3["Persona Agent × N\nlib/agents/persona.ts\n平行合成訪談\nbundled JSON + 逐題 fallback"]
+      A4["Summary Agent\nlib/agents/summary.ts\n結構化洞察彙總 + KPI"]
+      A5["Report Agent\nlib/agents/pm.ts\n完整決策報告產出"]
+      A1 --> A2 --> A3 --> A4 --> A5
+    end
+    subgraph AuxAgents["輔助 Agents"]
+      direction LR
+      B1["Query Agent\nlib/agents/query.ts\n訪談後即時問答"]
+      B2["Voice-Intent Agent\nlib/agents/voice-intent.ts\n語音 → 7 種前端動作"]
+      B3["Persona Generator\nlib/agents/persona-generator.ts\n離線批次擴充受訪者池"]
+    end
+  end
+
+  subgraph Infra["基礎設施層　lib/anthropic.ts"]
+    direction LR
+    Sem["全域 Semaphore\n預設 c=6，可動態縮放\n唯一節流點，全 Agent 共用"]
+    Retry["Exp. Backoff + Full Jitter\n≤ 8 次重試\n覆蓋 429 / 5xx / 網路錯誤"]
+    JsonProc["JSON 處理\nextractJson + auto-close\nextractJsonWithRetry（retry=3）"]
+    LangRule["共用語言規範 LANG_RULE\n每個 Agent system prompt 開頭引用"]
+  end
+
+  subgraph DataLayer["資料層　local filesystem"]
+    direction LR
+    PersonaDB[("合成受訪者池\ndata/personas.json\n零真實個資")]
+    SessionDB[("Session 狀態\ndata/active-sessions.json")]
+    AuthLog[("稽核日誌\ndata/auth-log.json")]
+  end
+
+  subgraph ExtServices["外部服務"]
+    direction LR
+    LLM["MiniMax-M2.5\nAnthropic SDK 相容端點\n（供應商可替換）"]
+    SMTP["Gmail SMTP\nnodemailer · port 587 STARTTLS"]
+  end
+
+  Client      <-->|"HTTPS / SSE"        | Gateway
+  Gateway      -->|"驗證通過"            | Orchestration
+  Orchestration -->|"驅動"              | AgentPool
+  AgentPool    -->|"所有 LLM 呼叫"      | Infra
+  Infra        <-->|"messages.create / stream"| LLM
+  DataLayer    <-->|"讀寫人格資料"       | AgentPool
+  DataLayer    <-->|"Session 讀寫"       | Gateway
+  RouteAux     -->|"PDF Markdown → 寄出"| SMTP
+
+  classDef layer fill:#1e293b,stroke:#475569,color:#e2e8f0,rx:6
+  classDef agent fill:#1e3a5f,stroke:#3b82f6,color:#bfdbfe,rx:4
+  classDef infra fill:#3b1f5e,stroke:#8b5cf6,color:#e9d5ff,rx:4
+  classDef data  fill:#1a3a2a,stroke:#22c55e,color:#bbf7d0,rx:4
+  classDef ext   fill:#3b2a1a,stroke:#f59e0b,color:#fde68a,rx:4

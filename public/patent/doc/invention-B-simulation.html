@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>技術揭露書（二）— 基於虛擬數位分身之環境干擾評估與群體行為模擬系統及方法</title>
+<style>
+  :root { --ink:#1a1a1a; --muted:#555; --line:#d0d0d0; --accent:#7a3a8c; --accent2:#1f4e79; --code-bg:#f6f4f7; --code-ink:#222; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", -apple-system, sans-serif;
+    color: var(--ink); line-height: 1.7; font-size: 15px;
+    max-width: 920px; margin: 0 auto; padding: 48px 56px;
+  }
+  h1 { font-size: 26px; line-height: 1.35; border-bottom: 3px solid var(--accent); padding-bottom: 14px; margin: 0 0 6px; color: var(--accent); }
+  h2 { font-size: 20px; margin: 34px 0 12px; padding: 8px 0 6px; border-bottom: 1.5px solid var(--line); color: var(--accent); }
+  h3 { font-size: 16.5px; margin: 24px 0 8px; color: #2a2a2a; }
+  h4 { font-size: 14.5px; margin: 16px 0 6px; color: #333; }
+  .sub { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+  .meta-table { width: 100%; border-collapse: collapse; margin: 18px 0 8px; font-size: 13.5px; }
+  .meta-table td { border: 1px solid var(--line); padding: 6px 10px; vertical-align: top; }
+  .meta-table td:first-child { width: 130px; background: #f4eef6; font-weight: 600; color: #2a2a2a; }
+  table.grid { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  table.grid th, table.grid td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.grid th { background: #f1e8f4; color: var(--accent); font-weight: 600; }
+  table.grid tr:nth-child(even) td { background: #fafafa; }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); border: 1px solid #e6e0e8; border-left: 4px solid var(--accent);
+    padding: 12px 14px; border-radius: 4px; overflow-x: auto; font-size: 12px; line-height: 1.55;
+    font-family: "SFMono-Regular", "Menlo", "Consolas", "Noto Sans Mono CJK TC", monospace;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .eq { background: #fcfaff; border: 1px solid #e6dcec; border-left: 4px solid var(--accent); border-radius: 4px;
+    padding: 10px 16px; margin: 10px 0; font-size: 13.5px; line-height: 1.9;
+    font-family: "SFMono-Regular","Menlo","Consolas","Noto Sans Mono CJK TC", monospace; }
+  code.inline { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 12.5px;
+    font-family: "SFMono-Regular","Menlo","Consolas",monospace; color: #9b2d8e; }
+  .callout { background: #faf4fc; border: 1px solid #e3cdec; border-radius: 5px; padding: 10px 14px; margin: 12px 0; font-size: 13.5px; }
+  .callout.warn { background: #fff8ef; border-color: #f0d9b5; }
+  .tag { display: inline-block; background: var(--accent); color: #fff; font-size: 11px; padding: 1px 8px; border-radius: 10px; vertical-align: middle; margin-left: 6px; }
+  ol.toc { font-size: 14px; line-height: 2; }
+  ol.toc a { color: var(--accent); text-decoration: none; }
+  .flow { font-family: "SFMono-Regular","Menlo","Consolas",monospace; font-size: 12px; background: var(--code-bg);
+    border: 1px solid #e6e0e8; border-radius: 4px; padding: 14px 16px; white-space: pre; overflow-x: auto; line-height: 1.5; }
+  hr { border: none; border-top: 1px dashed var(--line); margin: 28px 0; }
+  .small { font-size: 12.5px; color: var(--muted); }
+  .claim { border: 1px solid var(--line); border-radius: 5px; padding: 4px 14px 10px; margin: 12px 0; }
+  .claim h4 { color: var(--accent); border-bottom: 1px solid #eee; padding-bottom: 4px; }
+  @page { size: A4; margin: 16mm 14mm; }
+  @media print {
+    body { padding: 0; max-width: none; font-size: 11.5px; }
+    h1 { font-size: 21px; } h2 { font-size: 16px; page-break-after: avoid; } h3 { font-size: 13.5px; page-break-after: avoid; }
+    pre, table.grid, .flow, .eq { page-break-inside: avoid; }
+    .page-break { page-break-before: always; }
+    a { color: var(--accent); text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<h1>技術揭露書（二）<br>基於虛擬數位分身之環境干擾評估與群體行為模擬系統及方法<br><span style="font-size:17px;font-weight:500;">Virtual digital twin-based system and method for environmental interference assessment and collective behavior simulation<br>— 動態抽換／引入外部因子、模擬群體非線性情緒波動、預測客群集體流失臨界點之模型與方程式，及三層決策桑基圖之決策流程</span></h1>
+
+<table class="meta-table">
+  <tr><td>文件類型</td><td>專利技術揭露書 / 發明說明（供專利代理人擬稿用）</td></tr>
+  <tr><td>中文名稱</td><td><b>基於虛擬數位分身之環境干擾評估與群體行為模擬系統及方法</b></td></tr>
+  <tr><td>英文名稱</td><td><b>Virtual digital twin-based system and method for environmental interference assessment and collective behavior simulation</b></td></tr>
+  <tr><td>技術主旨</td><td>一種於不重複呼叫語言模型之前提下，依可調產品參數與外部環境干擾因子即時重算虛擬數位分身受訪者群之購買意願、群體行為相變與多層決策路徑，並預測客群集體流失臨界點之模擬方法與系統</td></tr>
+  <tr><td>對應產品</td><td>「海森堡的算盤 · 人類行為觀測站」之動態模擬艙（/simulation，環境壓力模擬艙 Stress-Pod）與算盤控制條（AbacusBar）</td></tr>
+  <tr><td>技術領域</td><td>互動式決策支援、市場模擬、虛擬數位分身行為建模、環境干擾因子注入、群體非線性行為預測、資料視覺化（相變散佈圖 / 桑基圖）</td></tr>
+  <tr><td>核心主張</td><td>把昂貴且不可重現的「語言模型訪談」與便宜且決定性的「what-if 環境干擾模擬」<b>解耦</b>：訪談只跑一次取得文字證據；之後抽換／引入外部干擾因子（通膨／失業等環境變動）或拖動算盤珠（利率／月費／回饋率）時，以純函式<b>即時、零模型呼叫、決定性</b>地重算每位虛擬數位分身的購買意願與決策歸屬，模擬群體非線性情緒波動，並預測客群集體流失或行為轉變之臨界點</td></tr>
+  <tr><td>關聯文件</td><td>發明 A（基於虛擬數位分身之自動化市場調查系統及方法）— 本發明消費 A 產出的逐位虛擬數位分身文字答案與結構化人格欄位</td></tr>
+  <tr><td>撰寫日期</td><td>2026-05-30</td></tr>
+</table>
+
+<div class="callout">
+<b>摘要說明：</b>此提案的核心在於「動態干擾與預測」。當市場發生外部環境變動（例如：金融政策轉變、就業市場變化等），系統如何抽換或引入外部因子，模擬群體非線性的情緒波動，並預測出客群集體流失或行為轉變的臨界點。系統把一次性的語言模型訪談文字蒸餾為數值化人格狀態，使下游所有環境干擾與參數探索得以零邊際模型成本、完全可重現、即時連動多視圖地進行，並以共用的外部衝擊投影函式使所有面板的臨界點一致地偏移。
+</div>
+
+<div class="callout">
+<b>閱讀指引：</b>本文件分兩大主題。<b>主題一（第 4–8 節）</b>說明「移動算盤珠時，背後即時計算每位受訪者購買意願的模型與方程式」——含五維人格評分、三類產品的購買意願方程式、開放式情境方程式、外部衝擊投影方程式，以及<b>這些方程式的建構方式與校準依據</b>。<b>主題二（第 9–11 節）</b>說明「三層決策桑基圖如何從受訪者文字收集內容、彙整出決策參考意圖、最後做出決定」——含關鍵字桶／行為誘因桶／決策桶之詞表、單一主桶分類法、三層流量建構與守恆性，以及其與算盤參數連動的決策判定流程。
+</div>
+
+<h2 id="toc">目次</h2>
+<ol class="toc">
+  <li><a href="#field">技術領域與所欲解決之問題</a></li>
+  <li><a href="#arch">系統架構：訪談與模擬的解耦</a></li>
+  <li><a href="#beads">算盤珠（可調參數）與外部衝擊滑桿之定義</a></li>
+  <li><a href="#radar">主題一之一 — 五維人格評分模型 computeRadarScores</a></li>
+  <li><a href="#intent">主題一之二 — 購買意願方程式 computePurchaseIntent（信貸／保險／信用卡）</a></li>
+  <li><a href="#open">主題一之三 — 開放式情境意願方程式 computeOpenIntent</a></li>
+  <li><a href="#shocks">主題一之四 — 外部環境衝擊投影 applyShocks（通膨／失業）</a></li>
+  <li><a href="#construct">方程式的建構方式、設計原則與校準依據</a></li>
+  <li><a href="#sankey-collect">主題二之一 — 桑基圖如何從文字收集內容（三組語意詞桶）</a></li>
+  <li><a href="#sankey-classify">主題二之二 — 彙整決策參考意圖：單一主桶分類法</a></li>
+  <li><a href="#sankey-build">主題二之三 — 三層決策路徑建構、守恆性與最終決策判定流程</a></li>
+  <li><a href="#derived">衍生模擬：行為相變散佈圖</a></li>
+  <li><a href="#claims">請求項草稿（claims）</a></li>
+</ol>
+
+<hr>
+
+<h2 id="field">1. 技術領域與所欲解決之問題</h2>
+<p>本發明屬於<b>互動式決策支援與市場模擬</b>領域。其所欲解決之問題為：以大型語言模型訪談合成受訪者雖能取得擬真文字證據，但<b>每一次參數變動（例如把信貸年利率從 6.88% 調到 12%）若都要重新訪談一次，成本高、延遲長（數十秒至數分鐘）、且因模型隨機性而不可重現</b>，無法支撐「拖動滑桿即時看結果」的互動式探索。</p>
+<p>本發明的解法是把流程<b>解耦</b>為兩段：</p>
+<ol>
+  <li><b>一次性語言模型訪談</b>（由發明 A 完成）：取得每位受訪者對固定題組的文字答案，以及其結構化人格欄位。</li>
+  <li><b>決定性即時模擬層</b>（本發明）：把人格欄位映射為五維分數，再以一組<b>純函式、無副作用、零模型呼叫</b>的方程式，於使用者拖動「算盤珠」或「外部衝擊滑桿」的當下（毫秒級）重算每位受訪者的購買意願與決策歸屬，並同步重繪相變散佈圖與三層桑基圖。</li>
+</ol>
+<div class="callout warn"><b>可專利核心：</b>「把不可重現、高延遲的 LLM 訪談文字，<b>一次性</b>蒸餾為可被決定性方程式即時重算的<b>數值化人格狀態</b>，使下游所有 what-if 參數探索得以<b>零邊際模型成本、完全可重現、即時連動多視圖</b>地進行」——此解耦與即時重算機制即為本發明之主張。</div>
+
+<h2 id="arch">2. 系統架構：訪談與模擬的解耦</h2>
+<div class="flow">【一次性，發明 A】
+ LLM 訪談 → 每位受訪者文字答案 answers[]  ┐
+ 受訪者結構欄位（年收入/家庭/資產/年齡…）  ┘
+        │
+        ▼  （蒸餾，純函式，無 LLM）
+ computeRadarScores(persona) → 五維分數 { 經濟壓力, 風險偏好, 數位熟練, 借貸需求, 信用狀態 }
+        │  （此數值狀態被快取，sweep 不重算）
+        ▼
+【即時，本發明：使用者每次拖動滑桿都重跑下列純函式】
+ 算盤珠 params（利率/月費/回饋率）─┐
+ 外部衝擊 shocks（通膨/失業）──────┤
+                                  ▼
+ baseIntent = computePurchaseIntent(scores, params)   ← 主題一
+ intent     = applyShocks(baseIntent, scores, shocks) ← 主題一
+        │
+        ├──→ 相變散佈圖（X=經濟壓力, Y=intent；臨界線 60/40 → 願意/觀望/拒絕）
+        └──→ 三層決策桑基圖（語意 → 誘因 → 決策；decisionFn = intent 判定）  ← 主題二</div>
+<p class="small">即時模擬層全部為前端純函式（<code class="inline">lib/persona-scores.ts</code>、<code class="inline">lib/persona-projections.ts</code>、<code class="inline">lib/persona-flows.ts</code>），透過 React Context（<code class="inline">product-params-context.tsx</code>）把算盤珠與衝擊狀態共享給所有面板，使其臨界點同步偏移。所有方程式皆以 <code class="inline">clamp(0,100)</code> 收斂於 0–100，確保視覺穩定。</p>
+
+<h2 id="beads" class="page-break">3. 算盤珠（可調參數）與外部衝擊滑桿之定義</h2>
+<p>系統依問題語境自動推斷產品類型，決定主算盤珠綁定哪個變數；另設兩條共用的外部衝擊滑桿。</p>
+<table class="grid">
+  <tr><th>產品類型</th><th>主算盤珠（滑桿）</th><th>範圍 / 級距</th><th>預設</th><th>語意</th></tr>
+  <tr><td>信貸 loan</td><td>年利率（%）</td><td>0–20 / 0.01</td><td>6.88</td><td>利率往上 → 客群放棄</td></tr>
+  <tr><td>保險 insurance</td><td>月費（元/月）</td><td>0–1000 / 10</td><td>199</td><td>保費調漲 → 弱勢族群退場</td></tr>
+  <tr><td>信用卡 creditcard</td><td>主要回饋率（%）</td><td>0–10 / 0.1</td><td>5</td><td>回饋拉高 → 觸發辦卡意願</td></tr>
+  <tr><td>開放式 open</td><td>情境變因（%）/ 飲料定價 / 餐點定價 / 泛價格（元）</td><td>依語境</td><td>50 / 60 / 150 / 200</td><td>外在變因強度 → 客群行為相變</td></tr>
+</table>
+<table class="grid">
+  <tr><th>外部衝擊滑桿（共用）</th><th>範圍</th><th>預設</th><th>依據</th></tr>
+  <tr><td>通膨 inflation（%）</td><td>0–10</td><td>3</td><td>接近 2026 年台灣實際通膨 ~3%</td></tr>
+  <tr><td>失業 unemployment（%）</td><td>2–15</td><td>4</td><td>接近 2026 年台灣實際失業率 ~4%</td></tr>
+</table>
+<p class="small">預設衝擊刻意非零，使使用者一開啟模擬艙即看到「真實環境」下的臨界點，而非無衝擊的樂觀情境。</p>
+
+<!-- ================= 主題一 ================= -->
+<h2 id="radar" class="page-break">4. 主題一之一 — 五維人格評分模型 <code class="inline">computeRadarScores</code> <span class="tag">純函式</span></h2>
+<p>輸入單一受訪者結構欄位，輸出五個 0–100 的分數，作為一切下游意願方程式的共用基底。先把人格特質、家庭、資產與變故三欄串為一段文字 <code class="inline">text</code> 供關鍵字比對，再依「<b>數值基底 + 關鍵字加減 + 年齡項</b>」組合計算，最後 <code class="inline">clamp</code> 至 0–100。</p>
+
+<h4>4.1 經濟壓力 economicPressure</h4>
+<div class="eq">economicPressure = ((1,200,000 − 年收入) / 1,200,000) × 80
+  + 25  若 family 含 撫養/扶養/贍養/養孩/養家/負擔/支柱
+  + 15  若 text 含 失業/破產/卡債/遲繳/被罰
+  − 30  若 text 含 包租/定存/不動產/大樓
+  → clamp(0,100)</div>
+<p class="small">設計：以年收入相對 120 萬基準的缺口為連續基底（越窮基底越高），再以「扶養責任」「財務變故」上修、「被動收入資產」下修。</p>
+
+<h4>4.2 風險偏好 riskPreference</h4>
+<div class="eq">riskPreference = max(20, 110 − 年齡 × 1.4)
+  + 20  若 text 含 創業/投資/股市/加密/斜槓/追求/夢想/改裝
+  − 20  若 text 含 保守/穩定/定存/謹慎/細心/認真/注重SOP
+  − 12  若 text 含 破產/信用/遲繳/怕/擔心
+  → clamp(0,100)</div>
+<p class="small">設計：年輕基底高、年長基底低（年齡線性遞減、地板 20），再以性格／行為關鍵字微調。</p>
+
+<h4>4.3 數位熟練度 digitalFluency</h4>
+<div class="eq">digitalFluency = max(15, 105 − (年齡 − 18) × 1.7)
+  + 18  若 text 含 工程師/科技/電腦/剪輯/新創/遊牧/APP/軟體
+  + 6   若 text 含 熱血/改裝/敏銳/效率
+  − 18  若 text 含 退休/傳統/工廠領班/樂活
+  → clamp(0,100)</div>
+<p class="small">設計：以「相對 18 歲的年齡差」線性遞減為基底（地板 15），職業／性格關鍵字加減。</p>
+
+<h4>4.4 借貸需求度 loanNeed</h4>
+<div class="eq">loanNeed = 45
+  + 18  若 family 含 撫養/扶養/贍養
+  + 22  若 年收入 < 400,000 ；否則 + 8 若 年收入 < 700,000
+  + 18  若 text 含 破產/卡債/信貸/還債/套牢
+  + 10  若 text 含 創業/遊學/旅遊基金/存錢
+  − 35  若 text 含 包租/定存/股市/無貸款/無經濟負擔
+  → clamp(0,100)</div>
+<p class="small">設計：中性基底 45；扶養與低收入大幅上修，財務變故、資金用途上修，被動收入／無負債大幅下修。</p>
+
+<h4>4.5 信用狀態 creditStatus</h4>
+<div class="eq">creditStatus = 60
+  + 30  若 text 含 包租/定存/股市/無貸款/電梯大樓/公寓
+  + 8   若 text 含 科技/工程師/公務員/正職
+  − 55  若 text 含 破產/卡債/遲繳
+  − 18  若 text 含 信用空白/被拒/信用瑕疵
+  + 10  若 text 含 年金/退休
+  → clamp(0,100)</div>
+<p class="small">設計：中性基底 60；資產與穩定職業上修，破產／卡債／遲繳給予最重的 −55 懲罰（信用受損是強訊號），信用空白次之。</p>
+
+<h2 id="intent" class="page-break">5. 主題一之二 — 購買意願方程式 <code class="inline">computePurchaseIntent</code> <span class="tag">隨算盤珠即時重算</span></h2>
+<p>這是「移動算盤珠時即時計算每位受訪者購買意願」的核心方程式。輸入該受訪者的五維分數與當前算盤珠參數，輸出 0–100 的購買意願。所有題型先取一個<b>五維共用基底</b>（見 5.1），再加上該情境的「中性錨點」與專屬驅動因子；其中<b>算盤珠變數（利率／月費／回饋率）正是讓意願即時變動的自變數</b>。</p>
+
+<h4>5.1 五維共用基底 <code class="inline">computeIntentBias</code>（所有題型共用）</h4>
+<div class="eq">intentBias = (風險偏好 − 50) × 0.30      ← 願意嘗試新事物 → 接受度↑
+           + (數位熟練 − 50) × 0.15      ← 對新型／線上／數位提案的早期採用 → ↑
+           + (借貸需求 − 50) × 0.15      ← 有未滿足需求、在找解法 → 對提案更敏感 → ↑
+           + (信用狀態 − 50) × 0.10      ← 財務／信用穩健、敢承諾 → 行動門檻低 → ↑
+           − (經濟壓力 − 50) × 0.20      ← 經濟壓力大 → 對花錢／長期承諾更保守 → ↓
+（中性受訪者五維皆 50 → intentBias = 0，範圍約 ±40）</div>
+<p class="small"><b>五維全參與、不分產品類型</b>：信貸／保險／信用卡／開放式四條路徑都先取此偏移，再各自疊加「情境中性錨點」與專屬驅動因子。相較舊式僅用「借貸需求 × 0.4 ＋ 風險偏好 × 0.3」兩維且偏信貸，新共用基底讓<b>任一題型（含無金融關鍵字的開放式問題）</b>都能以完整五維人格評分計算接受傾向；各正負號代表該特質對「接受一個新提案／產品」的普遍方向。</p>
+
+<h4>5.2 信貸 loan（中性錨點 35；自變數：年利率 r%）</h4>
+<div class="eq">intent = 35 + intentBias
+  + (r − 5) × (−3)                 ← 利率敏感度，5% 為中性；每高 1% 扣 3 分
+  + (借貸需求 − 50) × 0.25          ← 信貸特別吃借貸需求（共用基底之上再加權）
+  + (信用狀態 − 50) × 0.08          ← 信用差 = 怕被拒（共用基底之上再加權）
+  + { −15  若 經濟壓力 > 80 ；  +6  若 50 < 經濟壓力 ≤ 80 }   ← 壓力曲線（非單調）
+  → clamp(0,100)</div>
+<p class="small">經濟壓力對信貸意願呈「倒 U」：中度壓力者最需要週轉（+6），但極高壓力者反而因怕還不起／被拒而退縮（−15）。中性受訪者於 6.88% 時 intent ≈ 29，與改版前完全一致。</p>
+
+<h4>5.3 保險 insurance（中性錨點 35；自變數：月費 fee 元）</h4>
+<div class="eq">intent = 35 + intentBias
+  + (200 − fee) / 20               ← 月費敏感度，200 元為中性；每多 100 元約 −5 分
+  + 8 + (經濟壓力 − 50) × 0.3       ← 保險特例：家庭責任＋壓力推升需求
+  + { −18  若 經濟壓力 > 85 }        ← 但太窮買不起
+  → clamp(0,100)</div>
+<p class="small">保險以「責任／壓力推升、但極端貧窮退場」建模，呼應「弱勢族群在保費調漲時最先退場」的相變；+8 與 +0.3 斜率使保險對經濟壓力的<b>淨</b>效果維持正向（蓋過共用基底對壓力的 −0.20 保守扣分）。</p>
+
+<h4>5.4 信用卡 creditcard（中性錨點 35；自變數：回饋率 c%）</h4>
+<div class="eq">intent = 35 + intentBias
+  + (c − 3) × 10                    ← 回饋率敏感度，3% 為中性；每多 1% 約 +10 分
+  + (信用狀態 − 50) × 0.2           ← 信用好 = 易核卡（共用基底之上再加權）
+  + (數位熟練 − 50) × 0.1           ← 需會用 app／線上消費（共用基底之上再加權）
+  + { −12  若 經濟壓力 > 75 }        ← 高壓者擔心循環利息
+  → clamp(0,100)</div>
+
+<h2 id="open">6. 主題一之三 — 開放式情境意願方程式 <code class="inline">computeOpenIntent</code></h2>
+<p>當問題未含明確金融產品關鍵字（開放式問題，例如「氣泡飲漲價到多少你會不買」），改用通用「情境壓力」自變數 stress（0–100），但<b>共用與金融產品同一份五維基底 intentBias</b>，僅把中性錨點由 35 換成 60。</p>
+<div class="eq">intent = 60 + intentBias
+  − (stress − 50) × 0.6                                  ← 壓力 > 50 → 開始猶豫；< 50 → 行動傾向上升
+  − ((經濟壓力 − 50) × (stress − 50)) / 110               ← 交互作用：高壓族在高情境壓力時更快放棄
+  → clamp(0,100)</div>
+<p class="small">開放式與金融產品<b>共用同一份五維基底 intentBias</b>，差別只在中性錨點（60 vs 35）與情境驅動（stress vs 利率／月費／回饋）。錨點 60 使「50% 中性壓力」時、中性受訪者落在「觀望／願意」邊界；五維中的風險偏好、數位熟練、借貸需求、信用狀態、經濟壓力<b>全部</b>透過 intentBias 進入開放式意願（舊式僅用風險偏好與數位熟練兩維），並另含一個經濟壓力 × 情境壓力的<b>乘積交互作用項</b>。</p>
+
+<h2 id="shocks">7. 主題一之四 — 外部環境衝擊投影 <code class="inline">applyShocks</code>（通膨／失業）</h2>
+<p>外部衝擊滑桿不改寫基底意願，而是在 <code class="inline">computePurchaseIntent</code>／<code class="inline">computeOpenIntent</code> 算出的 baseIntent 上<b>扣分</b>。此函式為散佈圖與桑基圖<b>全部共用</b>，因此同一份衝擊設定下所有面板的臨界點會<b>一致地</b>偏移。</p>
+<div class="eq">inflationHit     = (通膨 / 10) × max(0, 經濟壓力 − 40) × 0.45
+unemploymentHit  = (失業 / 15) × max(0, 50 − 信用狀態) × 0.4 × (經濟壓力 / 80 + 0.3)
+total            = (inflationHit + unemploymentHit) × multiplier      （multiplier 預設 1）
+intent           = clamp(0,100, baseIntent − total)</div>
+<table class="grid">
+  <tr><th>衝擊</th><th>受害最重的族群</th><th>建模理由</th></tr>
+  <tr><td>通膨</td><td>經濟壓力 &gt; 40 者，壓力越高扣越多</td><td>已經很緊的人，物價再漲傷害最大；壓力 ≤ 40 者不受影響（max(0,·)）</td></tr>
+  <tr><td>失業</td><td>信用差（&lt;50）且經濟壓力高者，雙弱族扣最多</td><td>失業衝擊在「無信用緩衝 + 高壓無存糧」者身上最致命；以信用缺口 × 壓力係數建模</td></tr>
+</table>
+<p class="small"><code class="inline">multiplier</code> 參數保留供日後加入季節／月份權重。預設衝擊 DEFAULT_SHOCKS = { 通膨 3, 失業 4 }。</p>
+
+<h2 id="construct" class="page-break">8. 方程式的建構方式、設計原則與校準依據</h2>
+<div class="callout warn"><b>性質聲明（重要）：</b>本發明之意願與分數方程式為<b>啟發式（heuristic）行為模型</b>，其設計目標是讓決策者「<b>看出 trade-off 的形狀與相變的臨界點</b>」，使不同人格在視圖上拉出可辨識的差異；其<b>數量級對、單調性對、相對排序對</b>，但<b>並非精算模型或財務報表</b>，不應被當作精確財務數字使用。此性質在原始碼註解中亦明確標示。專利主張之標的為「<b>方程式的建構方法論與即時重算架構</b>」，而非任何特定係數之精確值。</div>
+
+<h3>8.1 建構方法論（七項設計原則）</h3>
+<table class="grid">
+  <tr><th>原則</th><th>內容</th><th>在方程式中的體現</th></tr>
+  <tr><td>1. 中性錨點</td><td>每個自變數設一個「中性值」，於該值時不加不減</td><td>利率 5%、月費 200、回饋 3%、情境壓力 50、各分數 50</td></tr>
+  <tr><td>2. 線性敏感度係數</td><td>自變數偏離中性值時，以一個斜率係數線性加減，斜率大小反映該因子對該產品的重要性</td><td>利率 −3／%、回饋 +10／%、月費 −5／百元</td></tr>
+  <tr><td>3. 數值基底 + 關鍵字增量</td><td>分數 = 連續數值基底（收入、年齡）＋離散關鍵字命中加減</td><td>computeRadarScores 全部五維</td></tr>
+  <tr><td>4. 非單調性（門檻效應）</td><td>對「過猶不及」的因子用 if-門檻製造倒 U 或退場</td><td>信貸經濟壓力 &gt;80 轉負、保險 &gt;85 退場、信用卡 &gt;75 退場</td></tr>
+  <tr><td>5. 交互作用項</td><td>以兩變數乘積建模脆弱性放大</td><td>開放式的 (經濟壓力−50)×(stress−50)；失業衝擊的 壓力×信用缺口</td></tr>
+  <tr><td>6. 範圍夾限（clamp）</td><td>所有輸出夾在 0–100</td><td>避免極端值破壞視覺與相變可讀性</td></tr>
+  <tr><td>7. 加性可分解、純函式</td><td>各因子加性疊加、無副作用、可快取，使 sweep / 即時重算成本低且可重現</td><td>computePurchaseIntent 結構；scores 預先 cache</td></tr>
+</table>
+
+<h3>8.2 校準依據（係數從何而來）</h3>
+<ul>
+  <li><b>外部衝擊預設值錨定真實總體經濟：</b>DEFAULT_SHOCKS 之通膨 3%、失業 4% 取自 2026 年台灣實際數字量級，使模擬起點貼近真實環境。</li>
+  <li><b>收入基準 120 萬：</b>作為經濟壓力連續基底之分母，對應台灣個人年收入之常見區間中段。</li>
+  <li><b>領域常識定錨敏感度斜率：</b>例如信貸對利率高度敏感（係數最大）、信用卡對回饋敏感、保險對月費敏感——斜率相對大小依該產品決策中該因子的已知主導性設定。</li>
+  <li><b>門檻值依相變目的反推：</b>決策臨界線設 60（願意）／40（觀望），基底（如開放式 60）即據此設定，使中性情境恰落在臨界帶，最大化「拖動滑桿看相變」的可視性。</li>
+</ul>
+
+<!-- ================= 主題二 ================= -->
+<h2 id="sankey-collect" class="page-break">9. 主題二之一 — 桑基圖如何從文字收集內容（三組語意詞桶）</h2>
+<p>三層決策桑基圖的左、中、右三欄，分別由三組預先定義的<b>語意關鍵字詞桶</b>驅動。每位受訪者把其全部答案串成一段文字 <code class="inline">fullText = answers.join("\n")</code>，再對三組詞桶各做一次關鍵字比對，得到「他屬於哪個語意脈絡 → 哪個行為誘因 → 哪個決策」。</p>
+
+<h3>9.1 左欄：語意脈絡桶 KEYWORD_BUCKETS（8 個主題桶 + 1 個 fallback）</h3>
+<p>代表受訪者「自身脈絡與對產品的反應面向」。每桶含同義詞與口語變體（例如 破產／倒帳／欠錢／還不出），以提高自由作答文字的命中率。</p>
+<table class="grid">
+  <tr><th>語意桶</th><th>涵蓋面向（節錄關鍵字）</th></tr>
+  <tr><td>🛵 機車與工作</td><td>機車/油錢/維修/跑單/外送/平台抽成/工時/雨天/路況…</td></tr>
+  <tr><td>👨‍👩‍👧 家庭與責任</td><td>撫養/扶養/支柱/小孩/學費/配偶/父母/孝親費/生活費…</td></tr>
+  <tr><td>💸 信用與債務</td><td>信用/聯徵/卡債/循環利息/信貸/破產/遲繳/額度/利率…</td></tr>
+  <tr><td>📈 投資與儲蓄</td><td>投資/股市/ETF/加密/定存/創業/副業/包租/退休金/應急金…</td></tr>
+  <tr><td>🏥 健康與意外</td><td>三高/慢性病/過勞/車禍/受傷/住院/手術/失能/醫藥費…</td></tr>
+  <tr><td>💰 價格與負擔</td><td>太貴/便宜/划算/月繳/保費/撐不住/吃緊/省錢/負擔得起…</td></tr>
+  <tr><td>🤝 信任與條款</td><td>信任/詐騙/黑箱/陷阱/條款/綁約/拒賠/免責/個資/隱私…</td></tr>
+  <tr><td>⚡ 便利與速度</td><td>快/即時/線上/APP/流程/麻煩/申請/審核/撥款/30秒…</td></tr>
+  <tr><td>🔹 其他主題</td><td>（fallback；無命中者落入此桶，確保每位都有歸屬）</td></tr>
+</table>
+
+<h3>9.2 中欄：行為誘因桶 INCENTIVE_BUCKETS（5 個誘因桶 + 1 個 fallback）</h3>
+<p>中間層把「答案表面」翻譯成「決策驅動力」——同樣是「願意」，背後動機可能是省錢、便利或安全感，行銷落地時打法不同。</p>
+<table class="grid">
+  <tr><th>誘因桶</th><th>語意（節錄關鍵字）</th></tr>
+  <tr><td>💰 剛性支出節流</td><td>省/節省/預算/太貴/划算/月費/撐不住/吃緊/油錢/負擔不起…</td></tr>
+  <tr><td>🛡 安全感建構</td><td>保障/安全/心安/應急金/醫療/失能/家人/退休/後路/底氣…</td></tr>
+  <tr><td>📈 機會型成長</td><td>投資/報酬/複利/副業/創業/加密/股票/包租/現金流/機會…</td></tr>
+  <tr><td>⚡ 便利速度</td><td>快/即時/簡單/方便/APP/線上/30秒/免出門/一鍵…</td></tr>
+  <tr><td>🚧 風險規避</td><td>怕/擔心/猶豫/詐騙/陷阱/條款/綁約/拒賠/套牢/破產/被拒…</td></tr>
+  <tr><td>🔸 一般考量</td><td>（fallback；通常是純資訊型答案）</td></tr>
+</table>
+
+<h3>9.3 右欄：決策桶 DECISION_BUCKETS（願意／觀望／拒絕）</h3>
+<p>右欄是最終決策。每桶各有一組關鍵字與一個顏色（願意=emerald、觀望=amber、拒絕=rose）。當未採用算盤意願判定時，即以此詞表分類。</p>
+<table class="grid">
+  <tr><th>決策</th><th>關鍵字（節錄）</th></tr>
+  <tr><td>願意（綠）</td><td>會買/會考慮/一定會/心動/會辦/想試試/願意/吸引/值得/划算…</td></tr>
+  <tr><td>觀望（黃）</td><td>可能會/也許/看狀況/再看看/考慮看看/再想想/不一定/看情況…</td></tr>
+  <tr><td>拒絕（紅）</td><td>不會/不要/不想/怕/擔心/不敢/拒絕/放棄/沒興趣/不買/免談…</td></tr>
+</table>
+
+<h2 id="sankey-classify" class="page-break">10. 主題二之二 — 彙整決策參考意圖：單一主桶分類法</h2>
+<p>為了讓桑基圖左右兩端能以「同一個受訪者單位」縮放節點高度（否則命中多桶者會被重複計數、左右比例對不齊），每位受訪者在每一層只歸屬<b>一個</b>主桶。</p>
+
+<h3>10.1 語意桶 / 誘因桶：取命中數最多者</h3>
+<div class="eq">classifyPrimaryKeyword(text) / classifyPrimaryIncentive(text)：
+  對每個非 fallback 桶，計算該桶關鍵字在 text 中的命中數 hits
+  取 hits 最大的桶為主桶
+  平手時 → 依詞桶宣告順序取第一個
+  全部為 0 → 落入該層的 fallback 桶（🔹其他主題 / 🔸一般考量）</div>
+
+<h3>10.2 決策桶（純文字判定）：取命中數最多，平手取保守</h3>
+<div class="eq">classifyDecision(text)：
+  分別計算 願意 / 觀望 / 拒絕 三桶的關鍵字命中數
+  取最大者；平手優先序為 拒絕 &gt; 觀望 &gt; 願意（保守傾向）
+  三桶皆為 0 → 預設「觀望」</div>
+<p class="small">保守平手規則的設計意圖：當受訪者語氣混雜（同時出現「會考慮」與「怕」），寧可判為較保守的決策，避免高估產品接受度。</p>
+
+<h3>10.3 決策桶（算盤意願判定）：與相變散佈圖臨界線一致</h3>
+<p>在動態模擬艙中，桑基圖的決策<b>不</b>用純文字判定，而是接受一個自訂 <code class="inline">decisionFn</code>，以算盤即時意願分數判定，使桑基圖隨算盤珠與外部衝擊同步重畫：</p>
+<div class="eq">decisionFromIntent(intent)：
+  intent ≥ 60 → 願意
+  intent ≥ 40 → 觀望
+  否則         → 拒絕
+（臨界線 60 / 40 與相變散佈圖完全一致）
+
+模擬艙中實際使用：
+  decisionFn(entry) = decisionFromIntent(
+      applyShocks( computePurchaseIntent(scores, params), scores, shocks ) )</div>
+<div class="callout"><b>雙模式決策判定（可專利點）：</b>同一張桑基圖支援兩種右欄決策來源——（A）<b>純文字關鍵字判定</b>（反映受訪者「字面說了什麼」）與（B）<b>算盤意願數值判定</b>（反映「在當前參數與外部衝擊下的行為預測」）。後者使桑基圖成為可隨滑桿即時重繪的互動決策路徑圖，且其臨界線與相變散佈圖嚴格一致。</div>
+
+<h2 id="sankey-build" class="page-break">11. 主題二之三 — 三層決策路徑建構、守恆性與決策流程</h2>
+<p><code class="inline">buildThreeLayerFlows(entries, decisionFn?)</code> 把每位受訪者拆成一個三元組 <code class="inline">(keyword, incentive, decision)</code>，再聚合成兩段 ribbon：左段 keyword→incentive、右段 incentive→decision。</p>
+
+<h3>11.1 建構流程</h3>
+<div class="flow">對每位受訪者 entry：
+  fullText  = entry.answers.join("\n")
+  keyword   = classifyPrimaryKeyword(fullText)        ← 左欄節點
+  incentive = classifyPrimaryIncentive(fullText)      ← 中欄節點
+  decision  = decisionFn ? decisionFn(entry)          ← 右欄節點（算盤意願）
+                         : classifyDecision(fullText) ← 或純文字判定
+  累加：keywordTotals[keyword]++、incentiveTotals[incentive]++、decisionTotals[decision]++
+  聚合左段：segment(keyword → incentive).count++、.personas.push(persona)
+  聚合右段：segment(incentive → decision).count++、.personas.push(persona)
+輸出：{ triples[], keywordToIncentive[], incentiveToDecision[],
+        keywordTotals, incentiveTotals, decisionTotals }</div>
+
+<h3>11.2 守恆性（節點高度可正確比例放大的關鍵）</h3>
+<div class="callout"><b>守恆定理：</b>由於每位受訪者在每一層<b>恰好</b>歸屬一個桶（含 fallback 保底），三層各自的「節點人數總和」皆<b>嚴格等於受訪者總數 N</b>。因此左、中、右三欄的節點高度可用同一比例尺縮放，ribbon 寬度正比於人數，視覺上左進右出的流量守恆、不會出現比例對不齊。此單一主桶分類 + fallback 保底的設計，即為守恆性的成因。</div>
+
+<h3>11.3 ribbon 的人物可追溯性與視覺</h3>
+<ul>
+  <li>每段 <code class="inline">FlowSegment</code> 攜帶該段所屬 <code class="inline">personas[]</code>，前端 hover ribbon 即可列出落在該路徑上的具體受訪者，達成「群體 → 個體」的鑽取。</li>
+  <li>ribbon 顏色由出發節點漸層到目的節點；決策桶顏色固定（願意綠／觀望黃／拒絕紅）。</li>
+  <li>當算盤珠或外部衝擊變動 → <code class="inline">decisionFn</code> 重算 → 三層流量重建 → 桑基圖即時重畫，與散佈圖相變同步。</li>
+</ul>
+
+<h3>11.4 兩層版（buildFlows）作為退化情形</h3>
+<p>系統另有兩層版 <code class="inline">buildFlows(entries, decisionFn?)</code>（keyword × decision 矩陣），為三層版省略中間誘因層的退化情形，分類與守恆規則相同。</p>
+
+<h2 id="derived" class="page-break">12. 衍生模擬：行為相變散佈圖</h2>
+<p>同一套即時意願引擎同時驅動<b>行為相變散佈圖</b>與<b>三層決策桑基圖</b>（見第 9–11 節），兩者全部共用 <code class="inline">computeRadarScores</code> + <code class="inline">computePurchaseIntent</code>／<code class="inline">computeOpenIntent</code> + <code class="inline">applyShocks</code>，並對每位受訪者預先快取 scores 以免重算。</p>
+
+<h3>12.1 行為相變散佈圖（PhaseTransitionMap）</h3>
+<p>X 軸=經濟壓力、Y 軸=購買意願（intent，經算盤珠 + 衝擊）；以臨界線 60／40 把平面分為「願意／觀望／拒絕」三帶。拖動算盤珠或衝擊滑桿時，每個受訪者粒子的 Y 值即時更新、跨越臨界線而「相變」（坍縮）到不同決策帶——此即「移動算盤珠即時看每位受訪者購買意願變化」的視覺呈現。</p>
+
+<!-- ================= CLAIMS ================= -->
+<h2 id="claims" class="page-break">13. 請求項草稿（claims，供專利代理人參考）</h2>
+
+<p><b>獨立項 1（方法）。</b>一種互動式市場模擬方法，由電腦執行下列步驟：</p>
+<ol>
+  <li>取得複數位合成受訪者，每位具有結構化人格欄位與一組由語言模型訪談產生之自由文字答案；</li>
+  <li>對每位受訪者，以一第一純函式將其結構化欄位映射為複數個數值化人格分數，並<b>快取</b>該等分數；</li>
+  <li>提供一可調產品參數（算盤珠）與至少一外部環境衝擊參數之使用者介面；</li>
+  <li>於該可調產品參數或該外部環境衝擊參數被調整之當下，<b>不重新呼叫任何語言模型</b>，以一第二純函式依該等快取之人格分數與當前參數，<b>決定性地即時重算</b>每位受訪者之購買意願值；其中該外部環境衝擊以一在該購買意願值上扣分之投影函式套用，且該投影函式為複數個視圖所共用；</li>
+  <li>依一組臨界值將每位受訪者之購買意願值映射為一決策類別，並即時更新一行為相變視圖與一多層決策路徑圖。</li>
+</ol>
+
+<p><b>附屬項。</b></p>
+<ul>
+  <li><b>2.</b> 如項 1，其中該第二純函式針對不同產品類型套用不同之核心驅動因子方程式，各該方程式包含一相對於一中性值之線性敏感度項，且該可調產品參數為該線性敏感度項之自變數。</li>
+  <li><b>3.</b> 如項 1，其中至少一方程式包含一門檻條件項，使購買意願對某一人格分數呈非單調關係；及／或包含兩人格分數之乘積交互作用項。</li>
+  <li><b>4.</b> 如項 1，其中該外部環境衝擊投影函式對「經濟壓力高於一門檻」之受訪者施以隨通膨遞增之扣分，並對「信用低且經濟壓力高」之受訪者施以隨失業遞增之扣分。</li>
+  <li><b>5.</b> 一種決策路徑視覺化方法，包含：將每位受訪者之自由文字答案串接後，分別對一語意脈絡詞桶集合、一行為誘因詞桶集合與一決策詞桶集合進行關鍵字比對，<b>每一集合僅取命中數最多之單一主桶</b>（平手依宣告順序、無命中則落入保底桶），從而為每位受訪者構成一三元組；聚合該等三元組為兩段流量；其中因單一主桶分類使每一層之節點人數總和<b>恆等於受訪者總數</b>，故各層節點高度得以同一比例尺正確縮放。</li>
+  <li><b>6.</b> 如項 5，其中該決策類別之來源可在二模式間切換：（A）由該決策詞桶之關鍵字命中數判定；（B）由項 1 即時重算之購買意願值經一組臨界值判定；且模式 B 之臨界值與該行為相變視圖之臨界值相同，使該決策路徑圖隨該可調產品參數與外部環境衝擊即時重繪。</li>
+  <li><b>7.</b> 如項 5，其中每段流量攜帶其所屬受訪者集合，使介面操作得自一聚合流量鑽取至個別受訪者。</li>
+</ul>
+
+<hr>
+<p class="small">— 本技術揭露書（二）完。本發明與發明 A（基於虛擬數位分身之自動化市場調查系統及方法）為相關但可獨立主張之兩項發明：A 產生文字證據與人格欄位，B 將其蒸餾為數值狀態並即時模擬。本文件所引用之程式路徑與方程式，截至 2026-05-30 之程式碼狀態（lib/persona-scores.ts、lib/persona-projections.ts、lib/persona-flows.ts、lib/abacus-config.ts）為準。所有意願與分數方程式均為啟發式行為模型，主張標的為其建構方法論與即時重算架構，非任何特定係數之精確值。</p>
+
+</body>
+</html>

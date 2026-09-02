@@ -1,0 +1,40 @@
+flowchart TB
+
+  Input(["使用者輸入\n研究命題＋產品規格"])
+
+  subgraph System["自動化市場調查系統"]
+    direction TB
+
+    Entry["啟動判斷模組\n判斷需求是否明確\n輸出：READY / 要求補充"]
+
+    Planner["題組規劃模組\n生成可量化訪談題目\n規格保真：原始數字全程透傳"]
+
+    subgraph Interview["平行合成訪談模組"]
+      PersonaPool[("合成受訪者池\n零真實個資")]
+      PersonaAgents["虛擬數位分身代理人 ×N\n單通捆綁式並行訪談"]
+    end
+
+    Throttle["並行節流與退避重試\n全域唯一節流點\n防止 API 速率上限"]
+
+    Summary["洞察彙總模組\n共識 · 分歧 · 量化 · 風險\n結構化 KPI 輸出"]
+
+    Report["決策報告模組\n產出可直接決策之\n結構化洞察報告"]
+  end
+
+  LLM[/"大型語言模型\n（與供應商無關）"/]
+
+  Output(["結構化決策報告\nPDF · 電郵 · 視覺化"])
+
+  Input        --> Entry
+  Entry        -->|"需求明確"| Planner
+  Planner      --> Interview
+  PersonaPool  --> PersonaAgents
+  Interview    --> Summary
+  Summary      --> Report
+  Report       --> Output
+
+  PersonaAgents <-->|"模型呼叫（受節流保護）"| Throttle
+  Throttle      <-->| | LLM
+  Planner       <-->|"模型呼叫"| Throttle
+  Summary       <-->|"模型呼叫"| Throttle
+  Report        <-->|"模型呼叫"| Throttle

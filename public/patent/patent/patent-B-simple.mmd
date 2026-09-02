@@ -1,0 +1,37 @@
+flowchart TB
+
+  Input(["LLM 訪談輸出\n虛擬數位分身文字答案\n＋ 受訪者結構欄位\n（來自發明 A，一次性）"])
+
+  subgraph System["決定性即時模擬系統"]
+    direction TB
+
+    Distill["人格蒸餾模組\n結構欄位 → 五維數值分數\n經濟壓力 · 風險偏好 · 數位熟練\n借貸需求 · 信用狀態\n（結果快取，後續重算不再呼叫模型）"]
+
+    Cache[("數值化人格狀態快取\n五維分數 × 全部受訪者")]
+
+    subgraph Params["使用者即時輸入"]
+      direction LR
+      ProductParam["產品參數滑桿\n利率 / 月費 / 回饋率"]
+      ShockParam["外部衝擊滑桿\n通膨率 · 失業率"]
+    end
+
+    Intent["購買意願計算模組\n五維共用基底\n＋ 產品專屬驅動因子\n＋ 非線性門檻效應"]
+
+    Shock["外部衝擊投影模組\n於意願值上疊加衝擊扣分\n所有視圖共用 → 臨界點一致偏移"]
+
+    subgraph Views["多視圖即時輸出"]
+      direction LR
+      Scatter["相變散佈圖\n購買意願 × 客群特徵\n臨界點可視化"]
+      Sankey["三層決策桑基圖\n語意脈絡 → 行為誘因 → 決策歸屬\n流量守恆"]
+    end
+  end
+
+  Input   --> Distill
+  Distill --> Cache
+  Cache   --> Intent
+  Params  --> Intent
+  Intent  --> Shock
+  Shock   --> Views
+
+  Note(["可重現 · 零邊際模型成本\n毫秒級即時重算"])
+  Shock -.-> Note

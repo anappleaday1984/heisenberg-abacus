@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>技術揭露書 — 多代理人合成受訪者市場調查方法（問題 → 洞察報告）</title>
+<style>
+  :root { --ink:#1a1a1a; --muted:#555; --line:#d0d0d0; --accent:#1f4e79; --code-bg:#f5f5f4; --code-ink:#222; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", -apple-system, sans-serif;
+    color: var(--ink); line-height: 1.7; font-size: 15px;
+    max-width: 920px; margin: 0 auto; padding: 48px 56px;
+  }
+  h1 { font-size: 26px; line-height: 1.35; border-bottom: 3px solid var(--accent); padding-bottom: 14px; margin: 0 0 6px; color: var(--accent); }
+  h2 { font-size: 20px; margin: 34px 0 12px; padding: 8px 0 6px; border-bottom: 1.5px solid var(--line); color: var(--accent); }
+  h3 { font-size: 16.5px; margin: 24px 0 8px; color: #2a2a2a; }
+  h4 { font-size: 14.5px; margin: 16px 0 6px; color: #333; }
+  p, li { color: var(--ink); }
+  .sub { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+  .meta-table { width: 100%; border-collapse: collapse; margin: 18px 0 8px; font-size: 13.5px; }
+  .meta-table td { border: 1px solid var(--line); padding: 6px 10px; vertical-align: top; }
+  .meta-table td:first-child { width: 130px; background: #f0f4f8; font-weight: 600; color: #2a2a2a; }
+  table.grid { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  table.grid th, table.grid td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.grid th { background: #eaf0f6; color: #1f4e79; font-weight: 600; }
+  table.grid tr:nth-child(even) td { background: #fafafa; }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); border: 1px solid #e2e2e0; border-left: 4px solid var(--accent);
+    padding: 12px 14px; border-radius: 4px; overflow-x: auto; font-size: 12px; line-height: 1.55;
+    font-family: "SFMono-Regular", "Menlo", "Consolas", "Noto Sans Mono CJK TC", monospace;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  code.inline { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 12.5px;
+    font-family: "SFMono-Regular","Menlo","Consolas",monospace; color: #b03a2e; }
+  .callout { background: #f0f7ff; border: 1px solid #c5dcf2; border-radius: 5px; padding: 10px 14px; margin: 12px 0; font-size: 13.5px; }
+  .callout.warn { background: #fff8ef; border-color: #f0d9b5; }
+  .tag { display: inline-block; background: var(--accent); color: #fff; font-size: 11px; padding: 1px 8px; border-radius: 10px; vertical-align: middle; margin-left: 6px; }
+  .prompt-label { font-size: 12px; font-weight: 700; color: #1f4e79; margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+  ol.toc { font-size: 14px; line-height: 2; }
+  ol.toc a { color: var(--accent); text-decoration: none; }
+  .flow { font-family: "SFMono-Regular","Menlo","Consolas",monospace; font-size: 12px; background: var(--code-bg);
+    border: 1px solid #e2e2e0; border-radius: 4px; padding: 14px 16px; white-space: pre; overflow-x: auto; line-height: 1.5; }
+  hr { border: none; border-top: 1px dashed var(--line); margin: 28px 0; }
+  .small { font-size: 12.5px; color: var(--muted); }
+  .claim { border: 1px solid var(--line); border-radius: 5px; padding: 4px 14px 10px; margin: 12px 0; }
+  .claim h4 { color: var(--accent); border-bottom: 1px solid #eee; padding-bottom: 4px; }
+  @page { size: A4; margin: 16mm 14mm; }
+  @media print {
+    body { padding: 0; max-width: none; font-size: 11.5px; }
+    h1 { font-size: 21px; }
+    h2 { font-size: 16px; page-break-after: avoid; }
+    h3 { font-size: 13.5px; page-break-after: avoid; }
+    pre, table.grid, .flow { page-break-inside: avoid; }
+    .page-break { page-break-before: always; }
+    a { color: var(--accent); text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<h1>技術揭露書（一）<br>多代理人合成受訪者市場調查方法<br><span style="font-size:17px;font-weight:500;">— 自「研究命題輸入」至「結構化洞察報告產出」之端到端流程、各階段介入模型與提示詞</span></h1>
+
+<table class="meta-table">
+  <tr><td>文件類型</td><td>專利技術揭露書 / 發明說明（供專利代理人擬稿用）</td></tr>
+  <tr><td>發明名稱（暫定）</td><td>一種以多個大型語言模型代理人協同對合成受訪者群進行平行訪談並產出結構化決策報告之方法與系統</td></tr>
+  <tr><td>對應產品</td><td>「海森堡的算盤 · 人類行為觀測站」（multi-agent 虛擬人格市場調查平台）</td></tr>
+  <tr><td>技術領域</td><td>人工智慧 / 大型語言模型應用、合成資料、市場研究自動化、多代理人編排（multi-agent orchestration）</td></tr>
+  <tr><td>核心主張</td><td>用合成的虛擬受訪者群在沙盒中跑市調，將傳統「14 天」的概念驗證週期壓縮到「約 15 分鐘」，且不接觸任何真實個人資料</td></tr>
+  <tr><td>基礎模型</td><td>MiniMax-M2.5（經由 Anthropic SDK 相容端點呼叫）；本方法與模型供應商無關，可替換為任一相容之大型語言模型</td></tr>
+  <tr><td>撰寫日期</td><td>2026-05-29</td></tr>
+</table>
+
+<div class="callout">
+<b>閱讀指引：</b>本文件聚焦於<b>「從問題到洞察報告」的完整資料流</b>，逐階段列出（一）該階段<b>介入的模型／代理人角色</b>、（二）該階段送進模型的<b>完整系統提示詞與使用者提示詞（逐字收錄）</b>、（三）該階段的<b>輸入／輸出資料結構與後處理規則</b>。文末另列六項橫切的可專利技術特徵與請求項草稿。
+</div>
+
+<h2 id="toc">目次</h2>
+<ol class="toc">
+  <li><a href="#field">技術領域與先前技術問題</a></li>
+  <li><a href="#overview">系統總覽與端到端資料流</a></li>
+  <li><a href="#roles">六個代理人角色與其介入點一覽</a></li>
+  <li><a href="#stage0">階段 0 — 入口、身分驗證、串流與全域並行控制</a></li>
+  <li><a href="#stage1">階段 1 — 啟動者（Entry Agent）：需求接收與啟動判斷</a></li>
+  <li><a href="#stage2">階段 2 — 觀測者·規劃（Planner Agent）：產生量化訪談題組</a></li>
+  <li><a href="#stage25">階段 2.5 — 人格顯影與產品類型自動推斷</a></li>
+  <li><a href="#stage3">階段 3 — 對話者（Persona Agent ×N）：平行合成訪談</a></li>
+  <li><a href="#stage4">階段 4 — 彙總者（Summary Agent）：結構化洞察彙總</a></li>
+  <li><a href="#stage5">階段 5 — 觀測者·報告（Report Agent）：產出決策報告</a></li>
+  <li><a href="#stage6">階段 6 — 輸出層：PDF／PNG／電郵／語音控制</a></li>
+  <li><a href="#crosscut">橫切關鍵技術（可專利特徵）</a></li>
+  <li><a href="#datastruct">主要資料結構定義</a></li>
+  <li><a href="#claims">請求項草稿（claims）</a></li>
+  <li><a href="#example">完整實施例（信貸 6.88% 案例）與效益實測</a></li>
+</ol>
+
+<hr>
+
+<h2 id="field">1. 技術領域與先前技術問題</h2>
+
+<h3>1.1 技術領域</h3>
+<p>本發明屬於<b>大型語言模型（LLM）多代理人協同</b>與<b>市場研究自動化</b>之交叉領域。具體而言，是一種以多個具有不同職責的 LLM 代理人，對一群「合成的虛擬受訪者（synthetic persona）」進行平行訪談，再經彙總與報告兩道結構化階段，於數分鐘內產出可供產品經理（PM）直接決策之結構化洞察報告的方法與系統。</p>
+
+<h3>1.2 先前技術之問題</h3>
+<table class="grid">
+  <tr><th>傳統市場調查痛點</th><th>本發明對應之解法</th></tr>
+  <tr><td>真實客戶資料受個人資料保護法規範，蒐集、去識別化、取得同意耗時數週</td><td>以合成虛擬受訪者取代真實樣本，<b>零真實個資輸入</b>，差分隱私式設計</td></tr>
+  <tr><td>傳統焦點訪談樣本量不足、招募成本高</td><td>平行訪談 N 位 LLM 角色（demo 規模 10–50 位），<b>邊際成本趨近於零</b></td></tr>
+  <tr><td>概念驗證週期長（約 14 天），錯過產品決策時機</td><td>單次調查端到端約 60–90 秒至數分鐘完成，週期壓縮至「<b>15 分鐘</b>」量級</td></tr>
+  <tr><td>單一 LLM 直接「想像」一份市調報告，缺乏可追溯的中間證據、產品規格易失真、輸出格式不穩定</td><td>拆解為<b>六段具明確職責的代理人流程</b>，逐段留下可視化中間產物（散佈圖、桑基圖、逐位問答），並以多重技術確保規格保真與輸出格式穩定</td></tr>
+</table>
+
+<div class="callout warn">
+<b>關鍵差異化：</b>本方法<b>不是</b>「用一個 prompt 叫 LLM 直接寫一份市調報告」。它的可專利核心在於——把市場調查拆解成「<b>啟動判斷 → 量化規劃 → 平行合成訪談 → 證據彙總 → 決策報告</b>」五道由不同 system prompt 約束的代理人階段；在階段間以<b>原始產品規格上下文（productContext）</b>串接以避免數字失真；並以<b>單通捆綁式 JSON（bundled JSON）</b>、<b>全域併發節流</b>、<b>強健 JSON 復原</b>等機制，使「多位受訪者 × 多題」的大量模型呼叫在個人級速率限制下仍能可靠完成。</p>
+</div>
+
+<h2 id="overview" class="page-break">2. 系統總覽與端到端資料流</h2>
+
+<p>使用者（金融商品 PM 或研究員）以自然語言輸入一個研究命題（例如「我想測一個年利率 6.88%、額度 5 萬、6 個月還款的微型信貸方案」）。系統經由一條伺服器推送事件（SSE）串流，依序驅動五個 LLM 階段，並即時把每階段的中間產物推給前端視覺化，最終產出可下載的結構化決策報告。</p>
+
+<div class="flow">使用者輸入研究命題（自然語言，含具體產品規格）
+        │
+        ▼
+┌─ 階段1 啟動者 Entry ──────────────┐   ← LLM 代理人 #1（串流式）
+│  接收需求、判斷 READY / CLARIFY     │   產出：確認語句 + 狀態 sentinel
+└──────────────┬────────────────────┘
+               ▼  （ready=true 才往下）
+┌─ 階段2 觀測者·規劃 Planner ────────┐   ← LLM 代理人 #2（adaptive thinking, JSON）
+│  生成 4–6 道可量化訪談題           │   產出：{summary, questions[], scopeNote}
+│  【規格保真】題目逐字嵌入產品規格   │
+└──────────────┬────────────────────┘
+               ▼  （發出 personas_intro：人格顯影 + 產品類型推斷）
+┌─ 階段3 對話者 Persona ×N ──────────┐   ← LLM 代理人 #3 ×N（併發）
+│  每位受訪者「一通呼叫答完 N 題」     │   bundled JSON；失敗自動退回逐題模式
+│  完成一位即時 yield persona_partial │   產出：每位 {answers[]}
+└──────────────┬────────────────────┘
+               ▼  （發出 personas_qa：逐位問答全集）
+┌─ 階段4 彙總者 Summary ─────────────┐   ← LLM 代理人 #4（adaptive thinking, JSON）
+│  歸納共識／分歧／量化／風險 + KPI    │   產出：{headline, metrics[], groups[], sections{}}
+└──────────────┬────────────────────┘
+               ▼
+┌─ 階段5 觀測者·報告 Report ─────────┐   ← LLM 代理人 #5（adaptive thinking, JSON）
+│  彙整上游全部資料 → 完整決策報告     │   產出：{title, executiveSummary, keyFindings[],
+└──────────────┬────────────────────┘             groupComparison{}, actionItems[]}
+               ▼
+        結構化決策報告 → 前端視覺化 → PDF / PNG / 電郵下載</div>
+
+<p class="small">主排程器位於 <code class="inline">lib/orchestrator.ts</code> 的 async generator <code class="inline">orchestrate()</code>，逐 <code class="inline">yield</code> 一個 <code class="inline">StreamEvent</code>；HTTP 進入點 <code class="inline">app/api/chat/route.ts</code> 將事件以 <code class="inline">text/event-stream</code> 推給前端，並在出口做簡體→繁體轉換與寫入日誌。</p>
+
+<h2 id="roles">3. 六個代理人角色與其介入點一覽</h2>
+<table class="grid">
+  <tr><th>#</th><th>代理人角色（內部代號）</th><th>原始碼</th><th>模型呼叫模式</th><th>輸出型態</th><th>職責</th></tr>
+  <tr><td>1</td><td>啟動者 Entry</td><td>lib/agents/entry.ts</td><td>串流（stream）、不重試、max_tokens 1024</td><td>純文字 + sentinel</td><td>接需求、判斷是否啟動</td></tr>
+  <tr><td>2</td><td>觀測者·規劃 Planner</td><td>lib/agents/pm.ts → planSurvey()</td><td>create + adaptive thinking、max_tokens 4096</td><td>strict JSON</td><td>產生量化訪談題組</td></tr>
+  <tr><td>3</td><td>對話者 Persona ×N</td><td>lib/agents/persona.ts → askPersona()</td><td>串流、bundled JSON（max_tokens 2500）／逐題 fallback（600）</td><td>strict JSON 陣列</td><td>扮演單一受訪者答 N 題</td></tr>
+  <tr><td>4</td><td>彙總者 Summary</td><td>lib/agents/summary.ts → summarize()</td><td>create + adaptive thinking、max_tokens 16000</td><td>strict JSON</td><td>結構化彙總洞察 + KPI</td></tr>
+  <tr><td>5</td><td>觀測者·報告 Report</td><td>lib/agents/pm.ts → generateReport()</td><td>create + adaptive thinking、max_tokens 16000</td><td>strict JSON</td><td>產出完整決策報告</td></tr>
+  <tr><td>＋</td><td>受訪者生成 Generator（離線擴池）</td><td>lib/agents/persona-generator.ts</td><td>create + adaptive thinking、max_tokens 4096</td><td>strict JSON 陣列</td><td>依描述擴充合成受訪者池</td></tr>
+  <tr><td>＋</td><td>語音意圖 Voice-Intent（輸出層控制）</td><td>lib/agents/voice-intent.ts</td><td>create、max_tokens 1024</td><td>strict JSON</td><td>口語指令 → 7 種動作</td></tr>
+</table>
+<p class="small">所有對模型的呼叫一律經由 <code class="inline">lib/anthropic.ts</code> 的 <code class="inline">callLLM()</code> 或 <code class="inline">acquireLLMSlot()</code> 包裹，使其受同一道全域併發節流與 429 退避重試保護（詳見第 11 節 C1）。每個代理人的 system prompt 開頭一律引用共用語言規範 <code class="inline">LANG_RULE</code>（詳見第 11 節 C5）。</p>
+
+<!-- ============ STAGE 0 ============ -->
+<h2 id="stage0" class="page-break">4. 階段 0 — 入口、身分驗證、串流與全域並行控制</h2>
+<p>在任何模型介入之前，HTTP 進入點 <code class="inline">POST /api/chat</code> 先行：</p>
+<ul>
+  <li><b>身分驗證：</b>以 HttpOnly cookie 對應 <code class="inline">lib/auth.ts</code> 的帳號表，未登入回 401。系統同時限制「不同帳號同時上線 ≤ 3 人」，逾額回 429，閒置 1 小時自動釋放席位。</li>
+  <li><b>建立 SSE 串流：</b>以 <code class="inline">ReadableStream</code> 包裝 <code class="inline">orchestrate()</code> generator，逐事件 <code class="inline">data: {json}\n\n</code> 推送。</li>
+  <li><b>出口語言轉換：</b>對 <code class="inline">agent_text</code> 事件套用 <code class="inline">toTraditional()</code>（簡→繁），此為三層繁中保險的第二層。</li>
+  <li><b>日誌：</b>串流結束後寫入耗時、受訪者數、最終報告摘要、成功與否。</li>
+</ul>
+<p>全域並行控制（semaphore）與 429 退避重試在 <code class="inline">lib/anthropic.ts</code> 實作，是整個系統<b>唯一的節流點</b>，所有階段共用。本層為後續所有模型呼叫提供「在個人級速率限制下仍可靠完成」的基礎，其技術細節見第 11 節 C1。</p>
+
+<!-- ============ STAGE 1 ============ -->
+<h2 id="stage1" class="page-break">5. 階段 1 — 啟動者（Entry Agent）<span class="tag">LLM #1</span></h2>
+
+<h3>5.1 介入模型與呼叫方式</h3>
+<table class="meta-table">
+  <tr><td>模型</td><td>MiniMax-M2.5</td></tr>
+  <tr><td>呼叫模式</td><td><code class="inline">anthropic.messages.stream()</code>（串流，逐 token yield 給前端打字機效果）</td></tr>
+  <tr><td>max_tokens</td><td>1024</td></tr>
+  <tr><td>重試策略</td><td><b>不做重試</b>（此為使用者首則訊息，若 429 寧可即時回錯，不讓使用者等 30 秒）。以低階 <code class="inline">acquireLLMSlot()</code> 取得併發席位，try/finally 確保釋放</td></tr>
+  <tr><td>system 快取</td><td>system prompt 標記 <code class="inline">cache_control: ephemeral</code></td></tr>
+  <tr><td>輸出契約</td><td>訊息最後一行必為 <code class="inline">[STATUS:READY]</code> 或 <code class="inline">[STATUS:CLARIFY]</code>；以正則 <code class="inline">/\[STATUS:READY\]/i</code> 判定 <code class="inline">ready</code>，並剝除 sentinel 得 <code class="inline">brief</code></td></tr>
+</table>
+
+<h3>5.2 設計重點</h3>
+<p>啟動者刻意採「<b>偏向放行（預設 READY）</b>」策略：只要使用者明確說了「想測什麼產品／想了解什麼問題／目標客群」三者任一，即視為足夠並立即進入下一階段；唯有完全沒有主題、像隨意聊天、或完全無法理解時才要求澄清。此設計避免在入口層反覆卡關。同時透過 prompt 明令「不得提及任何 agent 名稱、不得使用『人設』一詞」，維持對使用者的單一擬人化介面。</p>
+
+<div class="prompt-label">系統提示詞（System Prompt，逐字收錄；開頭的 ${LANG_RULE} 為共用語言規範，見第 11 節 C5）</div>
+<pre>${LANG_RULE}
+
+你是「海森堡的算盤」人類行為觀測站的「啟動者」（入口 agent）。
+
+## 你的職責
+- 接收使用者（金融商品 PM、研究員）的市調需求
+- 確認需求方向，立即交給下一棒進行調查
+
+## 判斷規則（重要）
+**預設要 READY** — 只要使用者明確說了「想測什麼產品」「想了解什麼問題」「目標客群」其中**任一項**，就視為足夠，立刻 READY。
+**只有以下情況才 CLARIFY**：
+- 使用者只說「幫我做市場調查」這種完全沒有主題的話
+- 訊息看起來像隨意聊天、不像是市調請求
+- 完全聽不懂使用者要什麼
+
+**寧可 READY 不要 CLARIFY** — 後續流程會自動補足細節，不要在這層卡關。
+
+## 輸出規則
+- 繁體中文，簡短（2-4 句）
+- 只確認你理解的需求重點（產品 / 問題 / 客群）即可
+- **不要提到 agent 名稱**（不要說「準備交給 PM Agent」「轉給觀測者」之類的話），系統會自動接手
+- **不要使用「人設」這個詞**，需要時用「受訪者」
+
+## 輸出格式（嚴格遵守）
+**訊息最後一行必須是這兩個 sentinel 之一**（單獨一行，沒有其他文字）：
+- `[STATUS:READY]` — 已收到明確需求，可以開始調查
+- `[STATUS:CLARIFY]` — 完全不知道要調查什麼，需要使用者補充
+
+⚠️ **絕對不能省略 sentinel**。沒有 sentinel 系統會卡住。</pre>
+
+<div class="prompt-label">使用者訊息（User Messages）</div>
+<p class="small">先前對話歷程 <code class="inline">history</code>（role/content）原樣帶入，最後附上本回合使用者輸入 <code class="inline">userMessage</code>。啟動者僅做啟動判斷，不改寫使用者原文。</p>
+
+<h3>5.3 輸出與分流</h3>
+<p>generator 把串流 token 逐段以 <code class="inline">agent_text</code> 事件推給前端；結束時回傳 <code class="inline">{ ready: boolean, brief: string }</code>。若 <code class="inline">ready=false</code>，主排程立即送出 <code class="inline">complete</code> 結束本回合（等待使用者補充）；若 <code class="inline">ready=true</code>，進入階段 2。</p>
+
+<!-- ============ STAGE 2 ============ -->
+<h2 id="stage2" class="page-break">6. 階段 2 — 觀測者·規劃（Planner Agent）<span class="tag">LLM #2</span></h2>
+
+<h3>6.1 介入模型與呼叫方式</h3>
+<table class="meta-table">
+  <tr><td>模型</td><td>MiniMax-M2.5，啟用 <code class="inline">thinking: { type: "adaptive" }</code>（自適應思考預算）</td></tr>
+  <tr><td>呼叫模式</td><td><code class="inline">anthropic.messages.create()</code>，包在 <code class="inline">callLLM()</code> 內（受全域節流 + 429 退避重試）</td></tr>
+  <tr><td>max_tokens</td><td>4096</td></tr>
+  <tr><td>輸出契約</td><td>strict JSON（包在 ```json fenced block），經 <code class="inline">extractJson()</code> 強健解析為 <code class="inline">PMPlan</code></td></tr>
+  <tr><td>截斷防護</td><td>若 <code class="inline">stop_reason === "max_tokens"</code> 直接擲錯（規劃輸出被截斷）</td></tr>
+</table>
+
+<h3>6.2 設計重點 —「規格保真」</h3>
+<p>本階段的可專利重點是<b>「題目必須逐字嵌入使用者原始 prompt 的產品規格」</b>。主排程<b>同時</b>把（a）啟動者整理過的 <code class="inline">brief</code> 與（b）使用者<b>原始</b> <code class="inline">userMessage</code> 一併送入；並在 system prompt 中以三個反例明令禁止「偷換單位」（年利率↔月利率）、「丟棄規格」（5 萬額度）、「抹除具體數字」（30 秒線上審核）。受訪者可用的種子池摘要（id／名稱／類型／性別年齡／年收入／家庭）也附在 system prompt 末，讓題目兼顧不同族群。</p>
+
+<div class="prompt-label">系統提示詞（PLAN_SYSTEM，逐字收錄；執行時其後再附「可用受訪者池」清單）</div>
+<pre>${LANG_RULE}
+
+你是「海森堡的算盤」的「觀測者」（規劃調查階段），負責規劃市場調查。
+
+你的工作：
+1. 看完啟動者收集到的研究需求 + 使用者對話脈絡。
+2. 設計 4-6 個會給對話者去問受訪者的問題，問題要：
+   - 具體、可量化（願意付多少利率？借多久？）
+   - 測試決策動機（為什麼會選 / 不選這個產品）
+   - 揭露隱藏顧慮（怕什麼？什麼會讓他們放棄？）
+3. 系統會把這些問題**並行訪談所有受訪者**（你不需要挑選），所以問題要設計成對所有族群都有意義（高/低收入、單身/家庭、各年齡）。
+
+## 🚨 嚴格規則：問題必須引用使用者原始 prompt 的產品規格
+
+設計問題時，**所有與產品相關的數字、單位、條件**都**必須照原 prompt 寫死進問題本文**，不要抽象化、不要改單位。常見錯誤是：
+
+- ❌ 使用者寫「年利率 6.88%」，問題卻問「你能接受多少**月利率**？」（單位被偷換）
+- ❌ 使用者寫「5 萬額度」，問題卻問「你需要多少借貸金額？」（規格被丟掉）
+- ❌ 使用者寫「30 秒線上審核」，問題卻問「你重視審核速度嗎？」（具體數字被抹掉）
+
+✅ 正確做法：
+- 「**本方案年利率 6.88%、5 萬元額度、6 個月還款**，你願意申辦嗎？什麼條件會讓你放棄？」
+- 「跟你目前用的信貸產品比，**6.88% 年利率**算高還是低？」
+
+問題本文要**逐字**保留產品規格，受訪者才能針對這個方案回答，而不是憑印象答常識數字。
+
+**用語規定**：禁止使用「人設」一詞，請改用「受訪者」。
+
+**輸出格式**（嚴格遵守 JSON）：
+```json
+{
+  "summary": "一句話說明這次調查要驗證什麼",
+  "questions": ["問題 1", "問題 2", "問題 3", "問題 4"],
+  "scopeNote": "一句話說明這組問題如何兼顧不同族群"
+}
+```
+
+可用受訪者池：
+- `<id>`: <名稱>（<類型>，<性別> <年齡> 歲，年收入 NT$ <收入>）— <家庭首段>
+  …（每位一行，由種子池動態生成）</pre>
+
+<div class="prompt-label">使用者提示詞（User Prompt，逐字收錄；變數以 ${...} 標示）</div>
+<pre>## 使用者原始需求（請逐字參照產品規格）
+${userMessage}
+
+## 啟動者整理過的接待結果（僅供參考，產品規格以上方原始需求為準）
+${brief}
+
+請規劃這次的調查 — 問題本文必須引用上面原始需求中的產品規格（年利率/額度/期限/審核條件等具體數字），不要改單位或抽象化。</pre>
+<p class="small">先前對話歷程 <code class="inline">history</code> 亦原樣前置於使用者訊息之前。</p>
+
+<h3>6.3 輸出資料結構</h3>
+<pre>type PMPlan = {
+  summary: string;        // 一句話調查目標
+  questions: string[];    // 4–6 道訪談題（已逐字嵌入產品規格）
+  scopeNote?: string;     // 如何兼顧不同族群
+};</pre>
+<p>主排程把 <code class="inline">plan.summary</code> 與題目以 <code class="inline">agent_text</code> 推給前端顯示，並進入階段 2.5。</p>
+
+<!-- ============ STAGE 2.5 ============ -->
+<h2 id="stage25">7. 階段 2.5 — 人格顯影與產品類型自動推斷</h2>
+<p>進入訪談前，主排程發出一個 <code class="inline">personas_intro</code> 事件，挾帶（a）全體受訪者快照 <code class="inline">personas</code> 與（b）<code class="inline">productContext = userMessage + "\n" + plan.summary</code>。前端據此即時推斷產品類型（信貸／保險／信用卡／開放式），決定後續「算盤滑桿」要綁定哪個變數，並以散佈圖呈現受訪者「人格顯影」。此推斷為純規則式關鍵字比對（見發明 B），不耗用模型。</p>
+<p>同時，主排程組出貫穿下游三個階段的<b>產品規格上下文字串</b>：</p>
+<pre>const productContext = `${userMessage}\n\n調查目標：${plan.summary}`;</pre>
+<p>此 <code class="inline">productContext</code> 會被原封不動地分別注入<b>對話者、彙總者、觀測者報告</b>三個階段的 prompt，是「規格保真」橫切技術（第 11 節 C4）的載體。</p>
+
+<!-- ============ STAGE 3 ============ -->
+<h2 id="stage3" class="page-break">8. 階段 3 — 對話者（Persona Agent ×N）<span class="tag">LLM #3 ×N</span></h2>
+
+<h3>8.1 介入模型與呼叫方式</h3>
+<table class="meta-table">
+  <tr><td>模型</td><td>MiniMax-M2.5（每位受訪者一個獨立呼叫，N 位 = N 個呼叫，並行）</td></tr>
+  <tr><td>主路徑</td><td><b>bundled JSON</b>：串流呼叫、<code class="inline">max_tokens 2500</code>，一通呼叫令模型一次吐出含 N 題答案的 <code class="inline">{"answers":[...]}</code> 陣列</td></tr>
+  <tr><td>退路</td><td><b>逐題模式</b> <code class="inline">askPersonaSequential()</code>：bundled JSON 解析失敗或答案數不符時自動退回，逐題各打一通（<code class="inline">max_tokens 600</code>），<b>不帶前題對話歷程</b>以防話題外溢</td></tr>
+  <tr><td>併發</td><td>由 <code class="inline">orchestrator</code> 一次 fan-out 全部受訪者任務，實際併發由全域 semaphore（預設 6）排隊節流；每位完成即時 <code class="inline">yield persona_partial</code> 給前端漸進顯示</td></tr>
+  <tr><td>容錯</td><td>單一受訪者整體失敗時，以「（此受訪者暫時無回應）」填滿其答案、維持索引對齊，不阻斷其餘受訪者</td></tr>
+</table>
+
+<h3>8.2 人格化系統提示詞（依每位受訪者欄位動態組裝）</h3>
+<p>每位受訪者的 system prompt 由模板 <code class="inline">SYSTEM_TEMPLATE(persona)</code> 生成，注入該受訪者的類型、性別年齡、年收入與結構、人格特質、家庭狀況、資產與變故；若該受訪者為名人／強個性角色（具 <code class="inline">signatureStyle</code> 欄位），額外加入「招牌講話風格」段落並要求每題至少體現 1–2 個口氣特徵。</p>
+
+<div class="prompt-label">系統提示詞（SYSTEM_TEMPLATE，逐字收錄；${p.*} 為該受訪者欄位，方括號段落僅名人角色才出現）</div>
+<pre>${LANG_RULE}
+
+你正在扮演「${p.name}」這位虛擬受訪者，接受市場研究員的訪談。
+
+## 你的設定
+- **類型**：${p.archetype}
+- **性別／年齡**：${p.gender}／${p.age} 歲
+- **年收入**：NT$ ${p.yearlyIncomeTWD}（${p.incomeBreakdown}）
+- **人格特質**：${p.personality}
+- **家庭狀況**：${p.family}
+- **資產與變故**：${p.assetsAndEvents}
+
+[ 若 p.signatureStyle 存在，附加：
+## 招牌講話風格（必須強烈體現在每一題回答中）
+${p.signatureStyle}
+
+⚠ 這位是名人 / 強個性角色 — 回答如果讀起來「跟一般受訪者沒兩樣」就是失敗。
+慣用語 / 語助詞 / 自誇模式 / 比喻來源 / 反射式話題切換，每題至少要出現 1-2 個。 ]
+
+## 扮演規則
+1. 用「我」第一人稱，像真人接受訪談一樣回答。
+2. 講話風格要符合你的身份、年齡、性格 — 大叔/大哥用詞跟大學生不一樣，理性投資型講話帶數字、情緒型會抱怨。[ 名人角色額外：**「招牌講話風格」永遠優先**，再疊加身份、性格元素。 ]
+3. 回答要具體：給數字、講情境、舉自己親身經驗（從上面的家庭/資產背景延伸）。
+4. 如果產品有讓你猶豫或反感的地方，**直說**，不要客套。
+5. 不要像 AI 那樣完美 — 可以有矛盾、可以情緒化、可以講不出原因、可以有偏見。
+6. 全程**繁體中文**，台灣用語（不要用「視頻」「服務器」這類詞）。每題 3-5 句話，不要過長。</pre>
+
+<h3>8.3 主路徑使用者提示詞（bundled JSON，一通答 N 題）</h3>
+<p>本段是「單通捆綁式 JSON」技術（第 11 節 C2）的核心提示詞，明令模型輸出長度<b>剛好等於題數</b>的純文字陣列、各題彼此獨立、不得改單位。</p>
+
+<div class="prompt-label">使用者提示詞（BUNDLED_USER_PROMPT，逐字收錄）</div>
+<pre>## 你正在被訪談的產品（請務必對齊這裡的具體規格回答）
+${productContext}
+
+## 訪談問題
+市場研究員一次問你以下 ${questions.length} 題（彼此**獨立**、不要互相影響）：
+
+Q1：${questions[0]}
+Q2：${questions[1]}
+…（共 ${questions.length} 題）
+
+## 回覆規則
+- 每題用 3-5 句話、第一人稱、符合你的身份與性格。
+- 各題彼此獨立 — 別把前一題的情緒帶到下一題、別重述題目。
+- 不要列點、不要加 `Q1:` 前綴。
+- **回答要鎖定上面這個產品**（如年利率 6.88%、5 萬額度等具體規格），不要憑印象答另一個你以為的產品；單位（年利率 / 月利率）絕對不能改。
+
+## 輸出格式（嚴格遵守 JSON）
+**必須**輸出**單一** JSON 物件，包在 ```json fenced block 裡：
+
+```json
+{
+  "answers": [
+    "第 1 題的回答（3-5 句話的純文字）",
+    "第 2 題的回答",
+    ...共 ${questions.length} 個 element
+  ]
+}
+```
+
+⚠️ 重點：
+- `answers` 陣列**長度必須剛好 ${questions.length}**，少一題都不行。
+- 每個 element 是**純文字**（不是物件、不是另一個 JSON）。
+- 字串內若需要換行，請用空格代替；**不要在 JSON 字串中出現未跳脫的換行字元**。
+- 全部繁體中文台灣用語。</pre>
+
+<p>解析後校驗：<code class="inline">answers</code> 必須為陣列且長度等於題數、每個 element 去空白後非空，任何一項不符即擲錯並觸發逐題退路。</p>
+
+<h3>8.4 退路使用者提示詞（逐題模式，每題一通呼叫）</h3>
+<div class="prompt-label">使用者提示詞（askPersonaSequential 的每題 prompt，逐字收錄）</div>
+<pre>## 你正在被訪談的產品（請對齊這裡的具體規格回答）
+${productContext}
+
+## 第 ${i + 1} / ${questions.length} 題
+「${questions[i]}」
+
+要求：
+- 直接回答**這一題**，不要重述題目、不要扯到其他題目。
+- 用 3-5 句話、第一人稱、符合你的身份與性格。
+- 不要列點、不要加題號或「Q1:」這類前綴。
+- **回答要鎖定上面這個產品的規格**（如年利率 6.88%、5 萬額度），單位不要改、不要憑印象答另一個產品。</pre>
+<p class="small">逐題模式刻意<b>不帶前題對話歷程</b>：實測帶 history 會讓前一題的話題（例如在罵 30 秒審核）「漏」到下一題；改為每題獨立呼叫，可保證題目對應正確，人格一致性則由 system prompt 維持。</p>
+
+<h3>8.5 輸出資料結構與漸進式串流</h3>
+<pre>type PersonaResponse = {
+  id: string; name: string; archetype: string;
+  answers: string[];   // index 對齊 questions
+  text: string;        // "Q1: …\n\nQ2: …" 串接，供下游 summary/report 使用
+};</pre>
+<p>每位受訪者完成即推 <code class="inline">persona_partial</code>（含當前完成數／總數）給前端漸進顯示；全部完成後推 <code class="inline">personas_qa</code>（逐位問答全集），供前端「Q&A 探索器」翻頁瀏覽，並作為發明 B 桑基圖／散佈圖的資料源。</p>
+
+<!-- ============ STAGE 4 ============ -->
+<h2 id="stage4" class="page-break">9. 階段 4 — 彙總者（Summary Agent）<span class="tag">LLM #4</span></h2>
+
+<h3>9.1 介入模型與呼叫方式</h3>
+<table class="meta-table">
+  <tr><td>模型</td><td>MiniMax-M2.5，啟用 adaptive thinking</td></tr>
+  <tr><td>呼叫模式</td><td><code class="inline">messages.create()</code> 包在 <code class="inline">callLLM()</code></td></tr>
+  <tr><td>max_tokens</td><td>16000（大樣本時 thinking 會吃掉數千 token，需保留足夠空間寫完 metrics 陣列）</td></tr>
+  <tr><td>輸出契約</td><td>strict JSON → <code class="inline">SummaryData</code>，經 <code class="inline">extractJson()</code> 解析後再做欄位補齊與防呆</td></tr>
+</table>
+
+<h3>9.2 設計重點</h3>
+<p>彙總者把 N 位受訪者的逐題答案歸納成四個面向（共識／分歧／量化／風險）、3–4 個 KPI 指標、3–5 個族群支持度。其 prompt 內含兩道工程防呆規則：（1）<b>value / unit 不得重複</b>（避免渲染出「70-75%%」），程式端另以 <code class="inline">stripDuplicateUnit()</code> 二次保險；（2）<b>規格保真</b>——即使受訪者答案提到月利率，彙總仍須以本方案的「年利率 6.88%」為比較基準，且不得捏造無實證的數字。</p>
+
+<div class="prompt-label">系統提示詞（Summary SYSTEM，逐字收錄）</div>
+<pre>${LANG_RULE}
+
+你是「海森堡的算盤」的彙總者（Summary Agent），負責把多位對話者收集到的受訪者回答**結構化**成可視化報告資料。
+
+**用語規定**：禁止使用「人設」一詞，請改用「受訪者」。
+
+## 輸出格式（嚴格 JSON，包在 ```json fenced block）
+
+```json
+{
+  "headline": "12-25 字短標，總結這次調查的核心發現",
+  "keyTakeaway": "20-50 字行動建議，是整份報告最重要的一句話",
+  "metrics": [
+    {
+      "label": "指標短名（5-8 字）",
+      "value": "數字或範圍（如 '60'、'5000-8000'、'7.2'）",
+      "unit": "% / 元 / 位 / 分 / 其他單位（可空字串）",
+      "tone": "positive | neutral | negative",
+      "icon": "1 個 emoji（如 📈、💰、⚠️）"
+    }
+  ],
+  "groups": [
+    { "name": "族群名（5-12 字，例：高收入族群、單身學生）", "score": 75, "highlight": "1 句解讀，10-20 字" }
+  ],
+  "sections": {
+    "consensus": "共識洞察（80-150 字 markdown，可用 - 列點 / **粗體**）",
+    "divergence": "群體分歧（80-150 字 markdown）",
+    "metrics": "量化指標（80-150 字 markdown）",
+    "risks": "風險訊號（80-150 字 markdown）"
+  }
+}
+```
+
+## 規則
+1. `metrics`：3-4 個關鍵 KPI；數字要從訪談中估算，要可信
+2. `groups`：3-5 個有意義的族群區隔；`score` 是 0-100 的支持度／興趣度
+3. `tone`：positive 對產品有利、negative 警訊、neutral 中性
+4. `icon`：用 emoji，配合該 metric 的意涵（如收入用 💰、風險用 ⚠️、興趣用 🎯）
+5. `sections` 四個 key 都必填，內容用繁體中文 markdown
+6. **必須回傳完整有效 JSON**；任何欄位都不可省略，否則前端會炸
+7. 全程繁體中文 + 台灣用語
+
+## ⚠️ value / unit 不要重複
+`metrics[i].value` 是純數字／數字範圍；`metrics[i].unit` 是單位。前端會自己把兩個串起來顯示。**value 裡不要再放 unit 字符**，否則畫面會出現「70-75%%」「85%元」這種雙符號。
+
+❌ 錯誤：{ "value": "70-75%", "unit": "%" } → 渲染「70-75%%」
+❌ 錯誤：{ "value": "85% 認為 6.88% 算低", "unit": "%" } → 文字塞進 value 又補 %
+✅ 正確：{ "value": "70-75", "unit": "%" } → 渲染「70-75%」
+✅ 正確：{ "value": "5000-6000", "unit": "元" } → 渲染「5000-6000元」
+
+value 應該是**純數字 / 數字範圍 / 數字+簡短限定詞**（如 "5000-6000"、"7.2"、"60"、"~12 個月"），不要放整句解釋。
+
+## 🚨 規格保真規則（避免「年利率→月利率」這類飄移）
+報告中提到產品規格時**必須對齊使用者原始 prompt**：
+- 原 prompt 是「年利率 6.88%」，summary 就**不能寫「月利率 1.5%」** — 即使受訪者答案說了月利率，也要在 metrics / sections 中對照本方案的「年利率 6.88%」說明（例：「本方案年利率 6.88% vs 受訪者期望年利率 5% 以下」）。
+- 額度、期限、審核條件等具體規格同理：受訪者可以表達他們的期望，但 summary 必須**用本方案的規格作為比較基準**，不要用受訪者期望取代產品本身。
+- 不要捏造受訪者沒提到的具體數字（避免「7 成受訪者放棄」這類沒實證的數字 — 若有依據就引用，沒就用「多數」「半數」這類語氣）。</pre>
+
+<div class="prompt-label">使用者提示詞（逐字收錄）</div>
+<pre>## 本次調查的產品（summary 必須對齊這裡的具體規格）
+${productContext}
+
+## 調查問題
+1. ${questions[0]}
+…
+
+## 各受訪者原始回答（共 ${responses.length} 位）
+### ${archetype}：${name}
+${text}
+…（每位一段）
+
+請依規則輸出結構化 JSON。**注意**：報告中所有提到產品規格（利率、額度、期限、審核條件等）都必須引用上方產品的原始數字與單位（如「年利率 6.88%」就不能寫成「月利率」），否則就是 bug。</pre>
+
+<h3>9.3 輸出後處理（程式端防呆）</h3>
+<ul>
+  <li>缺漏欄位以預設值補齊（headline / keyTakeaway / metrics / groups / sections）。</li>
+  <li><code class="inline">metrics</code> 截至 4 個；以 <code class="inline">stripDuplicateUnit()</code> 剝除 value 結尾重複的 unit；<code class="inline">tone</code> 不在白名單則歸 neutral。</li>
+  <li><code class="inline">groups</code> 截至 5 個；<code class="inline">score</code> 夾限至 0–100 整數。</li>
+  <li>另以 <code class="inline">summaryToText()</code> 把結構化彙總轉成可讀 markdown，供階段 5 報告使用。</li>
+</ul>
+
+<!-- ============ STAGE 5 ============ -->
+<h2 id="stage5" class="page-break">10. 階段 5 — 觀測者·報告（Report Agent）<span class="tag">LLM #5</span></h2>
+
+<h3>10.1 介入模型與呼叫方式</h3>
+<table class="meta-table">
+  <tr><td>模型</td><td>MiniMax-M2.5，啟用 adaptive thinking</td></tr>
+  <tr><td>呼叫模式</td><td><code class="inline">messages.create()</code> 包在 <code class="inline">callLLM()</code></td></tr>
+  <tr><td>max_tokens</td><td>16000</td></tr>
+  <tr><td>上下文控管</td><td>受訪者原文每位截斷至 500 字（<code class="inline">PER_PERSONA_LIMIT</code>），避免 25 位 × 1500 token 把預算吃光；報告階段已有彙總洞察，原文僅作引述片段</td></tr>
+  <tr><td>輸出契約</td><td>strict JSON → <code class="inline">ReportData</code>，解析後做欄位校驗與截斷（keyFindings ≤4、actionItems ≤6、groupComparison.rows ≤8）</td></tr>
+</table>
+
+<div class="prompt-label">系統提示詞（REPORT_SYSTEM，逐字收錄）</div>
+<pre>${LANG_RULE}
+
+你是「海森堡的算盤」的「觀測者」（回報結果階段），現在要把調查結果**結構化成決策報告 JSON**。
+
+**用語規定**：禁止使用「人設」一詞，請改用「受訪者」。
+
+## 輸出格式（嚴格 JSON，包在 ```json fenced block）
+
+```json
+{
+  "title": "20-30 字的報告標題（產品名 + 核心結論）",
+  "executiveSummary": "60-100 字執行摘要：3 句話講完整體判斷與最重要結論，主管 30 秒看懂",
+  "keyFindings": [
+    {
+      "icon": "1 個 emoji（如 🎯、💰、⚠️）",
+      "title": "5-10 字標題",
+      "headline": "1 句重點 (15-25 字)",
+      "details": "詳細描述 (40-80 字，可包含具體數字/引用)",
+      "metric": {
+        "value": "數字或範圍（如 '60'、'5000-8000'）",
+        "label": "5-10 字單位說明",
+        "tone": "positive | neutral | negative"
+      }
+    }
+  ],
+  "groupComparison": {
+    "headers": ["族群", "支持度", "主要顧慮", "建議方向"],
+    "rows": [
+      ["族群名（5-10 字）", "0-100 整數", "顧慮 (10-15 字)", "建議 (10-20 字)"]
+    ]
+  },
+  "actionItems": [
+    {
+      "priority": "high | medium | low",
+      "title": "5-10 字行動標題",
+      "action": "具體做什麼 (30-50 字)",
+      "expectedImpact": "預期效果 (15-30 字)"
+    }
+  ]
+}
+```
+
+## 規則
+- `keyFindings` 必須 3-4 個，按重要性排序（最多 4 項，挑最關鍵的留下）
+- `groupComparison.rows` 必須 3-5 列，涵蓋不同族群（高/低支持度、不同人生階段）
+- `actionItems` 必須 3-5 個，至少 1 個 high priority
+- `metric` 是 optional，但有數字依據的 finding 一定要附
+- 全部繁體中文台灣用語
+- **必須回傳完整有效 JSON**，任何欄位都不可省略，否則前端會炸</pre>
+
+<div class="prompt-label">使用者提示詞（逐字收錄）</div>
+<pre>## 本次調查的產品（report 必須引用這裡的具體規格）
+${productContext}
+
+## 調查計畫
+${plan.summary}
+
+問題：
+1. ${plan.questions[0]}
+…
+
+## 受訪者訪談原文（共 ${personaResponses.length} 位）
+### ${archetype}：${name}
+${text 截斷至 500 字}…(後略)
+…（每位一段）
+
+## 已歸納的洞察
+${summaryText}
+
+請依規則輸出結構化 JSON 決策報告。報告中提到利率/額度/期限/審核條件等數字時，**必須對齊上方產品的原始規格**，不要改單位（例：原 prompt 是年利率 6.88% 就不要寫成月利率），不要捏造受訪者沒提到的具體數字。</pre>
+
+<h3>10.2 最終 payload</h3>
+<p>主排程把報告與全部上游資料打包成 <code class="inline">FullReportPayload</code>（含 report、summary、plan、personas、generatedAt 時戳），以 <code class="inline">agent_text</code> 推給前端 <code class="inline">ReportCard</code> 與 <code class="inline">SummaryCard</code> 元件渲染，並送出 <code class="inline">complete</code> 結束整條流程。</p>
+
+<!-- ============ STAGE 6 ============ -->
+<h2 id="stage6">11. 階段 6 — 輸出層：PDF／PNG／電郵／語音控制</h2>
+<ul>
+  <li><b>SummaryCard：</b>一頁式可下載 PNG 圖卡（headline + key takeaway + KPI 卡 + 族群長條圖 + 四區塊洞察）。</li>
+  <li><b>ReportCard：</b>完整決策報告（研究命題、執行摘要、重點發現含 metric、族群比較表、受訪者背景表、依 priority 分級的行動建議），支援 PDF / PNG 下載（html2canvas + jspdf）。</li>
+  <li><b>電郵報告：</b><code class="inline">POST /api/email-report</code> 把 PDF + Markdown 寄至使用者預設信箱。</li>
+  <li><b>語音控制：</b>「Hey Heisenberg」喚醒 + Web Speech API STT + 語音意圖代理人（見下節）把口語映射到 7 種動作（寄報告／下載 PDF／重啟／進模擬艙／回首頁／開啟服務 QA／unknown）。</li>
+</ul>
+
+<!-- ============ CROSS-CUT ============ -->
+<h2 id="crosscut" class="page-break">12. 橫切關鍵技術（可專利特徵）</h2>
+
+<div class="claim">
+<h4>C1 — 全域併發信號量 + 429 指數退避抖動重試（唯一節流點）</h4>
+<p>所有六個代理人的模型呼叫共用 <code class="inline">lib/anthropic.ts</code> 一個全域 <code class="inline">Semaphore</code>（容量 <code class="inline">LLM_MAX_CONCURRENCY</code>，預設 6，可動態調整容量）。<code class="inline">callLLM()</code> 取得席位後執行，遇 429／5xx／網路錯誤（ECONNRESET/ETIMEDOUT/ECONNREFUSED）自動重試，退避時間為<b>全抖動指數退避</b>：<code class="inline">random(0, min(base·2^attempt, 30s))</code>，base 2s、最多 8 次。對串流呼叫，整段 stream 消費完才釋放席位（避免提早放席把伺服器打爆）。generator 形式的串流（啟動者、語音意圖）改用低階 <code class="inline">acquireLLMSlot()</code> + try/finally。實測：30 受訪者 × 5 題、bundled、併發 6 → <b>0 個 429、wall time 79s</b>。</p>
+</div>
+
+<div class="claim">
+<h4>C2 — 單通捆綁式 JSON 訪談（bundled-JSON），含自動退回逐題之雙保險</h4>
+<p>每位受訪者<b>一通呼叫</b>即取得全部 N 題答案（吐出 <code class="inline">{"answers":[...]}</code> 陣列），而非每題一通。30 受訪者場景的模型呼叫數從 150 砍到 30，端到端時間自約 4.7 分鐘縮短到約 2.3 分鐘。當 JSON 解析失敗或答案數不符時，<b>自動退回逐題模式</b>（每題獨立呼叫、不帶前題歷程），構成「捆綁 + 退回」雙保險，使 demo 達 100% 完成率。</p>
+</div>
+
+<div class="claim">
+<h4>C3 — 強健 JSON 復原（4 candidate × 6 修復策略 + auto-close）</h4>
+<p><code class="inline">lib/agents/json-extractor.ts</code> 應對相容端點常見的破損 JSON：依序抽取 4 種候選（```json fence／任意 fence／首個<code class="inline">{</code>到末個<code class="inline">}</code>／陣列版），每個候選試 6 種修復（移除 trailing comma、彎引號轉直引號、字串內字面換行跳脫為 \\n、組合修復），再以堆疊狀態機做 <b>auto-close</b>（補閉合括號／引號、key 後缺值補 null）以救援被截斷的輸出。並以括號平衡分析判斷「是否為截斷」，給出可操作的錯誤訊息。</p>
+</div>
+
+<div class="claim">
+<h4>C4 — 原始產品規格上下文注入（productContext）之規格保真</h4>
+<p>使用者原始 prompt（含「年利率 6.88%」這類具體規格）由主排程組成 <code class="inline">productContext</code>，<b>原封不動</b>地分別注入規劃、對話、彙總、報告四個階段的 prompt；各階段 prompt 另含「規格保真規則」，以反例明令禁止偷換單位（年利率↔月利率）、丟棄規格、抹除具體數字、捏造無實證數字。解決「LLM 憑印象答常識數字、報告引用錯誤規格」的飄移問題。</p>
+</div>
+
+<div class="claim">
+<h4>C5 — 三層繁體中文保險</h4>
+<p>（1）每個代理人 system prompt 開頭引用共用語言規範 <code class="inline">LANG_RULE</code>，明列數十個簡體禁用字與台灣慣用詞；（2）SSE 出口以 <code class="inline">opencc-js</code> 做簡→繁轉換（含台灣慣用詞）；（3）前端 client component 再做一次保險。三層疊加確保輸出穩定為繁體中文台灣用語。</p>
+</div>
+
+<div class="claim">
+<h4>C6 — 合成受訪者池 + 自然語言擴池生成器</h4>
+<p>系統內建多維結構化的合成受訪者（類型、性別年齡、年收入與結構、人格特質、家庭、資產與變故，名人角色另有 signatureStyle）。受訪者生成代理人 <code class="inline">persona-generator.ts</code> 可依使用者自然語言描述，參照現有池避免重複，批次生成新的立體受訪者（每次上限 20 位，含欄位校驗與強制型別轉換）。全程<b>零真實個資</b>。</p>
+</div>
+
+<h3>12.1 語音意圖代理人（輸出層附屬模型）</h3>
+<p>「Hey Heisenberg」喚醒後，口語經 STT 轉文字，再由 <code class="inline">voice-intent.ts</code> 的模型（MiniMax-M2.5，max_tokens 1024）映射到 7 種動作之一，輸出 <code class="inline">{action, message}</code> JSON。其 system prompt 為每個動作列舉多個口語例句，並要求「不確定就回 unknown，不要硬猜」；模型完全沒吐字時降級為 unknown 而非擲錯。</p>
+<div class="prompt-label">系統提示詞（Voice-Intent SYSTEM，逐字收錄）</div>
+<pre>你是「海森堡的算盤」人類行為觀測站的語音指令解讀助手。
+
+使用者已透過「Hey Heisenberg」喚醒詞觸發，現在會發出一段口語指令。
+你必須把這段指令對應到下列其中一個動作，並回傳結構化 JSON。
+
+## 可用動作
+- email_report — 把目前的洞察報告（PDF + Markdown）寄到使用者的預設信箱
+  例：「把報告寄給我」「寄報告」「email 報告」「發送報告」「寄出來」「把報表 mail 給我」
+- download_pdf — 下載目前洞察報告 PDF 到本機
+  例：「下載報告」「下載 PDF」「儲存報告」「download report」「存成 PDF」
+- restart — 清空目前對話、重新開始一次調查
+  例：「重啟」「重新開始」「重置」「restart」「清空」「再來一次」
+- navigate_simulation — 跳到動態模擬頁面（行為相變、外在變因）
+  例：「進入模擬」「動態模擬」「模擬艙」「simulation」「去模擬」
+- navigate_home — 回到首頁聊天介面
+  例：「回首頁」「回主畫面」「回去聊天」「home」
+- open_service_faq — 打開服務 QA / 常見問題說明面板
+  例：「打開 FAQ」「服務 QA」「常見問題」「打開問答」「服務說明」「show FAQ」「看 QA」
+- unknown — 指令不明確、不在支援範圍、或是雜訊
+
+## 輸出格式（必須是嚴格 JSON，不要 markdown 包裹、不要多餘文字）
+{"action": "email_report" | "download_pdf" | "restart" | "navigate_simulation" | "navigate_home" | "open_service_faq" | "unknown", "message": "（口語回應，10 字內）"}
+
+## message 規則
+- 繁體中文
+- 10 個字以內
+- 對使用者的口語回覆，例如「好的，正在寄出」「下載中…」「重新開始」「好，去模擬」
+- unknown 時回覆「沒聽清楚，再說一次」之類的提示
+
+## 重要
+- **必須只回傳 JSON，前後不要有任何解釋文字、不要包 ```**
+- 不確定就回 unknown，不要硬猜</pre>
+
+<!-- ============ DATA STRUCT ============ -->
+<h2 id="datastruct" class="page-break">13. 主要資料結構定義</h2>
+<pre>// SSE 串流事件（節錄）
+type StreamEvent =
+  | { type: "agent_start"; agent: string; label: string }
+  | { type: "agent_text"; agent: string; label: string; text: string }
+  | { type: "agent_done"; agent: string; label: string }
+  | { type: "personas_intro"; personas: Persona[]; productContext: string }
+  | { type: "persona_partial"; questions: string[]; entry: {...}; completed: number; total: number }
+  | { type: "personas_qa"; questions: string[]; entries: {...}[] }
+  | { type: "complete" }
+  | { type: "error"; message: string };
+
+// 合成受訪者
+type Persona = {
+  id: string; archetype: string; name: string;
+  gender: "男" | "女"; age: number;
+  yearlyIncomeTWD: number; incomeBreakdown: string;
+  personality: string; family: string; assetsAndEvents: string;
+  signatureStyle?: string;   // 名人/強個性角色專用口氣
+};
+
+// 規劃輸出
+type PMPlan = { summary: string; questions: string[]; scopeNote?: string };
+
+// 彙總輸出
+type SummaryData = {
+  headline: string; keyTakeaway: string;
+  metrics: { label; value; unit; tone; icon }[];
+  groups:  { name; score; highlight }[];
+  sections: { consensus; divergence; metrics; risks };
+};
+
+// 報告輸出
+type ReportData = {
+  title: string; executiveSummary: string;
+  keyFindings: { icon; title; headline; details; metric? }[];
+  groupComparison: { headers: string[]; rows: string[][] };
+  actionItems: { priority; title; action; expectedImpact }[];
+};
+
+// 最終 payload
+type FullReportPayload = {
+  report: ReportData; summary: SummaryData; plan: PMPlan;
+  personas: Persona[]; generatedAt: string;
+};</pre>
+
+<!-- ============ CLAIMS ============ -->
+<h2 id="claims" class="page-break">14. 請求項草稿（claims，供專利代理人參考）</h2>
+
+<p><b>獨立項 1（方法）。</b>一種市場調查方法，其特徵在於由電腦執行下列步驟：</p>
+<ol>
+  <li>接收一自然語言研究命題，由<b>第一語言模型代理人</b>判斷其是否含足夠之產品或客群資訊而輸出一啟動狀態旗標；</li>
+  <li>於啟動狀態成立時，由<b>第二語言模型代理人</b>產生複數道可量化之訪談問題，其中該複數道問題之題文<b>逐字嵌入</b>該研究命題中之產品規格數字與單位；</li>
+  <li>對一組合成受訪者中之每一者，由<b>第三語言模型代理人以單一次模型呼叫</b>，使其依該受訪者之結構化人格設定，<b>一次回覆全部該複數道問題</b>並以一長度等於問題數之陣列形式輸出；其中複數位合成受訪者之呼叫<b>並行</b>執行；</li>
+  <li>由<b>第四語言模型代理人</b>將該等回覆彙總為含共識、分歧、量化指標與風險之結構化洞察資料；</li>
+  <li>由<b>第五語言模型代理人</b>，結合該研究命題之產品規格、該訪談問題、該等回覆與該結構化洞察，產出一結構化決策報告。</li>
+</ol>
+
+<p><b>附屬項。</b></p>
+<ul>
+  <li><b>2.</b> 如項 1，其中步驟 3 之單一次模型呼叫於其輸出無法解析為合法 JSON 或陣列長度不等於問題數時，<b>自動退回</b>為對每一問題各執行一次獨立模型呼叫之逐題模式，且該逐題模式之各次呼叫<b>不攜帶前一題之對話歷程</b>。</li>
+  <li><b>3.</b> 如項 1，其中所有語言模型呼叫共用一<b>全域併發信號量</b>進行節流，並於遭遇速率限制或伺服器錯誤時，依<b>全抖動指數退避</b>自動重試。</li>
+  <li><b>4.</b> 如項 1，更包含一<b>產品規格上下文字串</b>，由該研究命題與調查目標組成，並被原樣注入步驟 2、3、4、5 之提示詞中，且各該提示詞含禁止變更單位之規則。</li>
+  <li><b>5.</b> 如項 1，其中步驟 3、4、5 任一之模型輸出，經一<b>多候選多策略之 JSON 復原程序</b>解析，該程序包含對被截斷之輸出補閉合括號之自動閉合步驟。</li>
+  <li><b>6.</b> 如項 1，其中該組合成受訪者由一受訪者生成語言模型代理人，依自然語言描述並參照既有受訪者池避免重複而批次生成，全程不使用真實個人資料。</li>
+  <li><b>7.</b> 如項 1，更包含於各階段之間，透過伺服器推送事件將每一受訪者完成之回覆<b>漸進式</b>推送至前端，以及一將口語指令映射為預定動作集合之語音意圖語言模型代理人。</li>
+  <li><b>8.</b> 如項 1，其中每一語言模型代理人之系統提示詞開頭均含一<b>共用語言規範</b>，且系統於模型輸出之傳輸出口再施以一簡繁字元轉換。</li>
+</ul>
+
+<!-- ============ EXAMPLE ============ -->
+<h2 id="example" class="page-break">15. 完整實施例（信貸 6.88% 案例）與效益實測</h2>
+
+<h3>15.1 端到端走查</h3>
+<table class="grid">
+  <tr><th>階段</th><th>輸入</th><th>模型動作</th><th>輸出（示意）</th></tr>
+  <tr><td>輸入</td><td colspan="3">使用者：「我想測一個<b>年利率 6.88%、額度 5 萬、6 個月還款、30 秒線上審核</b>的微型信貸方案，主打外送員客群」</td></tr>
+  <tr><td>1 啟動者</td><td>上述命題</td><td>判斷含產品+客群 → READY</td><td>「了解，要驗證一個年利率 6.88% 的微貸方案對外送員的接受度…」+ [STATUS:READY]</td></tr>
+  <tr><td>2 規劃</td><td>命題 + brief + 受訪者池</td><td>生成 4–6 題，逐字嵌入 6.88%／5 萬／6 個月／30 秒</td><td>「本方案年利率 6.88%、5 萬額度、6 個月還款，你願意申辦嗎？什麼條件會讓你放棄？」…</td></tr>
+  <tr><td>3 對話 ×N</td><td>productContext + 題組</td><td>每位一通 bundled JSON 答 N 題、並行</td><td>熱血大叔：「6.88% 對我這種要養兩個小孩又養媽媽的人…還算可以接受，但 6 個月太趕…」</td></tr>
+  <tr><td>4 彙總</td><td>全部逐位答案</td><td>歸納共識/分歧/量化/風險 + KPI</td><td>headline「外送員對 6.88% 接受度中等，還款期是主要痛點」、metrics、groups…</td></tr>
+  <tr><td>5 報告</td><td>命題+題+答案+彙總</td><td>產出結構化決策報告</td><td>title／executiveSummary／keyFindings／groupComparison／actionItems</td></tr>
+</table>
+
+<h3>15.2 效益實測（取自 docs/benchmark-rate-2026-05-08）</h3>
+<table class="grid">
+  <tr><th>場景（30 受訪者 × 5 題）</th><th>模型呼叫數</th><th>429 次數</th><th>wall time</th><th>完成率</th></tr>
+  <tr><td>舊架構：逐題、併發 3</td><td>150</td><td>35</td><td>196s</td><td>&lt; 90%</td></tr>
+  <tr><td>本發明：bundled、併發 6</td><td><b>30</b></td><td><b>0</b></td><td><b>79s</b></td><td><b>100%</b></td></tr>
+</table>
+<p class="small">模型呼叫數降為 1/5；速率限制錯誤歸零；端到端時間約為原本的 40%。傳統市場調查約 14 天的概念驗證週期，於本系統壓縮至分鐘量級。</p>
+
+<hr>
+<p class="small">— 本技術揭露書（一）完。對應之發明 B（參數化即時行為相變模擬引擎 / 「算盤」）由另一份文件描述。本文件所引用之程式路徑與提示詞，截至 2026-05-29 之程式碼狀態為準。</p>
+
+</body>
+</html>
