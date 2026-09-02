@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { anthropic, callLLM, MODEL } from "../anthropic";
-import { getPersonas } from "../personas-store";
-import { extractJson } from "./json-extractor";
+import { extractJsonWithRetry } from "./json-retry";
+import type { Persona } from "./personas-data";
 import { LANG_RULE } from "./shared-rules";
 import type { ChatMessage } from "./types";
 
@@ -131,50 +131,61 @@ export async function planSurvey(
   history: ChatMessage[],
   brief: string,
   /** 使用者原始 prompt 全文 — 含產品規格數字，避免 entry agent 摘要時失真 */
-  userMessage: string
+  userMessage: string,
+  /** 本次調查實際會被訪談的受訪者（已由 orchestrator 從完整池抽樣） */
+  personas: Persona[]
 ): Promise<PMPlan> {
-  const personaList = getPersonas().map(
+  const personaList = personas.map(
     (p) =>
       `- \`${p.id}\`: ${p.name}（${p.archetype}，${p.gender} ${p.age} 歲，年收入 NT$ ${p.yearlyIncomeTWD.toLocaleString()}）— ${p.family.split("，")[0]}`
   ).join("\n");
 
-  const response = await callLLM(() =>
-    anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      thinking: { type: "adaptive" },
-      system: [
-        {
-          type: "text",
-          text: PLAN_SYSTEM + "\n\n可用受訪者池：\n" + personaList,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      messages: [
-        ...history.map((m) => ({ role: m.role, content: m.content })),
-        {
-          role: "user",
-          content: `## 使用者原始需求（請逐字參照產品規格）
+  // 內建 retry=3：被截斷／含符號解析失敗／格式不符都重試，重試時拉高 max_tokens。
+  return extractJsonWithRetry<PMPlan>(
+    "觀測者",
+    (attempt) =>
+      callLLM(() =>
+        anthropic.messages.create({
+          model: MODEL,
+          // 4096 → 6144 → 8192：規劃 JSON 不大，截斷多半是 adaptive thinking 吃光額度，調高即可
+          max_tokens: Math.min(8192, 4096 + (attempt - 1) * 2048),
+          thinking: { type: "adaptive" },
+          system: [
+            {
+              type: "text",
+              text: PLAN_SYSTEM + "\n\n可用受訪者池：\n" + personaList,
+              cache_control: { type: "ephemeral" },
+            },
+          ],
+          messages: [
+            ...history.map((m) => ({ role: m.role, content: m.content })),
+            {
+              role: "user",
+              content: `## 使用者原始需求（請逐字參照產品規格）
 ${userMessage}
 
 ## 啟動者整理過的接待結果（僅供參考，產品規格以上方原始需求為準）
 ${brief}
 
 請規劃這次的調查 — 問題本文必須引用上面原始需求中的產品規格（年利率/額度/期限/審核條件等具體數字），不要改單位或抽象化。`,
-        },
-      ],
-    })
+            },
+          ],
+        })
+      ),
+    {
+      // 回覆前先檢查格式：必須有 summary 與至少一題非空問題，否則重試。
+      validate: (plan) => {
+        if (
+          !plan ||
+          typeof plan.summary !== "string" ||
+          !Array.isArray(plan.questions) ||
+          plan.questions.filter((q) => typeof q === "string" && q.trim()).length === 0
+        ) {
+          throw new Error("觀測者規劃格式不符（缺 summary 或 questions）");
+        }
+      },
+    }
   );
-
-  const text = response.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("");
-
-  if (response.stop_reason === "max_tokens") {
-    throw new Error("觀測者規劃輸出被截斷（max_tokens 不夠）");
-  }
-  return extractJson<PMPlan>(text, "觀測者");
 }
 
 export async function generateReport(
@@ -196,16 +207,21 @@ export async function generateReport(
     })
     .join("\n\n");
 
-  const response = await callLLM(() =>
-    anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 16000, // 報告 JSON + adaptive thinking 都需要空間
-      thinking: { type: "adaptive" },
-      system: REPORT_SYSTEM,
-      messages: [
-        {
-          role: "user",
-          content: `## 本次調查的產品（report 必須引用這裡的具體規格）
+  // 內建 retry=3：被截斷／含符號解析失敗都重試，重試時拉高 max_tokens。
+  const parsed = await extractJsonWithRetry<ReportData>(
+    "觀測者",
+    (attempt) =>
+      callLLM(() =>
+        anthropic.messages.create({
+          model: MODEL,
+          // 報告 JSON + adaptive thinking 都需要空間；截斷時逐次加碼（上限 22000）
+          max_tokens: Math.min(22000, 16000 + (attempt - 1) * 3000),
+          thinking: { type: "adaptive" },
+          system: REPORT_SYSTEM,
+          messages: [
+            {
+              role: "user",
+              content: `## 本次調查的產品（report 必須引用這裡的具體規格）
 ${productContext}
 
 ## 調查計畫
@@ -221,20 +237,19 @@ ${personaSection}
 ${summaryText}
 
 請依規則輸出結構化 JSON 決策報告。報告中提到利率/額度/期限/審核條件等數字時，**必須對齊上方產品的原始規格**，不要改單位（例：原 prompt 是年利率 6.88% 就不要寫成月利率），不要捏造受訪者沒提到的具體數字。`,
-        },
-      ],
-    })
+            },
+          ],
+        })
+      ),
+    {
+      // 回覆前先檢查：至少要解析成物件（缺欄位由下方後處理補齊）
+      validate: (r) => {
+        if (!r || typeof r !== "object") {
+          throw new Error("觀測者報告格式不符（非 JSON 物件）");
+        }
+      },
+    }
   );
-
-  const text = response.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("");
-
-  if (response.stop_reason === "max_tokens") {
-    throw new Error("觀測者報告輸出被截斷（max_tokens 不夠）");
-  }
-  const parsed = extractJson<ReportData>(text, "觀測者");
 
   // 補齊／驗證
   if (!parsed.title) parsed.title = "市場調查決策報告";

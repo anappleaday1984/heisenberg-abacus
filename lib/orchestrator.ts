@@ -4,7 +4,10 @@ import { askPersona, type PersonaResponse } from "./agents/persona";
 import type { Persona } from "./agents/personas-data";
 import { summarize, summaryToText, type SummaryData } from "./agents/summary";
 import type { ChatMessage, StreamEvent } from "./agents/types";
-import { getPersonas } from "./personas-store";
+import { getPersonas, pickRandomPersonas } from "./personas-store";
+
+/** 每次調查從完整受訪者池隨機抽樣的人數（原本是全部 30 位）。 */
+const SURVEY_SAMPLE_SIZE = 12;
 
 /** 完整報告 payload — 給前端 ReportCard 用 */
 export type FullReportPayload = {
@@ -19,6 +22,19 @@ export async function* orchestrate(
   history: ChatMessage[],
   userMessage: string
 ): AsyncGenerator<StreamEvent> {
+  // Stage 級計時 — 找「訪談要等很久」卡在哪一段用。
+  // 只印 log，不影響任何行為/輸出。
+  const pipelineStart = Date.now();
+  let stageStart = pipelineStart;
+  const markStage = (label: string) => {
+    const now = Date.now();
+    // eslint-disable-next-line no-console
+    console.log(
+      `[timing] ${label}：${((now - stageStart) / 1000).toFixed(1)}s（累計 ${((now - pipelineStart) / 1000).toFixed(1)}s）`
+    );
+    stageStart = now;
+  };
+
   try {
     // 1. Entry agent — collect/clarify the research goal
     yield { type: "agent_start", agent: "entry", label: "制定計畫" };
@@ -38,34 +54,39 @@ export async function* orchestrate(
       };
     }
     yield { type: "agent_done", agent: "entry", label: "制定計畫" };
+    markStage("1. entry 制定計畫");
 
     if (!entryResult || !entryResult.ready) {
       yield { type: "complete" };
       return;
     }
 
-    // 2. PM agent plans the survey (questions only — all personas always interviewed)
+    // 每次調查從完整受訪者池隨機抽 SURVEY_SAMPLE_SIZE 位（原本是全部訪談），
+    // 降低單次調查的訪談成本/時間，並讓每次調查看到不同的受訪者組合。
+    const personas = pickRandomPersonas(getPersonas(), SURVEY_SAMPLE_SIZE);
+
+    // 2. PM agent plans the survey (questions only — 抽樣出的受訪者都會被訪談)
     yield { type: "agent_start", agent: "pm", label: "規劃調查" };
     // 把原始 userMessage 一併送進去，讓 PM 在規劃問題時保留產品的原始規格
     // （年利率/月利率、額度、期限等數字），避免被「啟動者」摘要時失真。
-    const plan = await planSurvey(history, entryResult.brief, userMessage);
+    const plan = await planSurvey(history, entryResult.brief, userMessage, personas);
     yield {
       type: "agent_text",
       agent: "pm",
       label: "規劃調查",
       text: `**調查目標**：${plan.summary}\n\n**問題**：\n${plan.questions
         .map((q, i) => `${i + 1}. ${q}`)
-        .join("\n")}\n\n**訪談對象**：全部 ${getPersonas().length} 位受訪者並行訪談${
+        .join("\n")}\n\n**訪談對象**：隨機抽選 ${personas.length} 位受訪者並行訪談${
         plan.scopeNote ? `\n${plan.scopeNote}` : ""
       }`,
     };
     yield { type: "agent_done", agent: "pm", label: "規劃調查" };
+    markStage("2. pm 規劃調查（planSurvey）");
 
-    // 3. Persona agents — always run ALL personas in parallel.
+    // 3. Persona agents — run all sampled personas in parallel.
     //    UI 端用 PersonaQAExplorer 一次顯示一題、3 位代表的答案，
     //    使用者可翻頁瀏覽下一題或換另外 3 位。
     const PAGE_SIZE = 3;
-    const personas = getPersonas();
     const personaResponses: PersonaResponse[] = [];
     const startLabel =
       personas.length <= PAGE_SIZE
@@ -177,6 +198,7 @@ export async function* orchestrate(
       agent: "persona",
       label: startLabel,
     };
+    markStage(`3. persona 訪談（${personas.length} 位並行）`);
 
     // 4. Summary agent — output structured JSON for the visual SummaryCard
     yield { type: "agent_start", agent: "summary", label: "彙總洞察" };
@@ -190,6 +212,7 @@ export async function* orchestrate(
       text: JSON.stringify(summaryData),
     };
     yield { type: "agent_done", agent: "summary", label: "彙總洞察" };
+    markStage("4. summary 彙總洞察（summarize）");
     const summaryText = summaryToText(summaryData);
 
     // 5. PM final report — structured JSON, bundled with all upstream data
@@ -200,6 +223,7 @@ export async function* orchestrate(
       summaryText,
       productContext
     );
+    markStage("5. pm 回報結果（generateReport）");
     const payload: FullReportPayload = {
       report,
       summary: summaryData,

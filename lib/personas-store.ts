@@ -42,6 +42,19 @@ export function getPersonas(): Persona[] {
   return JSON.parse(raw) as Persona[];
 }
 
+/**
+ * 從完整受訪者池隨機抽 n 位（Fisher-Yates），池子不夠 n 位就全部回傳。
+ * 每次調查都重新抽樣，用來降低每次調查的訪談成本/時間，同時保留族群多樣性。
+ */
+export function pickRandomPersonas(all: Persona[], n: number): Persona[] {
+  const pool = [...all];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, Math.min(n, pool.length));
+}
+
 export function savePersonas(personas: Persona[]): void {
   ensureFile();
   fs.writeFileSync(

@@ -116,8 +116,11 @@ export const SESSION_COOKIE_NAME = "session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60; // 1 小時（與 inactivity timeout 同步）
 
 // === 同時上線人數限制 ===
-export const MAX_CONCURRENT_USERS = 3;
+// 2026-09-02：3→2，並改成「一般帳號同時最多 1 人上線、第二人登入直接擋」；
+// admin（udo）不受這條限制（不佔名額、也不會擋同帳號第二次登入）。
+export const MAX_CONCURRENT_USERS = 2;
 export const SESSION_INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 1 小時無動作即視為下線
+export const CONCURRENT_LIMIT_MESSAGE = "目前上線人數名額已滿，請稍待片刻。";
 
 const ACTIVE_SESSIONS_PATH = path.join(
   process.cwd(),
@@ -164,8 +167,12 @@ function purgeExpired(sessions: ActiveSession[]): ActiveSession[] {
 
 /**
  * 嘗試啟用一個 session（給 login 用）。
- * - 若該帳號已在線，refresh lastSeenAt（同帳號重登不算多人）
- * - 若新帳號會超過 MAX_CONCURRENT_USERS，回傳 ok=false
+ *
+ * - admin（udo）完全不受限制：不佔名額、同帳號可重複登入，永遠 ok=true。
+ * - 一般帳號：若同帳號已在線（表示已有裝置用這組帳密登入中），第二次登入直接擋
+ *   （已登入的那台裝置本來就不會再打 /login，只會靠 cookie + /api/auth/me 續命，
+ *   所以這裡收到「同帳號又來 /login」幾乎可以認定是第二個人/裝置）。
+ * - 一般帳號：若目前在線人數（不含 admin）已達 MAX_CONCURRENT_USERS，回傳 ok=false。
  */
 export function tryActivateSession(user: User): {
   ok: boolean;
@@ -173,25 +180,33 @@ export function tryActivateSession(user: User): {
   active: ActiveSession[];
 } {
   const active = purgeExpired(readActiveSessions());
-  const existingIdx = active.findIndex((s) => s.account === user.account);
   const now = new Date().toISOString();
 
-  if (existingIdx >= 0) {
-    active[existingIdx] = {
-      ...active[existingIdx],
-      lastSeenAt: now,
-    };
+  if (user.role === "admin") {
+    const existingIdx = active.findIndex((s) => s.account === user.account);
+    if (existingIdx >= 0) {
+      active[existingIdx] = { ...active[existingIdx], lastSeenAt: now };
+    } else {
+      active.push({
+        account: user.account,
+        name: user.name,
+        role: user.role,
+        loginAt: now,
+        lastSeenAt: now,
+      });
+    }
     writeActiveSessions(active);
     return { ok: true, active };
   }
 
-  if (active.length >= MAX_CONCURRENT_USERS) {
-    const others = active.map((s) => `${s.name}(${s.account})`).join("、");
-    return {
-      ok: false,
-      error: `已達同時上線人數上限（最多 ${MAX_CONCURRENT_USERS} 人）。目前線上：${others}。請稍後再試或請其中一位登出。`,
-      active,
-    };
+  const existingIdx = active.findIndex((s) => s.account === user.account);
+  if (existingIdx >= 0) {
+    return { ok: false, error: CONCURRENT_LIMIT_MESSAGE, active };
+  }
+
+  const nonAdminCount = active.filter((s) => s.role !== "admin").length;
+  if (nonAdminCount >= MAX_CONCURRENT_USERS) {
+    return { ok: false, error: CONCURRENT_LIMIT_MESSAGE, active };
   }
 
   active.push({

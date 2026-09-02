@@ -73,15 +73,25 @@ export function PersonaSessionProvider({ children }: { children: ReactNode }) {
         const cleanedMessages = (parsed.messages ?? []).map((m) =>
           m.streaming ? { ...m, streaming: false } : m
         );
-        // 若 stage 是 mid-pipeline (非 idle / complete) — 視為跑完了：
-        // 流程在 reload / 路由切換中被中斷，保留進度條為「完成」比較不誤導
+        // 若 stage 是 mid-pipeline (非 idle / complete)，代表流程在 reload / 斷線
+        // 中被中斷。過去這裡會不論實際進度直接把 stage 標成「complete」（怕使用者
+        // 看到卡住的進度條），但這樣反而更誤導：進度條說完成，畫面內容卻停在中斷
+        // 當下的階段（例如只有「啟動者」那句話）。
+        //
+        // 2026-09-02 修復：只有畫面上真的有「PM 回報結果」這則訊息（且非
+        // streaming 中）才代表真的跑完，才標記 complete；否則老實把 stage 打回
+        // idle —— 保留已經收到的訊息內容（不清空），但進度條不再撒謊，使用者
+        // 也能立刻重新送出下一輪。
+        const hasFinishedReport = cleanedMessages.some(
+          (m) => m.agent === "pm" && m.label === "回報結果" && !m.streaming
+        );
         const savedStage = parsed.stage ?? "idle";
         const safeStage: PipelineStage =
-          cleanedMessages.length > 0 &&
-          savedStage !== "idle" &&
-          savedStage !== "complete"
+          savedStage === "complete" || savedStage === "idle"
+            ? savedStage
+            : hasFinishedReport
             ? "complete"
-            : savedStage;
+            : "idle";
         setState({
           ...EMPTY,
           ...parsed,
