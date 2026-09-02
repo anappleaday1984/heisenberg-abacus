@@ -13,6 +13,11 @@ export const anthropic = new Anthropic({
   maxRetries: 0,
 });
 
+// 2026-09-02：曾試過改 M3——10 次孤立合成測試看起來更快（19s vs 25s、0 截斷），
+// 但真實跑完整 pipeline（30 受訪者 + PM 規劃/報告）反而比 M2.5 慢近 2 倍
+// （1066s vs 540s 乾淨環境實測）：M3 對本專案的 bundled JSON 格式指令遵循度較差，
+// 觸發 PM 重試 + 受訪者 bundled 失敗退回慢速逐題模式，拖垮整體。已改回 M2.5。
+// 教訓：孤立合成 benchmark 測不出格式遵循度這類風險，換模型務必用真實 pipeline 驗證。
 export const MODEL = "MiniMax-M2.5";
 
 // ---------- 全域 LLM 並行控制 + 429 retry ----------

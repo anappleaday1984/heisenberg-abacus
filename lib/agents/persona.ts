@@ -137,6 +137,12 @@ async function askPersonaBundled(
 
   // 5 題 × 3-5 句 ≈ 每題 200-300 字，加 JSON wrapper 大約 1500-2000 token；
   // 給 2500 留 buffer，避免 max_tokens 截斷導致 JSON 沒結尾。
+  //
+  // 2026-09-02 實測：曾嘗試調降到 1400/1800 想逼 MiniMax 精簡、減少單批拖累，
+  // 但 10 併發 benchmark 顯示～20% 的回應會撞上限被截斷（觸發更慢的逐題 fallback），
+  // 且撞上限的那幾個往往正是耗時最長的——生成延遲跟輸出長度並非線性關係，砍
+  // max_tokens 對「慢」沒有幫助只有「截斷風險」，故維持 2500，改靠提高 concurrency
+  // 減少批次數來降低總時間（見 lib/anthropic.ts LLM_MAX_CONCURRENCY）。
   const raw = await callLLM(async () => {
     const stream = anthropic.messages.stream({
       model: MODEL,
